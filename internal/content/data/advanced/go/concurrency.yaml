@@ -1,0 +1,548 @@
+lang: go
+group: Concurrency
+title: "Concurrency — Goroutines, Channels, sync & context"
+tag: E
+summary: |
+  Concurrency is Go's signature topic. The model follows Communicating Sequential
+  Processes (CSP): goroutines are independently scheduled lightweight threads (initial
+  stack ~2 KB, multiplexed onto OS threads by the runtime); channels are typed,
+  synchronised message pipes between them.
+
+  Core mantra from Effective Go: "Do not communicate by sharing memory; instead, share
+  memory by communicating."
+
+  A goroutine is started by prepending go to a function call. An unbuffered channel
+  synchronises sender and receiver — the send blocks until a receiver is ready, and
+  vice versa. A buffered channel (make(chan T, N)) allows up to N sends before
+  blocking. select multiplexes over multiple channel operations, taking the first case
+  that is ready; a default case makes it non-blocking.
+
+  sync primitives are used when sharing memory is cleaner than message passing:
+  - sync.Mutex / sync.RWMutex: mutual exclusion for shared state.
+  - sync.WaitGroup: wait for a collection of goroutines to finish.
+  - sync.Once: run an initialisation function exactly once.
+
+  context.Context propagates cancellation and deadlines across goroutine trees. The
+  standard pattern: context.WithTimeout or context.WithCancel returns a derived context
+  and a cancel function. Always defer cancel() to release resources. Goroutines receive
+  the context via function parameters (never stored in a struct) and exit on
+  <-ctx.Done().
+
+  Worker pool pattern: N goroutines drain a shared jobs channel and write to a results
+  channel. The sender closes jobs when all work is enqueued; workers exit their range
+  loop cleanly. A WaitGroup signals when all workers are done, after which results is
+  closed so the collector can range over it.
+
+  Data race: two goroutines access the same variable and at least one writes, without
+  synchronisation. The Go race detector (go test -race / go run -race) instruments the
+  binary at runtime to detect races. Always run the race detector in CI.
+
+  Goroutine leak: a goroutine blocked forever on a channel send or receive that no one
+  will ever satisfy. Provide a cancellation path via a done channel or context.
+
+  Common gotchas:
+  - Loop-variable capture (pre-1.22): goroutine closures in a for-range all capture
+    the same loop variable. In Go 1.22+ (go 1.22 in go.mod) each iteration has a fresh
+    variable. Old workaround: v := v inside the loop, or pass v as a function argument.
+  - Sending on a closed channel panics. Closing is the sender's responsibility.
+  - A nil channel blocks forever on both send and receive — useful to disable a select
+    case dynamically.
+  - WaitGroup.Add must be called before launching the goroutine, not inside it.
+  - Forgetting defer cancel() after WithCancel/WithTimeout leaks context resources.
+exercises:
+  - prompt: |
+      The counter below is incremented by 100 goroutines. The result is non-
+      deterministic and the race detector fires. Fix it using sync.Mutex.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import (
+          "fmt"
+          "sync"
+      )
+
+      func main() {
+          var counter int
+          var wg sync.WaitGroup
+
+          for i := 0; i < 100; i++ {
+              wg.Add(1)
+              go func() {
+                  defer wg.Done()
+                  counter++ // data race: unsynchronised read-modify-write
+              }()
+          }
+
+          wg.Wait()
+          fmt.Println(counter)
+      }
+    fixed_code: |
+      package main
+
+      import (
+          "fmt"
+          "sync"
+      )
+
+      func main() {
+          var counter int
+          var mu sync.Mutex
+          var wg sync.WaitGroup
+
+          for i := 0; i < 100; i++ {
+              wg.Add(1)
+              go func() {
+                  defer wg.Done()
+                  mu.Lock()
+                  counter++
+                  mu.Unlock()
+              }()
+          }
+
+          wg.Wait()
+          fmt.Println(counter)
+      }
+    bug: |
+      counter++ is a read-modify-write: it reads counter, adds 1, and writes back.
+      When two goroutines execute this concurrently without synchronisation, both can
+      read the same value, both add 1, and both write back — losing one increment.
+      The race detector catches this at runtime (go run -race). Wrapping the increment
+      with mu.Lock() / mu.Unlock() ensures only one goroutine accesses counter at a
+      time, making the final result deterministically 100.
+    check: stdout
+    signal: "100"
+
+  - prompt: |
+      The producer below sends one value on an unbuffered channel, but the consumer
+      reads only one value and returns. The producer goroutine is now blocked forever —
+      a goroutine leak. Fix it using a done channel and select so the producer exits
+      cleanly.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import (
+          "fmt"
+          "runtime"
+      )
+
+      func producer(ch chan<- int) {
+          for i := 0; ; i++ {
+              ch <- i // blocks forever after consumer returns
+          }
+      }
+
+      func main() {
+          ch := make(chan int)
+          go producer(ch)
+
+          fmt.Println(<-ch) // reads one value then returns — producer leaks
+          fmt.Println("goroutines after:", runtime.NumGoroutine())
+      }
+    fixed_code: |
+      package main
+
+      import (
+          "fmt"
+          "runtime"
+      )
+
+      func producer(ch chan<- int, done <-chan struct{}) {
+          for i := 0; ; i++ {
+              select {
+              case ch <- i:
+              case <-done:
+                  return
+              }
+          }
+      }
+
+      func main() {
+          ch := make(chan int)
+          done := make(chan struct{})
+
+          go producer(ch, done)
+
+          fmt.Println(<-ch)
+          close(done) // signal producer to exit
+
+          // Give the runtime a moment to schedule the producer's exit.
+          runtime.Gosched()
+          fmt.Println("goroutines after:", runtime.NumGoroutine())
+      }
+    bug: |
+      Without a cancellation mechanism the producer goroutine blocks on ch <- i
+      indefinitely once the consumer stops reading. Closing the done channel unblocks
+      the select case <-done in the producer, allowing it to return and be garbage
+      collected. The general rule: every goroutine that can block must have a way out
+      — a done channel or a context.Context.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Implement a fixed-size worker pool: 5 workers drain a jobs channel of 20 strings,
+      each worker uppercases the string and sends it to results. Use a WaitGroup to
+      close results when all workers finish, then print each result.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import (
+          "fmt"
+          "strings"
+          "sync"
+      )
+
+      func worker(id int, jobs <-chan string, results chan<- string, wg *sync.WaitGroup) {
+          // TODO: mark done when this worker exits
+          for j := range jobs {
+              results <- strings.ToUpper(j)
+          }
+      }
+
+      func main() {
+          jobs := make(chan string, 20)
+          results := make(chan string, 20)
+          var wg sync.WaitGroup
+
+          for w := 1; w <= 5; w++ {
+              go worker(w, jobs, results, &wg) // WaitGroup.Add missing
+          }
+
+          for i := 0; i < 20; i++ {
+              jobs <- fmt.Sprintf("job-%d", i)
+          }
+          close(jobs)
+
+          // results is never closed — this range blocks forever
+          for r := range results {
+              fmt.Println(r)
+          }
+      }
+    fixed_code: |
+      package main
+
+      import (
+          "fmt"
+          "strings"
+          "sync"
+      )
+
+      func worker(id int, jobs <-chan string, results chan<- string, wg *sync.WaitGroup) {
+          defer wg.Done()
+          for j := range jobs {
+              results <- strings.ToUpper(j)
+          }
+      }
+
+      func main() {
+          jobs := make(chan string, 20)
+          results := make(chan string, 20)
+          var wg sync.WaitGroup
+
+          for w := 1; w <= 5; w++ {
+              wg.Add(1)
+              go worker(w, jobs, results, &wg)
+          }
+
+          for i := 0; i < 20; i++ {
+              jobs <- fmt.Sprintf("job-%d", i)
+          }
+          close(jobs)
+
+          go func() {
+              wg.Wait()
+              close(results)
+          }()
+
+          for r := range results {
+              fmt.Println(r)
+          }
+      }
+    bug: |
+      Two bugs. First, wg.Add(1) is missing before each go worker(...) call — without
+      it, wg.Wait() returns immediately (the count is always 0) and results is closed
+      before any worker finishes. Second, the worker function never calls wg.Done(), so
+      even if Add were correct, Wait would block forever. The pattern: call wg.Add(1)
+      before launching the goroutine, and defer wg.Done() at the top of the goroutine.
+      A separate goroutine waits for all workers then closes results, allowing the main
+      goroutine to range over results safely.
+    check: none
+    signal: ""
+
+  - prompt: |
+      The search function below simulates a slow operation. Wire it with
+      context.WithTimeout so the call returns within 100 ms even if the work takes
+      longer, and ensure no goroutine is left running after the timeout.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import (
+          "context"
+          "fmt"
+          "time"
+      )
+
+      func slowSearch(ctx context.Context, query string) (string, error) {
+          // Simulates work that takes 500 ms
+          time.Sleep(500 * time.Millisecond)
+          return "result for " + query, nil
+      }
+
+      func main() {
+          // No timeout — blocks for 500 ms
+          result, err := slowSearch(context.Background(), "go concurrency")
+          if err != nil {
+              fmt.Println("error:", err)
+              return
+          }
+          fmt.Println(result)
+      }
+    fixed_code: |
+      package main
+
+      import (
+          "context"
+          "fmt"
+          "time"
+      )
+
+      func slowSearch(ctx context.Context, query string) (string, error) {
+          done := make(chan string, 1)
+          go func() {
+              time.Sleep(500 * time.Millisecond)
+              done <- "result for " + query
+          }()
+          select {
+          case result := <-done:
+              return result, nil
+          case <-ctx.Done():
+              return "", ctx.Err()
+          }
+      }
+
+      func main() {
+          ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+          defer cancel()
+
+          result, err := slowSearch(ctx, "go concurrency")
+          if err != nil {
+              fmt.Println("error:", err) // context deadline exceeded
+              return
+          }
+          fmt.Println(result)
+      }
+    bug: |
+      The original slowSearch ignores the context entirely: it calls time.Sleep
+      unconditionally and cannot be cancelled. The fix has two parts: (1) wrap the slow
+      work in its own goroutine and send the result on a buffered channel; (2) use
+      select to race the result channel against ctx.Done(). When the timeout fires,
+      ctx.Done() is closed, the select picks that case, and the function returns the
+      context error. The worker goroutine will eventually finish and its send lands in
+      the buffered channel — no leak. Always defer cancel() after WithTimeout to free
+      the timer even when the operation finishes before the deadline.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Implement a non-blocking rate-limiter using a buffered channel as a semaphore.
+      If the semaphore is full, return ErrBusy immediately without blocking.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import (
+          "errors"
+          "fmt"
+      )
+
+      var ErrBusy = errors.New("too many concurrent requests")
+
+      func acquire(sem chan struct{}) error {
+          sem <- struct{}{} // blocks if full — should return ErrBusy instead
+          return nil
+      }
+
+      func release(sem chan struct{}) {
+          <-sem
+      }
+
+      func main() {
+          sem := make(chan struct{}, 3) // allow 3 concurrent
+          for i := 0; i < 5; i++ {
+              if err := acquire(sem); err != nil {
+                  fmt.Println("rejected:", i)
+              } else {
+                  fmt.Println("acquired:", i)
+              }
+          }
+      }
+    fixed_code: |
+      package main
+
+      import (
+          "errors"
+          "fmt"
+      )
+
+      var ErrBusy = errors.New("too many concurrent requests")
+
+      func acquire(sem chan struct{}) error {
+          select {
+          case sem <- struct{}{}:
+              return nil
+          default:
+              return ErrBusy
+          }
+      }
+
+      func release(sem chan struct{}) {
+          <-sem
+      }
+
+      func main() {
+          sem := make(chan struct{}, 3) // allow 3 concurrent
+          for i := 0; i < 5; i++ {
+              if err := acquire(sem); err != nil {
+                  fmt.Println("rejected:", i)
+              } else {
+                  fmt.Println("acquired:", i)
+              }
+          }
+      }
+    bug: |
+      sem <- struct{}{} blocks when the channel is at capacity, turning the function
+      into a blocking wait rather than a non-blocking check. A select with a default
+      case tries the send immediately: if there is room in the buffer the send succeeds;
+      if not, the default branch runs instantly and returns ErrBusy. Buffered channels
+      as counting semaphores is a standard Go idiom for bounding concurrency.
+    check: none
+    signal: ""
+
+  - prompt: |
+      The pipeline below has a gen stage and a square stage. The square stage should
+      fan out to 2 workers and merge results back. Wire the merge and ensure it
+      terminates cleanly when all work is done.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import (
+          "fmt"
+          "sync"
+      )
+
+      func gen(nums ...int) <-chan int {
+          out := make(chan int)
+          go func() {
+              for _, n := range nums {
+                  out <- n
+              }
+              close(out)
+          }()
+          return out
+      }
+
+      func square(in <-chan int) <-chan int {
+          out := make(chan int)
+          go func() {
+              for n := range in {
+                  out <- n * n
+              }
+              close(out)
+          }()
+          return out
+      }
+
+      // merge is missing — must fan-in two channels into one
+      func merge(cs ...<-chan int) <-chan int {
+          return nil // TODO
+      }
+
+      func main() {
+          c := gen(2, 3, 4, 5)
+
+          // Fan out to 2 square workers
+          sq1 := square(c)
+          sq2 := square(c)
+
+          // merge sq1 and sq2 — currently broken
+          for n := range merge(sq1, sq2) {
+              fmt.Println(n)
+          }
+      }
+    fixed_code: |
+      package main
+
+      import (
+          "fmt"
+          "sync"
+      )
+
+      func gen(nums ...int) <-chan int {
+          out := make(chan int)
+          go func() {
+              for _, n := range nums {
+                  out <- n
+              }
+              close(out)
+          }()
+          return out
+      }
+
+      func square(in <-chan int) <-chan int {
+          out := make(chan int)
+          go func() {
+              for n := range in {
+                  out <- n * n
+              }
+              close(out)
+          }()
+          return out
+      }
+
+      func merge(cs ...<-chan int) <-chan int {
+          var wg sync.WaitGroup
+          out := make(chan int)
+
+          output := func(c <-chan int) {
+              defer wg.Done()
+              for n := range c {
+                  out <- n
+              }
+          }
+
+          wg.Add(len(cs))
+          for _, c := range cs {
+              go output(c)
+          }
+
+          go func() {
+              wg.Wait()
+              close(out)
+          }()
+
+          return out
+      }
+
+      func main() {
+          c := gen(2, 3, 4, 5)
+          sq1 := square(c)
+          sq2 := square(c)
+
+          for n := range merge(sq1, sq2) {
+              fmt.Println(n)
+          }
+      }
+    bug: |
+      merge returns nil, so ranging over it completes immediately with zero values.
+      The fan-in pattern: start one goroutine per input channel that forwards values to
+      a shared output channel; use a WaitGroup to know when all forwarders are done;
+      close the output channel in a separate goroutine that calls wg.Wait(). This is
+      the standard merge from the Go pipelines blog post. Because two square workers
+      read from the same input channel c, work is distributed between them
+      non-deterministically — order of printed results may vary.
+    check: none
+    signal: ""

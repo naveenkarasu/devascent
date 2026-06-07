@@ -1,0 +1,141 @@
+- category: 'Linked List'
+  lang: javascript
+  title: 'Linked List — JavaScript refresher'
+  summary: |
+    A linked list is a sequence of nodes where each node holds a value and a pointer
+    to the next node. Unlike arrays, insertion and deletion at a known position are O(1),
+    but random access is O(n).
+
+    Core techniques: dummy head node (simplifies edge cases at the front), two pointers
+    at different speeds (fast/slow for cycle detection and finding the middle), and
+    reversing a list in-place by relinking pointers.
+
+    JavaScript notes:
+      - ListNode is usually defined in the problem stub. In interviews you may be asked
+        to define it yourself: class ListNode { constructor(val, next=null) {...} }.
+      - Reassign node.next carefully — keep a reference to the next node BEFORE you
+        overwrite the pointer, or you will lose the rest of the list.
+      - null is the standard sentinel for "end of list".
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'linked list node class'
+          code: |
+            class ListNode {
+              constructor(val, next = null) {
+                this.val = val;
+                this.next = next;
+              }
+            }
+        - label: 'dummy head (simplifies edge cases at the front)'
+          code: |
+            const dummy = new ListNode(0);
+            dummy.next = head;
+        - label: 'two-pointer (fast and slow)'
+          code: 'let slow = head, fast = head;'
+    - title: Basic operations
+      ops:
+        - label: 'traverse to the next node'
+          code: 'curr = curr.next;'
+        - label: 'insert a new node after curr'
+          code: |
+            const newNode = new ListNode(val);
+            newNode.next = curr.next;
+            curr.next = newNode;
+        - label: 'delete the node after curr'
+          code: 'curr.next = curr.next.next;'
+        - label: 'check if we have reached the end'
+          code: |
+            if (curr === null) {
+              /* end of list */
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'traverse the full list'
+          code: |
+            let curr = head;
+            while (curr !== null) {
+              /* use curr.val */
+              curr = curr.next;
+            }
+        - label: 'advance fast by two, slow by one (find middle / detect cycle)'
+          code: |
+            while (fast !== null && fast.next !== null) {
+              slow = slow.next;
+              fast = fast.next.next;
+            }
+        - label: 'reverse a singly linked list in-place'
+          code: |
+            let prev = null, curr = head;
+            while (curr !== null) {
+                const next = curr.next;
+                curr.next = prev;
+                prev = curr;
+                curr = next;
+            }
+            return prev;   // new head
+    - title: Special operations (linked list)
+      ops:
+        - label: 'detect cycle (Floyd cycle detection)'
+          code: |
+            let slow = head, fast = head;
+            while (fast !== null && fast.next !== null) {
+                slow = slow.next;
+                fast = fast.next.next;
+                if (slow === fast) return true;
+            }
+            return false;
+        - label: 'find the n-th node from the end (two pointers)'
+          code: |
+            let fast = head, slow = head;
+            for (let i = 0; i < n; i++) fast = fast.next;
+            while (fast !== null) {
+              slow = slow.next;
+              fast = fast.next;
+            }
+            return slow;
+        - label: 'merge two sorted lists'
+          code: |
+            const dummy = new ListNode(0);
+            let curr = dummy;
+            while (l1 !== null && l2 !== null) {
+                if (l1.val <= l2.val) {
+                    curr.next = l1;
+                    l1 = l1.next;
+                } else {
+                    curr.next = l2;
+                    l2 = l2.next;
+                }
+                curr = curr.next;
+            }
+            curr.next = l1 ?? l2;
+            return dummy.next;
+        - label: 'convert list to array (for debugging)'
+          code: |
+            const arr = [];
+            let c = head;
+            while (c) {
+              arr.push(c.val);
+              c = c.next;
+            }
+            return arr;
+  example: |
+    Worked example — reverse a singly linked list in-place:
+
+      Walk the list once, relinking each node to point backward. Keep three pointers:
+      prev (the already-reversed tail), curr (the node being processed), and next
+      (saved before we overwrite curr.next). When curr reaches null, prev is the new head.
+
+        function reverseList(head) {
+            let prev = null, curr = head;
+            while (curr !== null) {
+                const next = curr.next;   // save before overwriting
+                curr.next = prev;         // reverse the link
+                prev = curr;              // advance prev
+                curr = next;              // advance curr
+            }
+            return prev;
+        }
+
+    Takeaway: always save curr.next before you overwrite the pointer. A dummy head node
+    makes edge cases (insert/delete at front) much cleaner by avoiding null checks on head.

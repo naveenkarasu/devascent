@@ -1,0 +1,96 @@
+# Slot: machine-error — read a small broken program and spot the bug (machine literacy).
+- id: err_index
+  slot: machine-error
+  order: 3
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    This program crashes when you run it:
+
+        nums = [10, 20, 30]
+        print(nums[3])
+
+    What's wrong?
+  choices:
+    - text: "Index 3 is out of range — the list only has positions 0, 1, 2."
+      correct: true
+      feedback: "Right. A 3-item list has indexes 0–2; nums[3] is past the end (IndexError)."
+    - text: "You can't print a number, only text."
+      correct: false
+      feedback: "Not it — print() handles numbers fine. The problem is the index 3."
+    - text: "The list needs a comma after 30."
+      correct: false
+      feedback: "Not it — the list is valid. The crash is reading nums[3], which doesn't exist."
+
+- id: err_name
+  slot: machine-error
+  order: 3
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    This program errors:
+
+        total = 0
+        total = total + amout
+
+    The error says: NameError: name 'amout' is not defined. What's wrong?
+  choices:
+    - text: "'amout' is a typo / undefined — it was never given a value."
+      correct: true
+      feedback: "Right. Python doesn't know 'amout'; it's likely a typo for a variable you meant to define (e.g. 'amount')."
+    - text: "You can't add two variables together."
+      correct: false
+      feedback: "Not it — adding variables is fine. The issue is 'amout' was never defined."
+    - text: "total must be declared with a type first."
+      correct: false
+      feedback: "Not it — Python doesn't need type declarations. The undefined name 'amout' is the bug."
+
+- id: err_indent
+  slot: machine-error
+  order: 3
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    This program won't run:
+
+        def greet(name):
+        return "Hi " + name
+
+    Python reports: IndentationError. What's wrong?
+  choices:
+    - text: "The 'return' line must be indented inside the function."
+      correct: true
+      feedback: "Right. Python uses indentation for blocks; the body of greet must be indented under the def line."
+    - text: "You can't add a string to a variable."
+      correct: false
+      feedback: "Not it — \"Hi \" + name is valid. The real issue is the un-indented return."
+    - text: "The function is missing a second parameter."
+      correct: false
+      feedback: "Not it — one parameter is fine. The body just needs to be indented."
+
+- id: err_type
+  slot: machine-error
+  order: 3
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    This program crashes:
+
+        age = input("Age? ")
+        print(age + 1)
+
+    It says: TypeError: can only concatenate str (not "int") to str. Why?
+  choices:
+    - text: "input() returns a string; you must convert it with int(age) before adding 1."
+      correct: true
+      feedback: "Right. input() gives text; int(age) + 1 (or convert first) fixes it."
+    - text: "You can't print inside the same program as input."
+      correct: false
+      feedback: "Not it — print and input coexist fine. The issue is adding 1 to a string."
+    - text: "The prompt text 'Age? ' is invalid."
+      correct: false
+      feedback: "Not it — the prompt is fine. age is a string, so age + 1 mixes string and int."

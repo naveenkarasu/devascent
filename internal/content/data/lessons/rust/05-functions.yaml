@@ -1,0 +1,55 @@
+id: functions
+lang: rust
+order: 5
+title: Build Your Own Tools
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A function is a named, reusable block:  fn name(params) -> ReturnType { ... }
+      then a body where the last expression (no semicolon) is the return value —
+      or use return explicitly. Parameters are inputs; the -> type and final
+      expression are the single output. You DEFINE it once and CALL it many
+      times. (You've been using this already — now it has a name.)
+
+          fn square(x: i64) -> i64 {
+              x * x
+          }
+
+      square(6) → 36 ; square(2) → 4. Same definition, different inputs.
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: Write a function that adds two numbers.
+    task:
+      prompt: Return the sum of a and b.
+      func_name: add
+      starter: |
+        fn add(a: i64, b: i64) -> i64 {
+            // hint: one line —  a + b
+        }
+      solution: |
+        fn add(a: i64, b: i64) -> i64 {
+            a + b
+        }
+      tests:
+        - {name: 'add(2, 3)', input: [2, 3], expected: 5}
+        - {name: 'add(-1, 1)', input: [-1, 1], expected: 0}
+        - {name: 'add(100, 250)', input: [100, 250], expected: 350}
+  - kind: you_do
+    title: You do — solo
+    body: Now on your own.
+    task:
+      prompt: Return the area of a rectangle (width times height).
+      func_name: rectangle_area
+      starter: |
+        fn rectangle_area(width: i64, height: i64) -> i64 {
+            // <- delete this line and write your code
+        }
+      solution: |
+        fn rectangle_area(width: i64, height: i64) -> i64 {
+            width * height
+        }
+      tests:
+        - {name: 'rectangle_area(3, 4)', input: [3, 4], expected: 12}
+        - {name: 'rectangle_area(5, 5)', input: [5, 5], expected: 25}
+        - {name: 'rectangle_area(10, 1)', input: [10, 1], expected: 10}

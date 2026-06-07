@@ -1,0 +1,126 @@
+- category: "Linked List"
+  lang: python
+  title: "Linked List — Python refresher"
+  summary: |
+    A linked list is a chain of nodes where each node holds a value and a pointer
+    to the next node. In-place manipulation requires careful pointer rewiring.
+    A dummy head simplifies edge cases at the front. The two-pointer (slow/fast)
+    trick detects cycles and finds the middle in one pass. Reach for linked list
+    patterns on "reverse", "merge", "detect cycle", or "find k-th from end".
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'ListNode class'
+          code: |
+            class ListNode:
+                def __init__(self, val=0, next=None):
+                    self.val = val
+                    self.next = next
+        - label: 'dummy head (simplifies front-edge operations)'
+          code: |
+            dummy = ListNode(0)
+            dummy.next = head
+            cur = dummy
+        - label: 'slow/fast pointers'
+          code: 'slow, fast = head, head'
+    - title: Basic operations
+      ops:
+        - label: 'advance pointer'
+          code: 'cur = cur.next'
+        - label: 'read value'
+          code: 'val = node.val'
+        - label: 'insert node after cur'
+          code: |
+            new_node.next = cur.next
+            cur.next = new_node
+        - label: 'delete next node'
+          code: 'cur.next = cur.next.next'
+        - label: 'check end of list'
+          code: 'while cur: ...'
+    - title: Iteration & loops
+      ops:
+        - label: 'walk the entire list'
+          code: |
+            cur = head
+            while cur:
+                process(cur.val)
+                cur = cur.next
+        - label: 'slow/fast pointer loop (cycle / middle)'
+          code: |
+            slow, fast = head, head
+            while fast and fast.next:
+                slow = slow.next
+                fast = fast.next.next
+        - label: 'two-pointer k-th from end'
+          code: |
+            fast = head
+            for _ in range(k):
+                fast = fast.next
+            slow = head
+            while fast:
+                slow = slow.next
+                fast = fast.next
+    - title: Special operations (linked list)
+      ops:
+        - label: 'reverse in place'
+          code: |
+            prev, cur = None, head
+            while cur:
+                nxt = cur.next
+                cur.next = prev
+                prev = cur
+                cur = nxt
+            return prev
+        - label: 'find cycle (Floyd)'
+          code: |
+            slow, fast = head, head
+            while fast and fast.next:
+                slow = slow.next
+                fast = fast.next.next
+                if slow == fast: return True
+            return False
+        - label: 'find cycle entry point'
+          code: |
+            # After detecting meeting point, reset slow to head
+            slow = head
+            while slow != fast:
+                slow = slow.next
+                fast = fast.next
+            return slow  # cycle start
+        - label: 'merge two sorted lists'
+          code: |
+            dummy = ListNode(0)
+            cur = dummy
+            while l1 and l2:
+                if l1.val <= l2.val:
+                    cur.next = l1
+                    l1 = l1.next
+                else:
+                    cur.next = l2
+                    l2 = l2.next
+                cur = cur.next
+            cur.next = l1 or l2
+            return dummy.next
+        - label: 'find middle of list'
+          code: |
+            slow, fast = head, head
+            while fast and fast.next:
+                slow = slow.next
+                fast = fast.next.next
+            return slow
+  example: |
+    Worked example — Reverse Linked List:
+      Walk the list, rewiring each node's next pointer to its predecessor. Keep
+      track of prev and the next node before overwriting.
+
+        def reverse_list(head):
+            prev, cur = None, head
+            while cur:
+                nxt = cur.next
+                cur.next = prev
+                prev = cur
+                cur = nxt
+            return prev
+
+    Takeaway: three-pointer (prev, cur, nxt) is the universal in-place reversal
+    template for singly linked lists.

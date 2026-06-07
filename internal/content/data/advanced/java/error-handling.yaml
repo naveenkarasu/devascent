@@ -1,0 +1,220 @@
+lang: java
+group: Error Handling
+title: "Error Handling — checked vs unchecked, try-with-resources & lambda friction"
+tag: E
+summary: |
+  Java's exception model distinguishes two families:
+  - Checked exceptions (subclasses of Exception but not RuntimeException): the
+    compiler requires them to be declared in `throws` or caught. Design intent:
+    model recoverable conditions the caller is expected to handle (e.g., IOException,
+    SQLException).
+  - Unchecked exceptions (RuntimeException and its subclasses): no compiler
+    enforcement. Model programming errors and unexpected conditions (e.g.,
+    NullPointerException, IllegalArgumentException, IllegalStateException).
+
+  In modern practice, checked exceptions are controversial: they proliferate `throws`
+  declarations, cannot be thrown from standard lambda functional interfaces
+  (java.util.function), and often lead to "checked-exception fatigue" — swallowed
+  exceptions in empty catch blocks. Contemporary Java code frequently prefers custom
+  unchecked exceptions that wrap checked ones, preserving the cause.
+
+  try-with-resources (Java 7+): declares one or more AutoCloseable resources in the
+  try header; the JVM closes them automatically in reverse declaration order when the
+  block exits, even if an exception is thrown. If both the body and close() throw,
+  the close exception is attached as a SUPPRESSED exception (retrievable via
+  Throwable.getSuppressed()) rather than overwriting the primary exception — a
+  significant improvement over manual try/finally.
+
+  Gotchas:
+  - Losing the cause: throw new RuntimeException("msg") without the `cause` argument
+    discards the original stack trace. Always pass the cause: new RuntimeException(msg, cause).
+  - Multi-catch `catch (A | B e)` makes `e` effectively final — you cannot reassign it
+    inside the catch block.
+  - Empty catch blocks are silent failure — one of the most dangerous code smells in
+    production Java.
+exercises:
+  - prompt: |
+      The readFile() method throws IOException (checked). The call site is forced to
+      catch or declare it. Wrap the checked exception in a custom unchecked
+      FileReadException, preserve the original cause, and verify the call site no
+      longer needs try/catch or throws.
+    kind: implement
+    broken_code: |
+      // Checked exception propagates — caller is forced to handle it:
+      static String readFile(String path) throws IOException {
+          return Files.readString(Path.of(path));
+      }
+
+      // Call site must declare or catch:
+      static void process(String path) throws IOException {
+          String content = readFile(path);
+          System.out.println(content.length());
+      }
+    fixed_code: |
+      class FileReadException extends RuntimeException {
+          FileReadException(String message, Throwable cause) {
+              super(message, cause);   // preserve original cause — crucial for debugging
+          }
+      }
+
+      static String readFile(String path) {
+          try {
+              return Files.readString(Path.of(path));
+          } catch (IOException e) {
+              throw new FileReadException("Failed to read: " + path, e);
+          }
+      }
+
+      // No throws declaration needed; original IOException is in the cause chain:
+      static void process(String path) {
+          String content = readFile(path);
+          System.out.println(content.length());
+      }
+    bug: |
+      Calling super(message) without the cause argument drops the original IOException
+      from the exception chain — stack traces become useless for diagnosing the root
+      cause. Always preserve the cause: super(message, cause). The trade-off vs checked:
+      the compiler no longer forces callers to handle it, which is a deliberate design
+      choice when the caller has no realistic recovery action.
+    check: none
+    signal: ""
+
+  - prompt: |
+      The catch block below swallows the exception silently. Identify why this hides
+      bugs, then refactor to: (1) log the exception, and (2) rethrow as a domain
+      exception with the original cause preserved.
+    kind: fix-it
+    broken_code: |
+      static int parseId(String raw) {
+          try {
+              return Integer.parseInt(raw);
+          } catch (NumberFormatException e) {
+              // silently ignored — caller gets 0 and has no idea why
+              return 0;
+          }
+      }
+    fixed_code: |
+      class InvalidIdException extends RuntimeException {
+          InvalidIdException(String message, Throwable cause) {
+              super(message, cause);
+          }
+      }
+
+      static int parseId(String raw) {
+          try {
+              return Integer.parseInt(raw);
+          } catch (NumberFormatException e) {
+              // Option A: log and rethrow as domain exception
+              System.err.println("[WARN] Invalid ID input: " + raw);
+              throw new InvalidIdException("Cannot parse ID from: " + raw, e);
+              // Option B (if 0 is a valid sentinel): at minimum log
+              //   System.err.println("parseId received non-numeric input: " + raw);
+              //   return 0;
+          }
+      }
+    bug: |
+      An empty catch block makes the method appear to succeed when it silently fails,
+      causing downstream logic to work on incorrect data. This is especially dangerous
+      in batch processing where one bad record can corrupt an entire run without any
+      log entry pointing to the cause. If returning a sentinel value (like 0) is
+      intentional, at minimum log the anomaly so it shows up in monitoring.
+    check: none
+    signal: ""
+
+  - prompt: |
+      The method below opens a Connection and a PreparedStatement in sequential
+      try/finally blocks. Migrate to try-with-resources with both resources declared.
+      Verify that the statement closes before the connection (reverse order) and
+      that an exception from close() does not overwrite the primary exception.
+    kind: fix-it
+    broken_code: |
+      static void runQuery(DataSource ds, String sql) throws SQLException {
+          Connection conn = ds.getConnection();
+          try {
+              PreparedStatement stmt = conn.prepareStatement(sql);
+              try {
+                  stmt.execute();
+              } finally {
+                  stmt.close();   // if this throws, it OVERWRITES the body exception
+              }
+          } finally {
+              conn.close();
+          }
+      }
+    fixed_code: |
+      static void runQuery(DataSource ds, String sql) throws SQLException {
+          // Resources are closed in reverse declaration order: stmt first, then conn.
+          // If stmt.execute() throws AND stmt.close() also throws, the close exception
+          // is attached as a suppressed exception — the original is not lost.
+          try (Connection conn = ds.getConnection();
+               PreparedStatement stmt = conn.prepareStatement(sql)) {
+              stmt.execute();
+          }
+          // Both resources are automatically closed here, in reverse order.
+      }
+    bug: |
+      With manual try/finally, if close() throws an exception it propagates and
+      overwrites the original body exception — the root cause is permanently lost. Java
+      7's try-with-resources avoids this: close exceptions are suppressed and attached
+      to the primary exception via Throwable.addSuppressed(), so both are visible.
+      Resources are closed in reverse declaration order (last declared = first closed),
+      which is the correct dependency order (statement before connection).
+    check: none
+    signal: ""
+
+  - prompt: |
+      A stream pipeline needs to call a method that throws a checked exception.
+      Standard java.util.function.Function cannot throw checked exceptions, so the
+      compiler rejects it. Create a ThrowingFunction<T,R> functional interface,
+      write a static wrapper that converts it to a regular Function by wrapping any
+      checked exception in a RuntimeException, then use it in the pipeline.
+    kind: implement
+    broken_code: |
+      // This does NOT compile — Function.apply cannot throw IOException:
+      static String parseJson(String raw) throws IOException {
+          // simulated; real code would call Jackson etc.
+          if (raw.isBlank()) throw new IOException("Empty input");
+          return raw.trim();
+      }
+
+      List<String> inputs = List.of("{}", "  ", "{\"a\":1}");
+      List<String> results = inputs.stream()
+          .map(s -> parseJson(s))   // compile error: unhandled IOException
+          .toList();
+    fixed_code: |
+      @FunctionalInterface
+      interface ThrowingFunction<T, R> {
+          R apply(T t) throws Exception;
+      }
+
+      static <T, R> Function<T, R> wrap(ThrowingFunction<T, R> f) {
+          return t -> {
+              try {
+                  return f.apply(t);
+              } catch (RuntimeException e) {
+                  throw e;   // pass unchecked exceptions through unchanged
+              } catch (Exception e) {
+                  throw new RuntimeException(e);   // wrap checked exception
+              }
+          };
+      }
+
+      static String parseJson(String raw) throws IOException {
+          if (raw.isBlank()) throw new IOException("Empty input");
+          return raw.trim();
+      }
+
+      List<String> inputs = List.of("{}", "  ", "{\"a\":1}");
+      List<String> results = inputs.stream()
+          .map(wrap(s -> parseJson(s)))
+          .toList();
+    bug: |
+      The java.util.function interfaces (Function, Predicate, etc.) declare no checked
+      exceptions in their abstract method signature, so the compiler rejects any lambda
+      that throws a checked exception inside them. The ThrowingFunction wrapper moves
+      the checked exception into a custom interface, and the static wrap() utility
+      converts it to a standard Function by catching and re-wrapping at the boundary.
+      This is a common real-world pattern; libraries like Lombok (@SneakyThrows) and
+      Vavr provide their own variants.
+    check: none
+    signal: ""

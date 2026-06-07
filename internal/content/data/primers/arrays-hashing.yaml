@@ -1,0 +1,119 @@
+- category: Arrays & Hashing
+  lang: python
+  title: "Arrays & Hashing — Python refresher"
+  summary: |
+    Arrays hold values by index (0-based). Hash maps/sets give O(1) lookup by key
+    — the go-to for "have I seen this?" and counting. Reach for a set/dict when a
+    brute-force double loop is O(n^2) and a single pass with a lookup is O(n).
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'list (dynamic array)'
+          code: 'a = []'
+        - label: 'list pre-filled with zeros'
+          code: 'a = [0] * n'
+        - label: 'set'
+          code: 's = set()'
+        - label: 'dict'
+          code: 'd = {}'
+        - label: 'defaultdict (auto-init missing keys)'
+          code: |
+            from collections import defaultdict
+            d = defaultdict(int)
+        - label: 'Counter (frequency map)'
+          code: |
+            from collections import Counter
+            cnt = Counter(nums)
+    - title: Basic operations
+      ops:
+        - label: 'access by index'
+          code: 'x = a[0]'
+        - label: 'update by index'
+          code: 'a[0] = 9'
+        - label: 'append'
+          code: 'a.append(5)'
+        - label: 'remove last'
+          code: 'a.pop()'
+        - label: 'length'
+          code: 'n = len(a)'
+        - label: 'membership test'
+          code: 'if v in s: ...'
+        - label: 'increment count in dict'
+          code: 'd[v] = d.get(v, 0) + 1'
+        - label: 'remove from set'
+          code: 's.discard(v)'
+    - title: Most-used built-in methods
+      ops:
+        - label: 'Counter most common k'
+          code: 'cnt.most_common(k)'
+        - label: 'sorted list'
+          code: 'sorted_a = sorted(a)'
+        - label: 'in-place sort'
+          code: 'a.sort()'
+        - label: 'reverse a list'
+          code: 'a.reverse()  # or a[::-1] for a copy'
+        - label: 'list of keys'
+          code: 'd.keys()'
+        - label: 'list of values'
+          code: 'd.values()'
+        - label: 'list of items'
+          code: 'd.items()'
+    - title: Conversions to other types
+      ops:
+        - label: 'list -> set (deduplicate)'
+          code: 's = set(a)'
+        - label: 'set -> sorted list'
+          code: 'sorted_s = sorted(s)'
+        - label: 'dict keys -> list'
+          code: 'keys = list(d.keys())'
+        - label: 'zip two lists into dict'
+          code: 'd = dict(zip(keys, vals))'
+    - title: Iteration & loops
+      ops:
+        - label: 'iterate with index'
+          code: 'for i, v in enumerate(a): ...'
+        - label: 'iterate over dict items'
+          code: 'for k, v in d.items(): ...'
+        - label: 'list comprehension'
+          code: 'squares = [x*x for x in a]'
+        - label: 'set comprehension'
+          code: 'uniq = {x % 2 for x in a}'
+    - title: Special operations (arrays & hashing)
+      ops:
+        - label: 'two-sum pattern (complement lookup)'
+          code: |
+            seen = {}
+            for i, n in enumerate(nums):
+                if target - n in seen:
+                    return [seen[target - n], i]
+                seen[n] = i
+        - label: 'frequency array for fixed alphabet (26 letters)'
+          code: |
+            cnt = [0] * 26
+            cnt[ord(c) - ord('a')] += 1
+        - label: 'group anagrams by sorted key'
+          code: |
+            from collections import defaultdict
+            d = defaultdict(list)
+            d[tuple(sorted(w))].append(w)
+        - label: 'prefix sum array'
+          code: |
+            prefix = [0] * (n + 1)
+            prefix[i+1] = prefix[i] + a[i]
+        - label: 'range sum query'
+          code: 'total = prefix[r+1] - prefix[l]'
+  example: |
+    Worked example — Two Sum (find indices i, j with a[i] + a[j] == target):
+      Brute force checks every pair: O(n^2). Instead, walk once and remember each
+      value's index in a dict; for each number, look up whether its complement
+      (target - num) was already seen — O(1) per step, O(n) total.
+
+        def two_sum(nums, target):
+            seen = {}
+            for i, n in enumerate(nums):
+                if target - n in seen:
+                    return [seen[target - n], i]
+                seen[n] = i
+
+    Takeaway: a hash map turns "search for a partner" from a nested loop into a
+    single pass. Most Arrays & Hashing problems are some version of this trade.

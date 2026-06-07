@@ -1,0 +1,153 @@
+- category: Arrays & Hashing
+  lang: java
+  title: Arrays & Hashing — Java refresher
+  summary: |
+    An array (int[], String[]) holds values by index, 0-based, with a FIXED length
+    you set when you create it. When you need a growable list, use ArrayList. When
+    you need fast "have I seen this key?" or "how many of each?", reach for a
+    HashMap (key -> value) or HashSet (just keys) — both give average O(1) lookup.
+
+    The core trade: a brute-force double loop is O(n^2). Remember what you have seen
+    in a HashMap/HashSet and you usually drop to a single O(n) pass.
+
+    Java notes for beginners:
+      - int[] has a fixed .length; ArrayList grows and uses .size().
+      - Generics need OBJECT types: HashMap<Integer,Integer>, not <int,int>.
+        Java auto-boxes int <-> Integer for you.
+      - Compare contents with .equals(), NOT == (== compares object identity).
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'fixed-size array of ints'
+          code: 'int[] a = new int[n];'
+        - label: 'growable list'
+          code: 'List<Integer> list = new ArrayList<>();'
+        - label: 'hash set (presence only)'
+          code: 'Set<Integer> seen = new HashSet<>();'
+        - label: 'hash map (key -> value)'
+          code: 'Map<Integer, Integer> m = new HashMap<>();'
+        - label: '2-D array'
+          code: 'int[][] grid = new int[rows][cols];'
+    - title: Basic operations
+      ops:
+        - label: 'read array element by index'
+          code: 'int x = a[0];'
+        - label: 'set array element by index'
+          code: 'a[0] = 9;'
+        - label: 'get list element'
+          code: 'list.get(0);'
+        - label: 'set list element'
+          code: 'list.set(0, 9);'
+        - label: 'append to list'
+          code: 'list.add(5);'
+        - label: 'remove last element of list'
+          code: 'list.remove(list.size() - 1);'
+        - label: 'put into map'
+          code: 'm.put(key, val);'
+        - label: 'get from map'
+          code: 'm.get(key);'
+        - label: 'remove from map'
+          code: 'm.remove(key);'
+        - label: 'set membership check'
+          code: 'seen.contains(v);'
+        - label: 'map key check'
+          code: 'm.containsKey(v);'
+        - label: 'array length'
+          code: 'int n = a.length;'
+        - label: 'list size'
+          code: 'int k = list.size();'
+        - label: 'map size'
+          code: 'int s = m.size();'
+    - title: Most-used built-in functions
+      ops:
+        - label: 'sort array'
+          code: 'Arrays.sort(a);'
+        - label: 'fill array with a value'
+          code: 'Arrays.fill(a, 0);'
+        - label: 'count occurrences (getOrDefault pattern)'
+          code: 'm.put(v, m.getOrDefault(v, 0) + 1);'
+        - label: 'merge / update a map value'
+          code: 'm.merge(v, 1, Integer::sum);'
+        - label: 'min of two values'
+          code: 'int lo = Math.min(a, b);'
+        - label: 'max of two values'
+          code: 'int hi = Math.max(a, b);'
+    - title: Conversions to other types
+      ops:
+        - label: 'array -> list'
+          code: 'List<Integer> list = new ArrayList<>(Arrays.asList(boxedArray));'
+        - label: 'list -> int array (Java 8+)'
+          code: 'int[] a = list.stream().mapToInt(Integer::intValue).toArray();'
+        - label: 'iterate map entries'
+          code: |
+            for (Map.Entry<Integer,Integer> e : m.entrySet()) {
+                e.getKey();
+                e.getValue();
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'indexed for loop (array)'
+          code: |
+            for (int i = 0; i < a.length; i++) {
+                int v = a[i];
+            }
+        - label: 'for-each over list'
+          code: 'for (int v : list) { ... }'
+        - label: 'for-each over map keys'
+          code: |
+            for (int key : m.keySet()) {
+                int val = m.get(key);
+            }
+        - label: 'iterate map entries inline'
+          code: 'm.forEach((k, v) -> System.out.println(k + " -> " + v));'
+    - title: Ordering & comparison
+      ops:
+        - label: 'sort list of integers'
+          code: 'Collections.sort(list);'
+        - label: 'sort array descending (boxed)'
+          code: |
+            Integer[] a = ...;
+            Arrays.sort(a, Collections.reverseOrder());
+        - label: 'sort list by frequency (example)'
+          code: 'list.sort((x, y) -> Integer.compare(m.get(y), m.get(x)));'
+    - title: Special operations (hashing)
+      ops:
+        - label: 'two-sum lookup: check complement before storing'
+          code: |
+            if (m.containsKey(target - v)) return m.get(target - v);
+            m.put(v, i);
+        - label: 'frequency map from array'
+          code: 'for (int v : a) m.put(v, m.getOrDefault(v, 0) + 1);'
+        - label: 'group anagrams: sorted string as key'
+          code: |
+            char[] cs = w.toCharArray();
+            Arrays.sort(cs);
+            String key = new String(cs);
+        - label: 'prefix sum array'
+          code: |
+            int[] prefix = new int[n + 1];
+            for (int i = 0; i < n; i++) prefix[i+1] = prefix[i] + a[i];
+        - label: 'range sum using prefix'
+          code: 'int sum = prefix[r + 1] - prefix[l];'
+  example: |
+    Worked example — Two Sum (find indices i, j with a[i] + a[j] == target):
+
+      Brute force checks every pair: O(n^2). Instead, walk the array once and store
+      each value's index in a HashMap. For each number, look up whether its partner
+      (target - num) was already seen — O(1) per step, O(n) total.
+
+        int[] twoSum(int[] nums, int target) {
+            Map<Integer, Integer> seen = new HashMap<>();
+            for (int i = 0; i < nums.length; i++) {
+                int need = target - nums[i];
+                if (seen.containsKey(need)) {
+                    return new int[] { seen.get(need), i };
+                }
+                seen.put(nums[i], i);
+            }
+            return new int[] {};   // no pair found
+        }
+
+    Takeaway: a HashMap turns "search for a partner" from a nested loop into a
+    single pass. Most Arrays & Hashing problems are a version of this trade — the
+    map remembers the past so you never have to scan it again.

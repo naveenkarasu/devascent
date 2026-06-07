@@ -1,0 +1,176 @@
+lang: rust
+group: Concurrency
+title: "Concurrency — fearless threads, Send/Sync, channels, and Arc<Mutex<>>"
+tag: E
+summary: |
+  Rust achieves fearless concurrency by embedding thread-safety into the type system via
+  two marker traits:
+
+  Send — a type is safe to transfer ownership to another thread. Types like Rc and raw
+  pointers are not Send because their reference counting and pointer arithmetic are not
+  atomic.
+
+  Sync — a type is safe to share references to across threads (T: Sync if and only if
+  &T: Send). Passing a non-Send type to a thread closure is a compile error, eliminating
+  data races entirely at compile time.
+
+  Channels (std::sync::mpsc) — multiple producer, single consumer. Sending a value moves
+  ownership into the channel; the receiver takes ownership on receipt. The channel is
+  closed when all transmitters are dropped.
+
+  Arc<Mutex<T>> — the standard pattern for shared mutable state across threads. Arc
+  provides thread-safe shared ownership; Mutex ensures only one thread accesses the inner
+  value at a time via RAII guards that release the lock when dropped. Data races are
+  impossible, but deadlocks are still the programmer's responsibility.
+
+  async/tokio is a project-scale ([P]) topic covered in Domain Frameworks and is out of
+  scope here.
+
+  (Reference-only for now: Rust is not graded yet. When the toolchain is wired these
+  exercises auto-grade against the exact compiler errors they carry.)
+exercises:
+  - prompt: |
+      The closure passed to thread::spawn borrows msg from the enclosing scope, but the
+      thread might outlive that scope. Add the move keyword so the closure takes
+      ownership of msg.
+    kind: fix-it
+    broken_code: |
+      fn main() {
+          let msg = String::from("hello from thread");
+          let handle = std::thread::spawn(|| {
+              println!("{msg}");   // msg may not live long enough
+          });
+          handle.join().unwrap();
+      }
+    fixed_code: |
+      fn main() {
+          let msg = String::from("hello from thread");
+          let handle = std::thread::spawn(move || {
+              println!("{msg}");   // msg is now owned by the thread closure
+          });
+          handle.join().unwrap();
+      }
+    bug: |
+      thread::spawn requires its closure to be 'static — it must own all the data it
+      uses or that data must have a 'static lifetime. Without move the closure borrows
+      msg from the enclosing stack frame, which could be deallocated before the thread
+      finishes. Adding move transfers ownership of msg into the closure, satisfying the
+      'static bound and resolving E0373.
+    check: compile-error
+    signal: "E0373"
+  - prompt: |
+      Rc<u32> is not Send and cannot be moved into a thread. Replace Rc with Arc so the
+      shared counter can cross thread boundaries safely.
+    kind: fix-it
+    broken_code: |
+      use std::rc::Rc;
+
+      fn main() {
+          let counter = Rc::new(0_u32);
+          let handle = std::thread::spawn(move || {
+              println!("counter = {counter}");
+          });
+          handle.join().unwrap();
+      }
+    fixed_code: |
+      use std::sync::Arc;
+
+      fn main() {
+          let counter = Arc::new(0_u32);
+          let handle = std::thread::spawn(move || {
+              println!("counter = {counter}");
+          });
+          handle.join().unwrap();
+      }
+    bug: |
+      Rc uses non-atomic reference counting, which is unsound in a multi-threaded
+      context because two threads could increment or decrement the count simultaneously
+      and corrupt it. The compiler enforces this by not implementing Send for Rc. Arc
+      uses atomic operations for its reference count and is Send, so moving it into a
+      thread closure compiles cleanly.
+    check: compile-error
+    signal: "E0277"
+  - prompt: |
+      The code tries to mutate a shared counter through Arc alone, but Arc only provides
+      shared (immutable) access. Wrap the inner value in Mutex so threads can lock and
+      mutate it safely.
+    kind: fix-it
+    broken_code: |
+      use std::sync::Arc;
+      use std::thread;
+
+      fn main() {
+          let counter = Arc::new(0_u32);
+          let mut handles = vec![];
+
+          for _ in 0..5 {
+              let c = Arc::clone(&counter);
+              handles.push(thread::spawn(move || {
+                  *c += 1;   // cannot assign to *c, which is behind a shared reference
+              }));
+          }
+
+          for h in handles {
+              h.join().unwrap();
+          }
+          println!("final: {counter}");
+      }
+    fixed_code: |
+      use std::sync::{Arc, Mutex};
+      use std::thread;
+
+      fn main() {
+          let counter = Arc::new(Mutex::new(0_u32));
+          let mut handles = vec![];
+
+          for _ in 0..5 {
+              let c = Arc::clone(&counter);
+              handles.push(thread::spawn(move || {
+                  let mut val = c.lock().unwrap();
+                  *val += 1;
+              }));
+          }
+
+          for h in handles {
+              h.join().unwrap();
+          }
+          println!("final: {}", counter.lock().unwrap());
+      }
+    bug: |
+      Arc<T> provides shared ownership but does not allow mutation — dereferencing and
+      assigning to *c fires E0594. Adding Mutex<T> inside the Arc gives each thread the
+      ability to lock exclusive access before mutating. The Mutex guard is released
+      automatically when it goes out of scope, so no unlock call is needed.
+    check: compile-error
+    signal: "E0594"
+  - prompt: |
+      The code sends val through the channel then tries to print it. But send moves
+      ownership of val into the channel. Remove the use-after-move and instead print the
+      value received on the other end.
+    kind: fix-it
+    broken_code: |
+      use std::sync::mpsc;
+
+      fn main() {
+          let (tx, rx) = mpsc::channel();
+          let val = String::from("hello");
+          tx.send(val).unwrap();
+          println!("sent: {val}");   // val was moved into the channel
+      }
+    fixed_code: |
+      use std::sync::mpsc;
+
+      fn main() {
+          let (tx, rx) = mpsc::channel();
+          let val = String::from("hello");
+          tx.send(val).unwrap();
+          let received = rx.recv().unwrap();
+          println!("received: {received}");
+      }
+    bug: |
+      tx.send(val) moves val into the channel — the channel takes ownership so it can
+      safely transfer it to the receiver thread. Using val afterward is a use of a moved
+      value and fires E0382. The fix is to remove the post-send println! and instead
+      call rx.recv() to take ownership of the value on the receiving end.
+    check: compile-error
+    signal: "E0382"

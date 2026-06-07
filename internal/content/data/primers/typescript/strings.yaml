@@ -1,0 +1,171 @@
+- category: 'Strings'
+  lang: typescript
+  title: 'Strings — TypeScript refresher'
+  summary: |
+    Strings in TypeScript are immutable sequences of UTF-16 characters. Every
+    "modification" (concatenation, slice) creates a new string. For building output
+    in a loop, collect parts in a `string[]` and call `.join("")` at the end — this
+    avoids the O(n^2) cost of repeated `+=`.
+
+    Many string problems reduce to character-frequency counting (anagrams) or a
+    two-pointer / sliding-window scan (palindromes, substrings).
+
+    TypeScript specifics:
+      - `s[i]` accesses the character at index i (string, not a char type).
+      - `s.charCodeAt(i)` gives the UTF-16 code; `"a".charCodeAt(0)` is 97.
+      - `c.charCodeAt(0) - "a".charCodeAt(0)` maps lowercase letters to 0..25.
+      - Template literals (backtick strings) allow embedded expressions: `` `${x}` ``.
+      - `===` compares string VALUES in JavaScript/TypeScript — no `.equals()` needed.
+      - `Record<string, number>` or `Map<string, number>` for frequency tables.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'string literal'
+          code: 'const s: string = "hello";'
+        - label: 'empty string'
+          code: 'const s: string = "";'
+        - label: 'template literal'
+          code: 'const msg: string = `Hello, ${name}!`;'
+        - label: 'array of chars for mutation'
+          code: 'const chars: string[] = s.split("");'
+        - label: 'output builder (array join pattern)'
+          code: 'const parts: string[] = [];  // ... parts.join("")'
+    - title: Basic operations
+      ops:
+        - label: 'length'
+          code: 'const n: number = s.length;'
+        - label: 'read character by index'
+          code: 'const ch: string = s[i];        // or s.charAt(i)'
+        - label: 'substring [start, end)'
+          code: 'const mid = s.slice(1, 4);       // chars at 1, 2, 3'
+        - label: 'concatenate (creates a new string)'
+          code: 'const t = s + "!";'
+        - label: 'find index of char (-1 if absent)'
+          code: 'const i = s.indexOf("x");'
+        - label: 'find index of substring (-1 if absent)'
+          code: 'const j = s.indexOf("ab");'
+        - label: 'get char code'
+          code: 'const code: number = s.charCodeAt(0);'
+    - title: Most-used built-in methods
+      ops:
+        - label: 'equality (use === not ==)'
+          code: |
+            if (a === b) {
+              /* same content */
+            }
+        - label: 'contains'
+          code: 's.includes("lo");'
+        - label: 'startsWith'
+          code: 's.startsWith("he");'
+        - label: 'endsWith'
+          code: 's.endsWith("lo");'
+        - label: 'case folding — lowercase'
+          code: 's.toLowerCase();'
+        - label: 'case folding — uppercase'
+          code: 's.toUpperCase();'
+        - label: 'trim surrounding whitespace'
+          code: 's.trim();'
+        - label: 'trim leading whitespace'
+          code: 's.trimStart();'
+        - label: 'trim trailing whitespace'
+          code: 's.trimEnd();'
+        - label: 'replace first occurrence'
+          code: 's.replace("a", "o");'
+        - label: 'replace all occurrences'
+          code: 's.replaceAll("a", "o");'
+        - label: 'split on a delimiter'
+          code: 'const parts: string[] = s.split(" ");'
+        - label: 'join array of strings'
+          code: 'const joined: string = parts.join("-");'
+    - title: Conversions to other types
+      ops:
+        - label: 'string -> char array'
+          code: 'const chars: string[] = s.split("");'
+        - label: 'char array -> string'
+          code: 'const s: string = chars.join("");'
+        - label: 'string -> number (Number)'
+          code: 'const n: number = Number("42");'
+        - label: 'string -> number (parseInt)'
+          code: 'const m = parseInt("42", 10);'
+        - label: 'number -> string (String)'
+          code: 'const s: string = String(42);'
+        - label: 'number -> string (toString)'
+          code: 'const t = (42).toString();'
+        - label: 'lowercase letter -> 0..25 index'
+          code: 'const idx = ch.charCodeAt(0) - "a".charCodeAt(0);  // "c" -> 2'
+        - label: 'digit char -> number'
+          code: 'const d: number = ch.charCodeAt(0) - "0".charCodeAt(0);  // "7" -> 7'
+    - title: Iteration & loops
+      ops:
+        - label: 'for...of over characters'
+          code: |
+            for (const ch of s) {
+              console.log(ch);
+            }
+        - label: 'indexed for loop'
+          code: |
+            for (let i = 0; i < s.length; i++) {
+              const ch = s[i];
+            }
+        - label: 'two-pointer loop (palindrome check)'
+          code: |
+            let lo = 0, hi = s.length - 1;
+            while (lo < hi) {
+              /* ... */
+              lo++;
+              hi--;
+            }
+    - title: Ordering & comparison
+      ops:
+        - label: 'sort characters of a string'
+          code: 'const sorted: string = s.split("").sort().join("");'
+        - label: 'lexicographic comparison'
+          code: 'const cmp = a.localeCompare(b);   // <0, 0, or >0'
+        - label: 'sort array of strings'
+          code: 'words.sort((a, b) => a.localeCompare(b));'
+        - label: 'sort strings by length'
+          code: 'words.sort((a, b) => a.length - b.length);'
+    - title: Special operations (string patterns)
+      ops:
+        - label: 'frequency table for characters'
+          code: |
+            const freq: Record<string, number> = {};
+            for (const ch of s) freq[ch] = (freq[ch] ?? 0) + 1;
+        - label: 'reverse a string'
+          code: 'const r: string = s.split("").reverse().join("");'
+        - label: 'build output efficiently (avoid += in a loop)'
+          code: |
+            const parts: string[] = [];
+            for (const item of items) parts.push(item);
+            return parts.join("");
+        - label: 'check if two strings are anagrams'
+          code: |
+            function isAnagram(a: string, b: string): boolean {
+              if (a.length !== b.length) return false;
+              const freq: Record<string, number> = {};
+              for (const ch of a) freq[ch] = (freq[ch] ?? 0) + 1;
+              for (const ch of b) {
+                if (!freq[ch]) return false;
+                freq[ch]--;
+              }
+              return true;
+            }
+  example: |
+    Worked example — are two strings anagrams (same letters, any order)?
+
+      Different lengths can never be anagrams. Otherwise count each letter of the
+      first string (+1) and subtract for the second (-1). If every count lands back
+      at zero, the letters matched exactly. O(n) time, O(k) space where k is alphabet.
+
+        function isAnagram(a: string, b: string): boolean {
+            if (a.length !== b.length) return false;
+            const count: number[] = new Array(26).fill(0);
+            for (let i = 0; i < a.length; i++) {
+                count[a.charCodeAt(i) - 97]++;
+                count[b.charCodeAt(i) - 97]--;
+            }
+            return count.every(v => v === 0);
+        }
+
+    Takeaway: a number[26] is a tiny, fast frequency map for lowercase letters. Use
+    `.split("").join("")` to treat strings as char arrays, and `===` for value equality.

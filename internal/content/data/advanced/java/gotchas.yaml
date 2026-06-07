@@ -1,0 +1,215 @@
+lang: java
+group: Gotchas
+title: "Java Gotchas — classic footguns across the language"
+tag: E
+summary: |
+  This topic bundles Java-specific footguns that cut across the other categories —
+  the kind of bugs that appear in code review and interviews.
+
+  == vs .equals(): == on object references tests identity (same pointer). .equals()
+  tests value equality. String literals are interned (JVM string pool), so
+  "hello" == "hello" is often true in a trivial test — but new String("hello") ==
+  new String("hello") is false. Always use .equals() for objects; use
+  Objects.equals(a, b) for null safety.
+
+  Autoboxing & the Integer cache: Java implicitly converts int ↔ Integer. Integers in
+  the range −128 to 127 are cached by the JVM, so Integer.valueOf(100) == Integer.valueOf(100)
+  is true. Outside that range, new boxed instances are created: Integer.valueOf(200) ==
+  Integer.valueOf(200) is false. Calling .equals() is always correct.
+
+  NPE / null: Java's most common runtime exception. Java 14+ improved NPE messages
+  (identifies which variable was null). Mitigations: Optional, Objects.requireNonNull,
+  null-safe Objects.equals, @NonNull annotations + static analysis (SpotBugs, NullAway).
+
+  Mutable statics: static fields are shared across all instances and all threads. A
+  mutable static List is a global mutable shared-state footgun — causes test pollution
+  and thread-safety bugs.
+
+  Checked-exception fatigue: swallowing checked exceptions in an empty catch block is
+  the downstream code smell. See the Error Handling topic.
+
+  Performance notes:
+  - Autoboxing in tight loops is a GC concern — boxing a long per iteration allocates
+    objects on every pass. Use primitive arrays or LongStream where performance matters.
+  - switch on String uses .equals() internally — correct, but consider an enum-based
+    switch in hot paths.
+exercises:
+  - prompt: |
+      The method below uses == to compare String parameters and returns wrong results
+      when strings are constructed with new String(...). Fix it with .equals().
+      Then show the same bug with Integer at value 200 — fix with .equals() there too.
+    kind: fix-it
+    broken_code: |
+      static boolean sameStatus(String a, String b) {
+          return a == b;   // works by accident for interned literals, fails for new String()
+      }
+
+      static boolean sameBox(Integer a, Integer b) {
+          return a == b;   // works for -128..127 (cached), fails for values like 200
+      }
+
+      // Demonstrating the failure:
+      String s1 = new String("ACTIVE");
+      String s2 = new String("ACTIVE");
+      System.out.println(sameStatus(s1, s2));   // false — should be true
+
+      Integer i1 = new Integer(200);
+      Integer i2 = new Integer(200);
+      System.out.println(sameBox(i1, i2));       // false — should be true
+    fixed_code: |
+      static boolean sameStatus(String a, String b) {
+          return Objects.equals(a, b);   // null-safe; delegates to .equals() for non-null
+      }
+
+      static boolean sameBox(Integer a, Integer b) {
+          return Objects.equals(a, b);
+      }
+
+      String s1 = new String("ACTIVE");
+      String s2 = new String("ACTIVE");
+      System.out.println(sameStatus(s1, s2));   // true
+
+      Integer i1 = 200;
+      Integer i2 = 200;
+      System.out.println(sameBox(i1, i2));       // true
+    bug: |
+      == on objects tests reference identity — whether the two variables point to the
+      same object in memory. String literals are pooled (interned) by the JVM, so
+      "hello" == "hello" often returns true in simple tests — creating a false sense of
+      security. new String("hello") always creates a new object, so == is false. For
+      Integer, values in the range -128 to 127 are cached, so == works there too —
+      until a value outside the cache range appears. Use .equals() or Objects.equals()
+      universally to avoid these surprises.
+    check: stdout
+    signal: "true\ntrue"
+
+  - prompt: |
+      The method below returns an Integer (nullable). The call site unboxes it directly
+      into an int, which throws NullPointerException when the method returns null. Fix
+      the call site by null-checking before unboxing, and also show the alternative of
+      changing the return type to int with a sentinel.
+    kind: fix-it
+    broken_code: |
+      static Integer findScore(Map<String, Integer> scores, String player) {
+          return scores.get(player);   // returns null if player not found
+      }
+
+      Map<String, Integer> scores = Map.of("Alice", 95, "Bob", 87);
+      int score = findScore(scores, "Carol");   // NPE: null unboxed to int
+      System.out.println(score);
+    fixed_code: |
+      static Integer findScore(Map<String, Integer> scores, String player) {
+          return scores.get(player);
+      }
+
+      Map<String, Integer> scores = Map.of("Alice", 95, "Bob", 87);
+
+      // Fix A: null-check before unboxing
+      Integer boxed = findScore(scores, "Carol");
+      int score = (boxed != null) ? boxed : -1;
+      System.out.println(score);   // -1
+
+      // Fix B: change return type to int and use getOrDefault
+      // static int findScore(Map<String, Integer> scores, String player) {
+      //     return scores.getOrDefault(player, -1);
+      // }
+    bug: |
+      Assigning an Integer to an int triggers automatic unboxing — equivalent to calling
+      intValue() on the object. If the Integer is null, this throws NullPointerException
+      on the assignment line, not inside findScore — which is confusing without Java 14+
+      enhanced NPE messages that identify the null variable. The clean fix is to return
+      a primitive int or use getOrDefault to guarantee a non-null value; the null-check
+      fix works but is more verbose.
+    check: stdout
+    signal: "-1"
+
+  - prompt: |
+      Two JUnit tests share a class with a static List<String> log field. Show how
+      test-order dependency causes the second test to fail if run after the first. Fix
+      by resetting the static field in @BeforeEach. Then explain the better long-term fix.
+    kind: fix-it
+    broken_code: |
+      class EventLogger {
+          static List<String> log = new ArrayList<>();   // shared mutable static
+
+          static void record(String event) { log.add(event); }
+      }
+
+      class EventLoggerTest {
+          @Test void testFirstEvent() {
+              EventLogger.record("start");
+              assertEquals(1, EventLogger.log.size());   // passes if run first
+          }
+
+          @Test void testSecondEvent() {
+              EventLogger.record("end");
+              assertEquals(1, EventLogger.log.size());   // FAILS if testFirstEvent ran first
+          }
+      }
+    fixed_code: |
+      class EventLogger {
+          static List<String> log = new ArrayList<>();
+          static void record(String event) { log.add(event); }
+      }
+
+      class EventLoggerTest {
+          @BeforeEach
+          void resetLog() {
+              EventLogger.log.clear();   // reset shared state before each test
+          }
+
+          @Test void testFirstEvent() {
+              EventLogger.record("start");
+              assertEquals(1, EventLogger.log.size());
+          }
+
+          @Test void testSecondEvent() {
+              EventLogger.record("end");
+              assertEquals(1, EventLogger.log.size());
+          }
+      }
+
+      // Better long-term fix: remove the static — make log an instance field.
+      // Tests create a fresh EventLogger per test, avoiding shared-state problems
+      // entirely. Mutable statics are especially dangerous in parallel test runners
+      // (e.g., Maven Surefire forkCount > 1) where clearing in @BeforeEach does
+      // not prevent concurrent mutation from another thread.
+    bug: |
+      Static fields are class-level — shared by all test instances and persisted across
+      test method calls. Test B inherits the state left by test A, making test outcomes
+      order-dependent. @BeforeEach reset is a quick fix, but the durable solution is
+      to eliminate the mutable static entirely: turn it into an instance field so each
+      test (and each production call site) gets isolated state.
+    check: none
+    signal: ""
+
+  - prompt: |
+      A utility method uses a.equals(b) which throws NullPointerException when a is
+      null. Replace it with Objects.equals(a, b). Add tests for: one null, both null,
+      and both non-null equal values.
+    kind: fix-it
+    broken_code: |
+      static boolean areEqual(String a, String b) {
+          return a.equals(b);   // NPE when a is null
+      }
+
+      System.out.println(areEqual(null, "hello"));   // NullPointerException
+      System.out.println(areEqual(null, null));
+      System.out.println(areEqual("hi", "hi"));
+    fixed_code: |
+      static boolean areEqual(String a, String b) {
+          return Objects.equals(a, b);   // null-safe: returns false if one is null, true if both are null
+      }
+
+      System.out.println(areEqual(null, "hello"));  // false
+      System.out.println(areEqual(null, null));      // true
+      System.out.println(areEqual("hi", "hi"));      // true
+    bug: |
+      a.equals(b) throws NullPointerException when a is null because you are calling
+      a method on a null reference. The "Yoda condition" ("hello".equals(variable))
+      avoids the NPE only when the literal is on the left — it breaks symmetry and
+      does not help when both variables can be null. Objects.equals(a, b) handles all
+      cases: returns false if exactly one is null, true if both are null, and delegates
+      to a.equals(b) when both are non-null.
+    check: stdout
+    signal: "false\ntrue\ntrue"

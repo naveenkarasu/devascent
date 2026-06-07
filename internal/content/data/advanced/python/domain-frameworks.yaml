@@ -1,0 +1,113 @@
+lang: python
+group: Domain Frameworks
+title: "Domain Frameworks — FastAPI, Flask, pandas, NumPy"
+tag: P
+summary: |
+  Domain frameworks represent project-scale topics that require a mini-application
+  rather than a snippet exercise. They are catalogued here as detailed reference
+  material; interactive exercises would need a separate file-based submission
+  surface (project mode) rather than the snippet editor.
+
+  ─────────────────────────────────────────────────────────────
+  FastAPI — async REST APIs with automatic validation
+  ─────────────────────────────────────────────────────────────
+  FastAPI (built on Starlette + Pydantic) is the modern choice for Python REST
+  APIs. Key features:
+    - Path operations: `@app.get("/items/{item_id}")`, `@app.post("/items")`, etc.
+    - Path parameters: `async def get_item(item_id: int)` — type-annotated,
+      validated and coerced automatically.
+    - Query parameters: any function param without a Path declaration becomes a
+      query param (e.g. `skip: int = 0, limit: int = 10`).
+    - Request body: annotate with a Pydantic `BaseModel` subclass — FastAPI
+      deserialises and validates the JSON body automatically.
+    - Response model: `@app.get("/items", response_model=list[Item])` — automatic
+      serialisation and schema generation.
+    - Automatic OpenAPI docs at `/docs` (Swagger UI) and `/redoc`.
+    - Async: all path operations can be `async def` for non-blocking I/O.
+
+  Minimal CRUD sketch:
+    ```
+    from fastapi import FastAPI, HTTPException
+    from pydantic import BaseModel
+
+    app = FastAPI()
+    db: dict[int, Item] = {}
+
+    class Item(BaseModel):
+        name: str
+        price: float
+
+    @app.get("/items")
+    async def list_items() -> list[Item]:
+        return list(db.values())
+
+    @app.get("/items/{item_id}")
+    async def get_item(item_id: int) -> Item:
+        if item_id not in db:
+            raise HTTPException(status_code=404, detail="Not found")
+        return db[item_id]
+
+    @app.post("/items", status_code=201)
+    async def create_item(item: Item) -> Item:
+        item_id = len(db) + 1
+        db[item_id] = item
+        return item
+
+    @app.delete("/items/{item_id}", status_code=204)
+    async def delete_item(item_id: int):
+        db.pop(item_id, None)
+    ```
+
+  ─────────────────────────────────────────────────────────────
+  Flask — micro web framework
+  ─────────────────────────────────────────────────────────────
+  Flask is a lightweight WSGI framework. It uses the same route-decorator pattern
+  but is synchronous by default (async support added in 2.0). Less opinionated
+  than FastAPI — no built-in validation or serialisation.
+
+  Key patterns:
+    - `@app.route("/items", methods=["GET", "POST"])`
+    - `request.json` to read the request body as a dict.
+    - `jsonify(data)` to return a JSON response.
+    - Flask extensions: Flask-SQLAlchemy, Flask-WTF, Flask-Login.
+
+  ─────────────────────────────────────────────────────────────
+  pandas — data wrangling and analysis
+  ─────────────────────────────────────────────────────────────
+  pandas is the standard Python library for tabular data manipulation.
+
+  Core concepts:
+    - `pd.DataFrame` — 2D labelled table; `pd.Series` — 1D labelled array.
+    - `df.read_csv(path)` / `df.to_csv(path)` — I/O.
+    - `df[col]` — column selection; `df[[col1, col2]]` — multi-column.
+    - `df[df["col"] > value]` — boolean indexing (row filtering).
+    - `df.fillna(value)` / `df.dropna()` — missing value handling.
+    - `df.groupby("col").agg({"other": "sum"})` — split-apply-combine.
+    - `df.merge(other, on="key")` — SQL-style join.
+    - `df.apply(fn)` — row/column-wise function application.
+
+  Classic pipeline pattern:
+    load CSV → rename/cast columns → drop NaN rows → filter → groupby/agg → write
+
+  ─────────────────────────────────────────────────────────────
+  NumPy — numerical arrays and vectorised operations
+  ─────────────────────────────────────────────────────────────
+  NumPy provides the `ndarray` — a fixed-type, multi-dimensional array. Vectorised
+  operations on ndarrays run in C, orders of magnitude faster than Python loops.
+
+  Key concepts:
+    - `np.array([1, 2, 3])` — create 1D array.
+    - `np.zeros((m, n))`, `np.ones(...)`, `np.arange(start, stop, step)`.
+    - Broadcasting: operations between arrays of compatible shapes work
+      element-wise without explicit loops.
+    - Indexing: `a[1:3]`, `a[a > 0]` (boolean mask), `a[np.newaxis, :]`.
+    - `np.dot`, `np.matmul` / `@` operator for matrix multiplication.
+    - `np.random` — random number generation.
+
+  ─────────────────────────────────────────────────────────────
+  Design note
+  ─────────────────────────────────────────────────────────────
+  Exercises for these frameworks require a project mode where the player can edit
+  multiple files, run a server, and submit HTTP requests or a dataset pipeline.
+  The snippet editor is not the right surface. Author separately when project mode
+  is available.

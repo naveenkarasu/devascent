@@ -1,0 +1,65 @@
+lang: java
+group: Domain Frameworks
+title: "Domain Frameworks — Spring Boot & JPA"
+tag: P
+summary: |
+  This topic is project-scale; snippet exercises are not appropriate. The content
+  here is a reference map for players building Spring Boot + JPA projects.
+
+  --- Spring Boot REST ---
+
+  Spring Boot auto-configures an embedded server (Tomcat by default, Netty for
+  reactive stacks), component scanning, and a dependency injection (DI) container.
+
+  Core DI annotations:
+  - @Component — generic Spring-managed bean.
+  - @Service — semantic alias for @Component, marks business-logic layer.
+  - @Repository — semantic alias that also translates persistence exceptions.
+  - @Autowired — inject a dependency (constructor injection preferred; field
+    injection is convenient but harder to test).
+
+  REST layer annotations:
+  - @RestController — combines @Controller + @ResponseBody; all methods return
+    response bodies, not view names.
+  - @RequestMapping, @GetMapping, @PostMapping, @PutMapping, @DeleteMapping —
+    map HTTP methods and paths.
+  - @PathVariable — bind a URI template variable (e.g., /users/{id}).
+  - @RequestBody — deserialise the request body (JSON → Java object via Jackson).
+  - @ResponseStatus — set the HTTP status code declaratively.
+  - @ControllerAdvice + @ExceptionHandler — global exception handling; maps
+    exceptions to HTTP responses in one place.
+
+  Foundational concept: Spring's IoC container manages object lifecycle and wires
+  dependencies. Understanding the container (bean scope, proxy behaviour, circular
+  dependencies) is prerequisite to diagnosing Spring Boot issues.
+
+  --- JPA / Hibernate ---
+
+  JPA (Jakarta Persistence API) is the standard ORM specification; Hibernate is the
+  dominant implementation, bundled by Spring Boot.
+
+  Core annotations:
+  - @Entity — marks a class as a persistent entity (maps to a DB table).
+  - @Id — designates the primary key field.
+  - @GeneratedValue(strategy = GenerationType.IDENTITY) — delegates key generation
+    to the database.
+  - @Column(name = "...", nullable = false) — column-level customisation.
+  - @OneToMany / @ManyToOne — relationship mappings; ownership side carries the FK.
+  - @JoinColumn — specifies the FK column on the owning side.
+
+  Repository layer:
+  - Spring Data JpaRepository<Entity, ID> provides save, findById, findAll, delete
+    and derived query methods (e.g., findByLastName(String name)) with no
+    boilerplate.
+  - Custom JPQL queries via @Query("SELECT e FROM Employee e WHERE e.dept = :dept").
+
+  Key pitfall — N+1 query problem: lazy-loaded @OneToMany collections trigger one
+  additional SELECT per parent entity when iterated. Solutions:
+  - JPQL JOIN FETCH: "SELECT o FROM Order o JOIN FETCH o.items WHERE o.id = :id".
+  - @EntityGraph on repository method — declaratively eager-fetches associations.
+  - @BatchSize(size = 25) — batches collection loads instead of N individual queries.
+
+  Intended learning path: after mastering the [E] topics (OOP, Generics, Collections,
+  Streams, Error Handling, Concurrency, Modern Java, Gotchas), a player builds a small
+  Spring Boot REST endpoint backed by a JPA entity as a project-scale challenge.
+  That challenge is not yet authored here.

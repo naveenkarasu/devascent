@@ -1,0 +1,152 @@
+- category: Strings
+  lang: cpp
+  title: Strings — C++ refresher
+  summary: |
+    Strings in C++ are mutable sequences of characters represented by std::string.
+    Unlike Java, you CAN modify a C++ string in place — no StringBuilder equivalent
+    is needed for most operations. Concatenation with += is acceptable for moderate
+    sizes; for heavy loop building, prefer appending to a string directly or using
+    a stringstream.
+
+    Many string problems reduce to counting characters (anagrams, frequency) or to
+    a two-pointer / sliding-window scan (palindromes, substrings).
+
+    C++ notes:
+      - s[i] gives direct char access (no bounds check); s.at(i) throws on out-of-range.
+      - s.size() returns size_t (unsigned) — cast to int when doing arithmetic.
+      - c - 'a' maps lowercase letters to 0..25 — perfect as an int[26] index.
+      - s.substr(pos, len) takes a LENGTH, not an end index (unlike Java).
+      - Compare strings with == (value comparison works for std::string).
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'string literal'
+          code: 'string s = "hello";'
+        - label: 'empty string'
+          code: 'string s = "";'
+        - label: 'single character'
+          code: |
+            char c = 'a';
+        - label: 'construct n copies of a char'
+          code: 'string s(5, ''x'');   // "xxxxx"'
+        - label: 'from a char array / pointer'
+          code: |
+            char cs[] = "hi";
+            string s(cs);
+    - title: Basic operations
+      ops:
+        - label: 'length (returns size_t — cast to int for arithmetic)'
+          code: 'int n = (int)s.size();'
+        - label: 'read a char by index'
+          code: 's[i]   // or s.at(i) for bounds-checked access'
+        - label: 'substring (pos, LENGTH — not end index)'
+          code: 'string mid = s.substr(1, 3);  // chars at index 1,2,3'
+        - label: 'append a char in place'
+          code: 's += ''!'';'
+        - label: 'append a string in place'
+          code: 's += " world";'
+        - label: 'find first occurrence (-1 cast from npos if absent)'
+          code: 'size_t pos = s.find(''x'');  // string::npos if not found'
+    - title: Most-used built-in functions
+      ops:
+        - label: 'compare — == works for std::string'
+          code: 'if (a == b) { ... }'
+        - label: 'contains / starts / ends (C++23 has .contains; use find for C++17)'
+          code: 's.find("lo") != string::npos;   // equivalent to contains'
+        - label: 'case folding (per character)'
+          code: 'transform(s.begin(), s.end(), s.begin(), ::tolower);'
+        - label: 'erase characters'
+          code: 's.erase(pos, len);  // remove len chars starting at pos'
+        - label: 'insert characters'
+          code: 's.insert(pos, "abc");'
+        - label: 'check empty'
+          code: 's.empty();'
+    - title: Conversions to other types
+      ops:
+        - label: 'string -> int'
+          code: 'int n = stoi("42");'
+        - label: 'int -> string'
+          code: 'string s = to_string(42);'
+        - label: 'single digit char -> int'
+          code: |
+            int d = c - '0';   // '7' -> 7
+        - label: 'lowercase letter -> 0..25 index'
+          code: |
+            int idx = c - 'a';   // 'c' -> 2
+        - label: 'string -> vector<char>'
+          code: 'vector<char> v(s.begin(), s.end());'
+    - title: Iteration & loops
+      ops:
+        - label: 'range-for over characters'
+          code: 'for (char c : s) { ... }'
+        - label: 'range-for by reference (allows mutation)'
+          code: |
+            for (char& c : s) {
+                c = tolower(c);
+            }
+        - label: 'indexed for loop'
+          code: |
+            for (int i = 0; i < (int)s.size(); i++) {
+                char c = s[i];
+            }
+        - label: 'two-pointer while loop (ends inward)'
+          code: |
+            int lo = 0, hi = (int)s.size() - 1;
+            while (lo < hi) {
+                // ...
+                lo++;
+                hi--;
+            }
+    - title: Ordering & comparison
+      ops:
+        - label: 'sort characters in place'
+          code: 'sort(s.begin(), s.end());'
+        - label: 'lexicographic compare (< works on std::string)'
+          code: 'if (a < b) { ... }   // or a.compare(b): <0, 0, >0'
+        - label: 'sort a vector of strings'
+          code: |
+            vector<string> words = {...};
+            sort(words.begin(), words.end());
+        - label: 'sort by length with lambda'
+          code: 'sort(words.begin(), words.end(), [](const string& x, const string& y){ return x.size() < y.size(); });'
+    - title: Special operations (string patterns)
+      ops:
+        - label: 'frequency table for lowercase letters'
+          code: |
+            int freq[26] = {};
+            for (char c : s) freq[c - 'a']++;
+        - label: 'reverse a string in place'
+          code: 'reverse(s.begin(), s.end());'
+        - label: 'build output efficiently'
+          code: |
+            string result;
+            for (...) result += part;
+            return result;
+        - label: 'split on a delimiter (no stdlib split — manual)'
+          code: |
+            istringstream ss(s);
+            string token;
+            while (getline(ss, token, ' ')) words.push_back(token);
+  example: |
+    Worked example — are two strings anagrams (same letters, any order)?
+
+      Different lengths can never be anagrams. Otherwise count each letter of the
+      first string (+1) and subtract for the second (-1). If every count lands back
+      at zero, the letters matched exactly. One pass each, O(n), no sorting needed.
+
+        bool isAnagram(const string& a, const string& b) {
+            if (a.size() != b.size()) return false;
+            int count[26] = {};
+            for (int i = 0; i < (int)a.size(); i++) {
+                count[a[i] - 'a']++;
+                count[b[i] - 'a']--;
+            }
+            for (int v : count) {
+                if (v != 0) return false;
+            }
+            return true;
+        }
+
+    Takeaway: an int[26] is a tiny, fast frequency map for lowercase letters. In
+    C++ std::string supports == comparison and in-place mutation — no StringBuilder
+    or .equals() needed.

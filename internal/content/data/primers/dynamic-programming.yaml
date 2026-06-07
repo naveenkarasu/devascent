@@ -1,0 +1,110 @@
+- category: "Dynamic Programming"
+  lang: python
+  title: "Dynamic Programming — Python refresher"
+  summary: |
+    DP solves problems by breaking them into overlapping subproblems and caching
+    results. Reach for it when you see "count ways", "min/max cost", "longest
+    subsequence", or any problem where the naive recursion revisits the same
+    sub-states. Identify the state (what changes), the transition (how to build
+    from smaller states), and the base case.
+  sections:
+    - title: Declarations
+      ops:
+        - label: '1-D dp array (zero-initialized)'
+          code: 'dp = [0] * (n + 1)'
+        - label: '1-D dp array (infinity for min problems)'
+          code: |
+            dp = [float("inf")] * (n + 1)
+            dp[0] = 0
+        - label: '2-D dp grid'
+          code: 'dp = [[0] * (m + 1) for _ in range(n + 1)]'
+        - label: 'top-down cache decorator'
+          code: 'from functools import lru_cache'
+        - label: 'rolling two variables (space-optimized)'
+          code: 'prev, curr = 0, 1'
+    - title: Basic operations
+      ops:
+        - label: 'set base case'
+          code: 'dp[0] = 1'
+        - label: '1-D forward transition'
+          code: |
+            for i in range(1, n + 1):
+                dp[i] = dp[i-1] + dp[i-2]
+        - label: '2-D transition (grid paths)'
+          code: 'dp[i][j] = dp[i-1][j] + dp[i][j-1]'
+        - label: 'min-cost transition'
+          code: 'dp[i] = min(dp[i], dp[i - c] + 1)'
+        - label: 'rolling-variable update'
+          code: 'prev, curr = curr, prev + curr'
+    - title: Iteration & loops
+      ops:
+        - label: 'top-down memoized recursion'
+          code: |
+            from functools import lru_cache
+            @lru_cache(maxsize=None)
+            def dp(i, j):
+                if base_case: return 0
+                return min(dp(i-1, j), dp(i, j-1)) + cost[i][j]
+        - label: 'bottom-up 1-D fill'
+          code: |
+            dp = [float("inf")] * (amount + 1)
+            dp[0] = 0
+            for a in range(1, amount + 1):
+                for c in coins:
+                    if a >= c: dp[a] = min(dp[a], dp[a-c] + 1)
+        - label: 'bottom-up 2-D fill'
+          code: |
+            for i in range(1, n + 1):
+                for j in range(1, m + 1):
+                    if s[i-1] == t[j-1]: dp[i][j] = dp[i-1][j-1] + 1
+                    else: dp[i][j] = max(dp[i-1][j], dp[i][j-1])
+        - label: 'iterate in reverse (knapsack / unbounded)'
+          code: |
+            for w in range(W, wt - 1, -1):
+                dp[w] = max(dp[w], dp[w - wt] + val)
+    - title: Special operations (dynamic programming)
+      ops:
+        - label: 'LCS / edit distance (2-D DP)'
+          code: |
+            dp = [[0] * (n+1) for _ in range(m+1)]
+            for i in range(1, m+1):
+                for j in range(1, n+1):
+                    if s[i-1] == t[j-1]: dp[i][j] = dp[i-1][j-1] + 1
+                    else: dp[i][j] = 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])
+        - label: '0/1 knapsack skeleton'
+          code: |
+            dp = [0] * (W + 1)
+            for wt, val in items:
+                for w in range(W, wt - 1, -1):
+                    dp[w] = max(dp[w], dp[w - wt] + val)
+        - label: 'bitmask DP (subset of states)'
+          code: |
+            dp = [[float("inf")] * n for _ in range(1 << n)]
+            dp[1 << start][start] = 0
+        - label: 'recover path from DP table'
+          code: |
+            i, j = n, m
+            while i > 0 and j > 0:
+                if s[i-1] == t[j-1]:
+                    path.append(s[i-1])
+                    i -= 1
+                    j -= 1
+                elif dp[i-1][j] > dp[i][j-1]:
+                    i -= 1
+                else:
+                    j -= 1
+  example: |
+    Worked example — Coin Change (fewest coins to make amount):
+      dp[a] = fewest coins to make amount a. Base: dp[0] = 0. For each amount a,
+      try every coin c — if a >= c, dp[a] = min(dp[a], dp[a-c] + 1).
+
+        def coin_change(coins, amount):
+            dp = [float('inf')] * (amount + 1)
+            dp[0] = 0
+            for a in range(1, amount + 1):
+                for c in coins:
+                    if a >= c:
+                        dp[a] = min(dp[a], dp[a - c] + 1)
+            return dp[amount] if dp[amount] != float('inf') else -1
+
+    Takeaway: define the state, write the recurrence, fill bottom-up.

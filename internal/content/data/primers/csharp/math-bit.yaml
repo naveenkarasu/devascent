@@ -1,0 +1,98 @@
+- category: 'Math & Bit'
+  lang: csharp
+  title: 'Math & Bit — C# refresher'
+  summary: |
+    Bit manipulation and integer math are constant-time operations that unlock elegant
+    solutions: XOR to find the lone element, shifts to multiply/divide by powers of 2,
+    AND to check or clear bits.
+
+    Math utilities include integer division (truncates toward zero in C#), modulo,
+    absolute value, GCD via Euclidean algorithm, and overflow-safe arithmetic.
+
+    C# notes:
+      - int is 32-bit signed; long is 64-bit signed. Use long when values can exceed ~2 billion.
+      - Integer division truncates toward zero: 7/2 == 3, -7/2 == -3.
+      - % keeps the sign of the dividend: -7%3 == -1 in C#. Add modulus if you need positive.
+      - No built-in GCD before .NET 7; write your own or use Math.BigMul for wide products.
+      - Checked arithmetic: use checked { } block or checked() to throw on overflow.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'integer literal'
+          code: 'int x = 42;'
+        - label: 'long literal'
+          code: 'long big = 10_000_000_000L;'
+        - label: 'min int constant'
+          code: 'int lo = int.MinValue;'
+        - label: 'max int constant'
+          code: 'int hi = int.MaxValue;'
+        - label: 'bit mask'
+          code: 'int mask = 1 << k;  // bit k set'
+    - title: Basic operations
+      ops:
+        - label: 'check if bit k is set'
+          code: 'bool set = (n & (1 << k)) != 0;'
+        - label: 'set bit k'
+          code: 'n |= (1 << k);'
+        - label: 'clear bit k'
+          code: 'n &= ~(1 << k);'
+        - label: 'toggle bit k'
+          code: 'n ^= (1 << k);'
+        - label: 'XOR two values (cancels duplicates)'
+          code: 'int result = a ^ b;'
+        - label: 'right shift (divide by 2^k)'
+          code: 'int half = n >> 1;'
+    - title: Iteration & loops
+      ops:
+        - label: 'iterate over all set bits of n'
+          code: |
+            for (int tmp = n; tmp != 0; tmp &= tmp - 1)
+            {
+                int lsb = tmp & -tmp;  // isolates lowest set bit
+            }
+        - label: 'count set bits (popcount)'
+          code: |
+            int count = 0;
+            for (int tmp = n; tmp != 0; tmp >>= 1)
+                count += tmp & 1;
+    - title: Special operations (math & bit)
+      ops:
+        - label: 'power of two check'
+          code: 'bool isPow2 = n > 0 && (n & (n - 1)) == 0;'
+        - label: 'GCD (Euclidean)'
+          code: 'int Gcd(int a, int b) => b == 0 ? a : Gcd(b, a % b);'
+        - label: 'absolute value'
+          code: 'int a = Math.Abs(x);'
+        - label: 'max of two values'
+          code: 'int mx = Math.Max(a, b);'
+        - label: 'min of two values'
+          code: 'int mn = Math.Min(a, b);'
+        - label: 'integer square root (floor)'
+          code: 'int r = (int)Math.Sqrt(n);'
+        - label: 'safe modulo (always non-negative)'
+          code: 'int m = ((x % mod) + mod) % mod;'
+        - label: 'find the single non-duplicate (XOR all)'
+          code: |
+            int single = 0;
+            foreach (int x in nums)
+            {
+                single ^= x;
+            }
+  example: |
+    Worked example — count the number of 1-bits in a 32-bit integer:
+
+      Each iteration n & (n-1) clears the lowest set bit. Count how many times
+      you can do that before n reaches zero. This runs in O(number of set bits),
+      not O(32) — it skips over zero-bit stretches entirely.
+
+        int HammingWeight(int n) {
+            int count = 0;
+            while (n != 0) {
+                n &= n - 1;   // clear lowest set bit
+                count++;
+            }
+            return count;
+        }
+
+    Takeaway: n & (n-1) is the classic "clear lowest set bit" trick. It appears in
+    power-of-two checks, subset enumeration, and bit-count problems.

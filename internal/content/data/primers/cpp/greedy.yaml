@@ -1,0 +1,118 @@
+- category: 'Greedy'
+  lang: cpp
+  title: Greedy — C++ refresher
+  summary: |
+    A greedy algorithm makes the locally optimal choice at each step, hoping it
+    leads to a globally optimal solution. Greedy works when the problem has the
+    "greedy choice property" — a local optimum leads to a global optimum — and
+    "optimal substructure."
+
+    Common greedy patterns: sorting then scanning (interval scheduling, jump game),
+    always picking the largest/smallest available item (task scheduler, gas station),
+    using a priority queue to efficiently access the best candidate.
+
+    C++ notes:
+      - Sort is O(n log n) and is the most common setup step.
+      - Use a max-heap (priority_queue<int>) or min-heap
+        (priority_queue<int, vector<int>, greater<int>>) as a greedy selector.
+      - Verify greedy correctness with an exchange argument or a known counterexample
+        before committing — not every "greedy-looking" problem is actually greedy.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'sorted vector of pairs (e.g. intervals by start)'
+          code: |
+            vector<pair<int,int>> intervals;
+            sort(intervals.begin(), intervals.end());
+        - label: 'min-heap for greedy minimum selection'
+          code: 'priority_queue<int, vector<int>, greater<int>> minHeap;'
+        - label: 'max-heap for greedy maximum selection'
+          code: 'priority_queue<int> maxHeap;'
+    - title: Basic operations
+      ops:
+        - label: 'push candidate onto heap'
+          code: 'minHeap.push(x);'
+        - label: 'peek at current best'
+          code: 'int best = minHeap.top();'
+        - label: 'consume current best'
+          code: 'minHeap.pop();'
+        - label: 'sort by custom key (e.g. end time)'
+          code: 'sort(v.begin(), v.end(), [](auto& a, auto& b){ return a.second < b.second; });'
+    - title: Iteration & loops
+      ops:
+        - label: 'interval scheduling: iterate sorted by end time'
+          code: |
+            sort(intervals.begin(), intervals.end(),
+                 [](auto& a, auto& b){ return a.second < b.second; });
+            int end = INT_MIN, count = 0;
+            for (auto& [s, e] : intervals) {
+                if (s >= end) {
+                    count++;
+                    end = e;
+                }
+            }
+        - label: 'jump game: track max reachable index'
+          code: |
+            int reach = 0;
+            for (int i = 0; i < (int)nums.size(); i++) {
+                if (i > reach) break;   // cannot reach i
+                reach = max(reach, i + nums[i]);
+            }
+        - label: 'task with cooldown: use a max-heap of frequencies'
+          code: |
+            while (!maxHeap.empty()) {
+                vector<int> temp;
+                for (int i = 0; i < n + 1 && !maxHeap.empty(); i++) {
+                    temp.push_back(maxHeap.top() - 1);
+                    maxHeap.pop();
+                }
+                for (int f : temp) if (f > 0) maxHeap.push(f);
+            }
+    - title: Special operations (greedy)
+      ops:
+        - label: 'gas station: total gain >= 0 guarantees a solution exists'
+          code: |
+            int total = 0, tank = 0, start = 0;
+            for (int i = 0; i < n; i++) {
+                int gain = gas[i] - cost[i];
+                total += gain;
+                tank += gain;
+                if (tank < 0) {
+                    start = i + 1;
+                    tank = 0;
+                }
+            }
+            return total >= 0 ? start : -1;
+        - label: 'partition labels: extend current label region greedily'
+          code: |
+            vector<int> last(26);
+            for (int i = 0; i < (int)s.size(); i++) last[s[i] - 'a'] = i;
+            int start = 0, end = 0;
+            for (int i = 0; i < (int)s.size(); i++) {
+                end = max(end, last[s[i] - 'a']);
+                if (i == end) {
+                    result.push_back(end - start + 1);
+                    start = i + 1;
+                }
+            }
+        - label: 'hand of straights: always fill the smallest card first'
+          code: 'map<int,int> freq;  // use ordered map so smallest key is first'
+  example: |
+    Worked example — jump game (can you reach the last index?):
+
+      Track the farthest index reachable so far. At each position i, if i is
+      beyond the current reach, we are stuck and return false. Otherwise extend
+      the reach. If we finish the loop, the end is reachable.
+
+        bool canJump(vector<int>& nums) {
+            int reach = 0;
+            for (int i = 0; i < (int)nums.size(); i++) {
+                if (i > reach) return false;
+                reach = max(reach, i + nums[i]);
+            }
+            return true;
+        }
+
+    Takeaway: greedy proofs often follow the pattern "if a better choice existed,
+    swapping to it wouldn't improve the answer." Sorting first and scanning once is
+    the hallmark structure.

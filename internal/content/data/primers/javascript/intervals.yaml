@@ -1,0 +1,119 @@
+- category: 'Intervals'
+  lang: javascript
+  title: 'Intervals — JavaScript refresher'
+  summary: |
+    Interval problems involve ranges [start, end]. The key operations are: merging
+    overlapping intervals, inserting an interval, finding the minimum number of rooms
+    or workers needed (sweep line), and determining if intervals overlap.
+
+    Two intervals [a,b] and [c,d] OVERLAP if a <= d && c <= b. They are DISJOINT if
+    b < c or d < a.
+
+    JavaScript notes:
+      - Intervals are usually represented as [start, end] arrays; destructure with
+        const [start, end] = interval.
+      - Always sort by start time before merging: intervals.sort((a,b) => a[0]-b[0]).
+      - The default .sort() is lexicographic and will silently mis-sort — always pass
+        a numeric comparator.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'array of intervals'
+          code: 'const intervals = [[1,3],[2,6],[8,10]];'
+        - label: 'sort by start time (required before most operations)'
+          code: 'intervals.sort((a, b) => a[0] - b[0]);'
+        - label: 'result list for merged intervals'
+          code: 'const merged = [];'
+    - title: Basic operations
+      ops:
+        - label: 'check if two intervals overlap'
+          code: 'const overlap = a[0] <= b[1] && b[0] <= a[1];'
+        - label: 'merge two overlapping intervals'
+          code: 'const mergedInterval = [Math.min(a[0], b[0]), Math.max(a[1], b[1])];'
+        - label: 'extend the last merged interval'
+          code: 'merged.at(-1)[1] = Math.max(merged.at(-1)[1], end);'
+        - label: 'destructure an interval'
+          code: 'const [start, end] = intervals[i];'
+    - title: Iteration & loops
+      ops:
+        - label: 'merge overlapping intervals'
+          code: |
+            intervals.sort((a, b) => a[0] - b[0]);
+            const merged = [intervals[0]];
+            for (const [start, end] of intervals.slice(1)) {
+                if (start <= merged.at(-1)[1]) {
+                    merged.at(-1)[1] = Math.max(merged.at(-1)[1], end);
+                } else {
+                    merged.push([start, end]);
+                }
+            }
+            return merged;
+        - label: 'meeting rooms II — minimum rooms needed (sweep line)'
+          code: |
+            const starts = intervals.map(i => i[0]).sort((a, b) => a - b);
+            const ends = intervals.map(i => i[1]).sort((a, b) => a - b);
+            let rooms = 0, maxRooms = 0, e = 0;
+            for (let s = 0; s < starts.length; s++) {
+                if (starts[s] < ends[e]) {
+                    rooms++;
+                    maxRooms = Math.max(maxRooms, rooms);
+                } else {
+                    rooms--;
+                    e++;
+                }
+            }
+            return maxRooms;
+    - title: Special operations (intervals)
+      ops:
+        - label: 'insert an interval and merge'
+          code: |
+            function insert(intervals, newInterval) {
+                const result = [];
+                let i = 0, [ns, ne] = newInterval;
+                while (i < intervals.length && intervals[i][1] < ns) result.push(intervals[i++]);
+                while (i < intervals.length && intervals[i][0] <= ne) {
+                    ns = Math.min(ns, intervals[i][0]);
+                    ne = Math.max(ne, intervals[i][1]);
+                    i++;
+                }
+                result.push([ns, ne]);
+                while (i < intervals.length) result.push(intervals[i++]);
+                return result;
+            }
+        - label: 'count overlapping intervals at each point (difference array)'
+          code: |
+            const diff = new Array(maxTime + 2).fill(0);
+            for (const [s, e] of intervals) {
+              diff[s]++;
+              diff[e + 1]--;
+            }
+            let active = 0;
+            for (let t = 0; t < diff.length; t++) {
+              active += diff[t];
+              /* active is count at time t */
+            }
+        - label: 'check if an interval [s,e] can be scheduled (no overlap with existing)'
+          code: 'const canSchedule = !intervals.some(([a, b]) => s <= b && a <= e);'
+  example: |
+    Worked example — merge all overlapping intervals in a list:
+
+      Sort by start time. Maintain a result list; the last element is the "current"
+      interval being extended. For each new interval: if it starts before or at the
+      current end, extend the current end. Otherwise, start a new interval.
+
+        function merge(intervals) {
+            intervals.sort((a, b) => a[0] - b[0]);
+            const merged = [intervals[0]];
+            for (let i = 1; i < intervals.length; i++) {
+                const [start, end] = intervals[i];
+                if (start <= merged.at(-1)[1]) {
+                    merged.at(-1)[1] = Math.max(merged.at(-1)[1], end);
+                } else {
+                    merged.push([start, end]);
+                }
+            }
+            return merged;
+        }
+
+    Takeaway: sort by start time first. The overlap test is start <= lastEnd. Always
+    take the max of ends when merging — the incoming interval may end before the current one.

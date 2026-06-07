@@ -1,0 +1,151 @@
+- category: 'Tries'
+  lang: javascript
+  title: 'Tries — JavaScript refresher'
+  summary: |
+    A trie (prefix tree) is a tree where each node represents one character of a string.
+    Words that share a prefix share nodes. This gives O(m) insert and search (m = word
+    length) and O(1) prefix lookup.
+
+    Classic problems: autocomplete, word search II, design add/search data structure
+    with wildcards, longest word in a dictionary.
+
+    JavaScript notes:
+      - Represent each node as a plain object: { children: {}, isEnd: false }.
+      - OR as a class: class TrieNode { constructor() { this.children = {}; this.isEnd = false; } }.
+      - Access or create a child with: node.children[ch] ??= new TrieNode().
+      - Use for...of over a string to walk character by character.
+      - No built-in Trie in JS — implement it; the node struct is the hard part.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'trie node class'
+          code: |
+            class TrieNode {
+              constructor() {
+                this.children = {};
+                this.isEnd = false;
+              }
+            }
+        - label: 'trie root'
+          code: 'const root = new TrieNode();'
+        - label: 'current node pointer for traversal'
+          code: 'let node = root;'
+    - title: Basic operations
+      ops:
+        - label: 'get or create a child node'
+          code: |
+            if (!node.children[ch]) node.children[ch] = new TrieNode();
+            node = node.children[ch];
+        - label: 'mark end of word'
+          code: 'node.isEnd = true;'
+        - label: 'check if child exists'
+          code: 'if (!(ch in node.children)) return false;'
+        - label: 'move to child'
+          code: 'node = node.children[ch];'
+    - title: Iteration & loops
+      ops:
+        - label: 'insert a word'
+          code: |
+            function insert(word) {
+                let node = root;
+                for (const ch of word) {
+                    if (!node.children[ch]) node.children[ch] = new TrieNode();
+                    node = node.children[ch];
+                }
+                node.isEnd = true;
+            }
+        - label: 'search for an exact word'
+          code: |
+            function search(word) {
+                let node = root;
+                for (const ch of word) {
+                    if (!node.children[ch]) return false;
+                    node = node.children[ch];
+                }
+                return node.isEnd;
+            }
+        - label: 'check if any word starts with a prefix'
+          code: |
+            function startsWith(prefix) {
+                let node = root;
+                for (const ch of prefix) {
+                    if (!node.children[ch]) return false;
+                    node = node.children[ch];
+                }
+                return true;
+            }
+    - title: Special operations (tries)
+      ops:
+        - label: 'search with wildcard "." (matches any character)'
+          code: |
+            function searchWild(pattern, node) {
+                for (let i = 0; i < pattern.length; i++) {
+                    const ch = pattern[i];
+                    if (ch === ".") {
+                        return Object.values(node.children).some(
+                            child => searchWild(pattern.slice(i + 1), child)
+                        );
+                    }
+                    if (!node.children[ch]) return false;
+                    node = node.children[ch];
+                }
+                return node.isEnd;
+            }
+        - label: 'find all words with a given prefix (collect via DFS)'
+          code: |
+            function collectWords(node, prefix, result) {
+                if (node.isEnd) result.push(prefix);
+                for (const [ch, child] of Object.entries(node.children)) {
+                    collectWords(child, prefix + ch, result);
+                }
+            }
+        - label: 'count words with a given prefix'
+          code: |
+            // Store a count field on each TrieNode, increment on insert, decrement on delete
+            class TrieNode {
+              constructor() {
+                this.children = {};
+                this.isEnd = false;
+                this.count = 0;
+              }
+            }
+  example: |
+    Worked example — implement a Trie with insert, search, and startsWith:
+
+      Each TrieNode holds a children map (character -> TrieNode) and an isEnd flag.
+      insert walks/creates nodes for each character and sets isEnd=true at the last.
+      search walks nodes and checks isEnd. startsWith stops early after the prefix.
+
+        class Trie {
+            constructor() { this.root = new TrieNode(); }
+
+            insert(word) {
+                let node = this.root;
+                for (const ch of word) {
+                    if (!node.children[ch]) node.children[ch] = new TrieNode();
+                    node = node.children[ch];
+                }
+                node.isEnd = true;
+            }
+
+            search(word) {
+                let node = this.root;
+                for (const ch of word) {
+                    if (!node.children[ch]) return false;
+                    node = node.children[ch];
+                }
+                return node.isEnd;
+            }
+
+            startsWith(prefix) {
+                let node = this.root;
+                for (const ch of prefix) {
+                    if (!node.children[ch]) return false;
+                    node = node.children[ch];
+                }
+                return true;
+            }
+        }
+
+    Takeaway: a trie node is just an object with a children map and an isEnd flag.
+    The key insight is that prefix queries terminate early — no scanning all words.

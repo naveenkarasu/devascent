@@ -1,0 +1,106 @@
+- category: 'Math & Bit'
+  lang: javascript
+  title: 'Math & Bit — JavaScript refresher'
+  summary: |
+    Math and bitwise operations let you solve many problems without extra data structures.
+    Bit manipulation is especially powerful for: checking powers of two, counting set bits,
+    XOR tricks (find the single non-duplicate), masks, and toggling flags.
+
+    JavaScript notes:
+      - Bitwise operators (&, |, ^, ~, <<, >>) convert operands to 32-bit signed ints
+        internally, then return a JS number. This means ~0 === -1, and >>> gives an
+        unsigned right shift.
+      - Use Math.floor, Math.ceil, Math.abs, Math.max, Math.min, Math.sqrt, Math.pow.
+      - BigInt is available for arbitrary-precision integers when Number is too small.
+      - % in JS can return NEGATIVE results for negative dividends: -7 % 3 === -1.
+        Use ((n % m) + m) % m to get a non-negative remainder.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'integer variable (JS numbers are floats; bitwise ops treat as int32)'
+          code: 'let n = 42;'
+        - label: 'bit mask for bit k'
+          code: 'const mask = 1 << k;'
+        - label: 'BigInt for large numbers'
+          code: 'const big = BigInt("12345678901234567890");'
+    - title: Basic operations
+      ops:
+        - label: 'check if bit k is set'
+          code: |
+            if ((n & (1 << k)) !== 0) {
+              /* bit k is 1 */
+            }
+        - label: 'set bit k'
+          code: 'n = n | (1 << k);'
+        - label: 'clear bit k'
+          code: 'n = n & ~(1 << k);'
+        - label: 'toggle bit k'
+          code: 'n = n ^ (1 << k);'
+        - label: 'non-negative modulo'
+          code: 'const r = ((n % m) + m) % m;'
+    - title: Iteration & loops
+      ops:
+        - label: 'count set bits (Brian Kernighan — clears lowest set bit each step)'
+          code: |
+            let count = 0, tmp = n;
+            while (tmp !== 0) {
+              tmp &= tmp - 1;
+              count++;
+            }
+        - label: 'generate all subsets of a set of size k (bitmask enumeration)'
+          code: |
+            for (let mask = 0; mask < (1 << k); mask++) {
+              /* mask encodes which elements are included */
+            }
+        - label: 'iterate over all set bits of n'
+          code: |
+            let tmp = n;
+            while (tmp !== 0) {
+              const bit = tmp & (-tmp);
+              /* process lowest set bit */
+              tmp ^= bit;
+            }
+    - title: Special operations (math & bit)
+      ops:
+        - label: 'check power of two'
+          code: 'const isPow2 = n > 0 && (n & (n - 1)) === 0;'
+        - label: 'XOR to find the single non-duplicate element'
+          code: |
+            let xor = 0;
+            for (const x of arr) xor ^= x;
+            return xor;   // all pairs cancel out
+        - label: 'integer square root'
+          code: 'const isqrt = Math.floor(Math.sqrt(n));'
+        - label: 'GCD (Euclidean algorithm)'
+          code: |
+            function gcd(a, b) {
+              return b === 0 ? a : gcd(b, a % b);
+            }
+        - label: 'LCM'
+          code: |
+            function lcm(a, b) {
+              return (a / gcd(a, b)) * b;
+            }
+        - label: 'swap without temp using XOR'
+          code: |
+            a ^= b;
+            b ^= a;
+            a ^= b;
+  example: |
+    Worked example — count the number of 1-bits in a 32-bit integer (Hamming weight):
+
+      Each iteration of Brian Kernighan's trick clears the lowest set bit of n by
+      doing n &= n - 1. The loop runs exactly once per set bit, so it is O(number of
+      set bits) rather than O(32). This is faster than testing each of the 32 positions.
+
+        function hammingWeight(n) {
+            let count = 0;
+            while (n !== 0) {
+                n &= n - 1;   // clear the lowest set bit
+                count++;
+            }
+            return count;
+        }
+
+    Takeaway: n & (n-1) clears the lowest set bit — use it to count bits or check
+    powers of two (isPow2 = n > 0 && (n & (n-1)) === 0). XOR cancels pairs: x ^ x === 0.

@@ -1,0 +1,29 @@
+name: Release
+
+# Fires when you push a version tag, e.g. `git tag v0.1.0 && git push origin v0.1.0`.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # GoReleaser creates the GitHub Release and uploads assets
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # GoReleaser needs full history + tags
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

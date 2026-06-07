@@ -1,0 +1,157 @@
+- category: 'Tries'
+  lang: typescript
+  title: 'Tries — TypeScript refresher'
+  summary: |
+    A trie (prefix tree) is a tree where each node represents one character, and a
+    path from root to a marked node spells a word. Insert and search are O(L) where L
+    is the word length — faster than a hash set for prefix-based queries.
+
+    Tries excel at:
+      - Autocomplete / prefix search
+      - Word dictionary lookups
+      - Longest common prefix
+
+    TypeScript specifics:
+      - Model a trie node with a typed children map: `children: Map<string, TrieNode>`
+        or a fixed-size array for lowercase-only inputs: `children: (TrieNode | null)[]`.
+      - Mark word endings with a boolean: `isEnd: boolean`.
+      - A class-based TrieNode with a factory method is the clearest TypeScript pattern.
+      - Index into the children array for lowercase letters:
+        `const idx = ch.charCodeAt(0) - "a".charCodeAt(0);`
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'TrieNode class (Map-based, any character set)'
+          code: |
+            class TrieNode {
+              children = new Map<string, TrieNode>();
+              isEnd = false;
+            }
+        - label: 'TrieNode class (array-based, lowercase a-z only)'
+          code: |
+            class TrieNode {
+              children: (TrieNode | null)[] = new Array(26).fill(null);
+              isEnd = false;
+            }
+        - label: 'Trie root'
+          code: 'const root = new TrieNode();'
+    - title: Basic operations
+      ops:
+        - label: 'navigate to a child (Map-based)'
+          code: 'const child = node.children.get(ch);'
+        - label: 'create a child if missing'
+          code: 'if (!node.children.has(ch)) node.children.set(ch, new TrieNode());'
+        - label: 'mark end of word'
+          code: 'node.isEnd = true;'
+        - label: 'check if child exists'
+          code: 'if (!node.children.has(ch)) return false;'
+    - title: Iteration & loops
+      ops:
+        - label: 'insert a word'
+          code: |
+            function insert(root: TrieNode, word: string): void {
+              let node = root;
+              for (const ch of word) {
+                if (!node.children.has(ch)) node.children.set(ch, new TrieNode());
+                node = node.children.get(ch)!;
+              }
+              node.isEnd = true;
+            }
+        - label: 'search for a word (exact match)'
+          code: |
+            function search(root: TrieNode, word: string): boolean {
+              let node = root;
+              for (const ch of word) {
+                if (!node.children.has(ch)) return false;
+                node = node.children.get(ch)!;
+              }
+              return node.isEnd;
+            }
+        - label: 'check if any word starts with a prefix'
+          code: |
+            function startsWith(root: TrieNode, prefix: string): boolean {
+              let node = root;
+              for (const ch of prefix) {
+                if (!node.children.has(ch)) return false;
+                node = node.children.get(ch)!;
+              }
+              return true;
+            }
+    - title: Special operations (Tries)
+      ops:
+        - label: 'word search with wildcards (. matches any letter)'
+          code: |
+            function searchDFS(node: TrieNode | undefined, word: string, i: number): boolean {
+              if (!node) return false;
+              if (i === word.length) return node.isEnd;
+              const ch = word[i];
+              if (ch !== ".") return searchDFS(node.children.get(ch), word, i + 1);
+              for (const child of node.children.values()) {
+                if (searchDFS(child, word, i + 1)) return true;
+              }
+              return false;
+            }
+        - label: 'find all words with a given prefix'
+          code: |
+            function autocomplete(root: TrieNode, prefix: string): string[] {
+              let node = root;
+              for (const ch of prefix) {
+                if (!node.children.has(ch)) return [];
+                node = node.children.get(ch)!;
+              }
+              const results: string[] = [];
+              function dfs(cur: TrieNode, path: string): void {
+                if (cur.isEnd) results.push(path);
+                for (const [ch, child] of cur.children) dfs(child, path + ch);
+              }
+              dfs(node, prefix);
+              return results;
+            }
+        - label: 'longest common prefix of all inserted words'
+          code: |
+            // Walk root while each node has exactly 1 child and isEnd is false
+            let node = root, lcp = "";
+            while (node.children.size === 1 && !node.isEnd) {
+              const [ch, child] = [...node.children][0];
+              lcp += ch;
+              node = child;
+            }
+  example: |
+    Worked example — implement insert and search for a basic Trie dictionary.
+
+      Each node holds a Map of character children and an isEnd flag. Insert walks
+      character by character creating nodes as needed, then sets isEnd. Search walks
+      the same path and returns true only if all characters exist and the last node
+      is marked as a word end.
+
+        class Trie {
+            private root = new TrieNode();
+            insert(word: string): void {
+                let node = this.root;
+                for (const ch of word) {
+                    if (!node.children.has(ch)) node.children.set(ch, new TrieNode());
+                    node = node.children.get(ch)!;
+                }
+                node.isEnd = true;
+            }
+            search(word: string): boolean {
+                let node = this.root;
+                for (const ch of word) {
+                    if (!node.children.has(ch)) return false;
+                    node = node.children.get(ch)!;
+                }
+                return node.isEnd;
+            }
+            startsWith(prefix: string): boolean {
+                let node = this.root;
+                for (const ch of prefix) {
+                    if (!node.children.has(ch)) return false;
+                    node = node.children.get(ch)!;
+                }
+                return true;
+            }
+        }
+
+    Takeaway: the Map-based children field handles any character set; the array-based
+    version (26 slots) is faster for lowercase-only problems. Always type children
+    explicitly so TypeScript catches null-access bugs.

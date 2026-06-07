@@ -1,0 +1,109 @@
+- category: "Intervals"
+  lang: python
+  title: "Intervals — Python refresher"
+  summary: |
+    Interval problems involve ranges [start, end] that may overlap. The key
+    primitive is sorting by start (or end) so you can sweep left-to-right and
+    make greedy decisions. Reach for this pattern on "merge overlapping", "find
+    gaps", "minimum meeting rooms", or "insert interval" problems.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'list of [start, end] pairs'
+          code: 'intervals = [[1, 3], [2, 6], [8, 10]]'
+        - label: 'sort by start'
+          code: 'intervals.sort(key=lambda x: x[0])'
+        - label: 'sort by end (for scheduling / min removals)'
+          code: 'intervals.sort(key=lambda x: x[1])'
+        - label: 'min-heap for end times (meeting rooms)'
+          code: |
+            import heapq
+            h = []
+    - title: Basic operations
+      ops:
+        - label: 'overlap test (a ends after b starts)'
+          code: 'if a[1] >= b[0]: ...  # overlapping'
+        - label: 'merge two overlapping intervals'
+          code: 'merged = [a[0], max(a[1], b[1])]'
+        - label: 'extend merged[-1] end in sweep'
+          code: 'merged[-1][1] = max(merged[-1][1], e)'
+        - label: 'track active count (meeting rooms)'
+          code: 'heapq.heappush(h, end_time)'
+        - label: 'gap between consecutive intervals'
+          code: 'gap = intervals[i][0] - intervals[i-1][1]'
+    - title: Iteration & loops
+      ops:
+        - label: 'merge overlapping intervals sweep'
+          code: |
+            intervals.sort(key=lambda x: x[0])
+            merged = [intervals[0]]
+            for s, e in intervals[1:]:
+                if s <= merged[-1][1]:
+                    merged[-1][1] = max(merged[-1][1], e)
+                else:
+                    merged.append([s, e])
+        - label: 'minimum meeting rooms (heap of end times)'
+          code: |
+            intervals.sort(key=lambda x: x[0])
+            h = []
+            for s, e in intervals:
+                if h and h[0] <= s: heapq.heappop(h)
+                heapq.heappush(h, e)
+            return len(h)
+        - label: 'insert interval and merge'
+          code: |
+            res = []
+            for i, (s, e) in enumerate(intervals):
+                if e < new[0]: res.append([s, e])
+                elif s > new[1]:
+                    res.append(new)
+                    new = [s, e]
+                else: new = [min(new[0], s), max(new[1], e)]
+            res.append(new)
+    - title: Special operations (intervals)
+      ops:
+        - label: 'non-overlapping count (min removals to make non-overlapping)'
+          code: |
+            intervals.sort(key=lambda x: x[1])
+            end, removed = float("-inf"), 0
+            for s, e in intervals:
+                if s >= end: end = e
+                else: removed += 1
+        - label: 'count total overlap coverage on a number line'
+          code: |
+            events = []
+            for s, e in intervals:
+                events.append((s, 1))
+                events.append((e, -1))
+            events.sort()
+            active = res = 0
+            for t, d in events:
+                active += d
+                res = max(res, active)
+        - label: 'two-pointer merge (two sorted interval lists)'
+          code: |
+            i = j = 0
+            while i < len(A) and j < len(B):
+                lo = max(A[i][0], B[j][0])
+                hi = min(A[i][1], B[j][1])
+                if lo <= hi: res.append([lo, hi])
+                if A[i][1] < B[j][1]: i += 1
+                else: j += 1
+  example: |
+    Worked example — Merge Intervals:
+      Sort by start. Walk through: if the current interval overlaps the last merged
+      one (current.start <= last.end), extend last.end. Otherwise start a new
+      merged interval.
+
+        def merge(intervals):
+            intervals.sort(key=lambda x: x[0])
+            merged = [intervals[0]]
+            for s, e in intervals[1:]:
+                if s <= merged[-1][1]:
+                    merged[-1][1] = max(merged[-1][1], e)
+                else:
+                    merged.append([s, e])
+            return merged
+
+    Takeaway: sort + single sweep + extend-or-append covers most merge/overlap
+    variants in O(n log n).

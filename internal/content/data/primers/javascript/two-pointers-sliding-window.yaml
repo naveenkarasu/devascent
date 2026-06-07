@@ -1,0 +1,130 @@
+- category: 'Two Pointers & Sliding Window'
+  lang: javascript
+  title: 'Two Pointers & Sliding Window — JavaScript refresher'
+  summary: |
+    Two pointers keeps two indices — usually lo/hi or left/right — and advances them
+    based on a condition to avoid a brute-force O(n^2) scan.
+
+    Sliding window is a specialization: maintain a window [left, right] over a sequence,
+    expanding the right edge and shrinking the left edge to keep a constraint satisfied.
+    Classic problems: longest substring without repeating characters, minimum window
+    substring, maximum sum subarray of size k.
+
+    JavaScript notes:
+      - Use a Map or plain object to track character/value counts inside the window.
+      - String indexing with s[i] is O(1).
+      - No special library needed — just index arithmetic with let variables.
+      - Remember: shift() on an array is O(n); a pointer index is O(1).
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'two pointers starting at both ends'
+          code: 'let lo = 0, hi = arr.length - 1;'
+        - label: 'sliding window left/right pointers'
+          code: 'let left = 0, right = 0;'
+        - label: 'window character frequency map'
+          code: 'const window = new Map();'
+        - label: 'track best answer so far'
+          code: 'let best = 0;'
+    - title: Basic operations
+      ops:
+        - label: 'expand right edge of window'
+          code: 'const ch = s[right];'
+        - label: 'advance right pointer'
+          code: 'right++;'
+        - label: 'shrink left edge of window'
+          code: 'const ch = s[left];'
+        - label: 'advance left pointer'
+          code: 'left++;'
+        - label: 'current window length'
+          code: 'const len = right - left;'
+        - label: 'update Map count when adding to window'
+          code: 'window.set(ch, (window.get(ch) ?? 0) + 1);'
+        - label: 'update Map count when removing from window'
+          code: |
+            window.set(ch, window.get(ch) - 1);
+            if (window.get(ch) === 0) window.delete(ch);
+    - title: Iteration & loops
+      ops:
+        - label: 'two-pointer inward walk (sorted array, pair sum)'
+          code: |
+            while (lo < hi) {
+                const sum = arr[lo] + arr[hi];
+                if (sum === target) return [lo, hi];
+                else if (sum < target) lo++;
+                else hi--;
+            }
+        - label: 'sliding window — expand then shrink'
+          code: |
+            for (let right = 0; right < s.length; right++) {
+                // add s[right] to window state
+                while (/* window invalid */) {
+                    // remove s[left] from window state
+                    left++;
+                }
+                best = Math.max(best, right - left + 1);
+            }
+        - label: 'fixed-size window of size k'
+          code: |
+            let windowSum = 0;
+            for (let i = 0; i < arr.length; i++) {
+                windowSum += arr[i];
+                if (i >= k) windowSum -= arr[i - k];
+                if (i >= k - 1) best = Math.max(best, windowSum);
+            }
+    - title: Special operations (two pointers & sliding window)
+      ops:
+        - label: 'remove duplicates in-place from sorted array'
+          code: |
+            let w = 1;
+            for (let i = 1; i < arr.length; i++) {
+              if (arr[i] !== arr[i-1]) arr[w++] = arr[i];
+            }
+            return w;
+        - label: 'valid palindrome check (skip non-alphanumeric)'
+          code: |
+            let lo = 0, hi = s.length - 1;
+            while (lo < hi) {
+                while (lo < hi && !/[a-z0-9]/i.test(s[lo])) lo++;
+                while (lo < hi && !/[a-z0-9]/i.test(s[hi])) hi--;
+                if (s[lo].toLowerCase() !== s[hi].toLowerCase()) return false;
+                lo++;
+                hi--;
+            }
+            return true;
+        - label: 'longest substring with at most k distinct characters'
+          code: |
+            const freq = new Map();
+            let left = 0, best = 0;
+            for (let right = 0; right < s.length; right++) {
+                freq.set(s[right], (freq.get(s[right]) ?? 0) + 1);
+                while (freq.size > k) {
+                    freq.set(s[left], freq.get(s[left]) - 1);
+                    if (freq.get(s[left]) === 0) freq.delete(s[left]);
+                    left++;
+                }
+                best = Math.max(best, right - left + 1);
+            }
+  example: |
+    Worked example — longest substring without repeating characters:
+
+      Maintain a sliding window [left, right]. A Set tracks characters currently
+      in the window. Expand right freely; when a duplicate is found, shrink from
+      the left until the duplicate is gone. Track the max window size seen.
+
+        function lengthOfLongestSubstring(s) {
+            const seen = new Set();
+            let left = 0, best = 0;
+            for (let right = 0; right < s.length; right++) {
+                while (seen.has(s[right])) {
+                    seen.delete(s[left]);
+                    left++;
+                }
+                seen.add(s[right]);
+                best = Math.max(best, right - left + 1);
+            }
+            return best;
+        }
+
+    Takeaway: the sliding window loop is "expand right, then shrink left until valid."
+    Each character enters and leaves the window at most once, so the total work is O(n).

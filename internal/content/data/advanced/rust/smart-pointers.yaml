@@ -1,0 +1,157 @@
+lang: rust
+group: Smart Pointers
+title: "Smart Pointers — Box, Rc, Arc, RefCell, and interior mutability"
+tag: E
+summary: |
+  Rust's standard ownership model allows one owner and requires knowing a type's size at
+  compile time. Smart pointers extend this in controlled ways:
+
+  Box<T> — heap allocation with single ownership. The canonical use cases are recursive
+  types (where the type's size cannot be known at compile time without indirection) and
+  trait objects. Box<T> has zero overhead over a raw pointer.
+
+  Rc<T> — reference-counted shared ownership for single-threaded code. Each Rc::clone()
+  increments a reference count (cheaply); the value is dropped when the count reaches
+  zero. Rc is not Send, so it cannot cross thread boundaries.
+
+  Arc<T> — atomically reference-counted; the thread-safe equivalent of Rc. The atomic
+  increment has a slight performance cost versus Rc. Use Arc wherever the value needs to
+  be shared across threads.
+
+  RefCell<T> — moves borrow checking to runtime, allowing mutation through an immutable
+  reference. If borrow rules are violated at runtime the program panics with a
+  BorrowMutError rather than failing to compile. Single-threaded only. The canonical
+  pattern for single-threaded shared mutable state is Rc<RefCell<T>>.
+
+  The Deref trait allows smart pointers to behave like references and enables deref
+  coercions (e.g., &Box<String> coerces to &str automatically). Reference cycles via Rc
+  cause memory leaks because reference counts never reach zero; break them with Weak<T>
+  obtained via Rc::downgrade.
+
+  (Reference-only for now: Rust is not graded yet. When the toolchain is wired these
+  exercises auto-grade against the exact compiler errors they carry.)
+exercises:
+  - prompt: |
+      The List enum tries to contain itself directly. The compiler cannot determine its
+      size. Wrap the recursive field in Box to give it a known, pointer-sized footprint.
+    kind: fix-it
+    broken_code: |
+      enum List {
+          Cons(i32, List),   // List contains List — infinite size
+          Nil,
+      }
+
+      fn main() {
+          let list = List::Cons(1, List::Cons(2, List::Cons(3, List::Nil)));
+      }
+    fixed_code: |
+      enum List {
+          Cons(i32, Box<List>),   // one pointer-sized indirection — size is now known
+          Nil,
+      }
+
+      fn main() {
+          let list = List::Cons(
+              1,
+              Box::new(List::Cons(
+                  2,
+                  Box::new(List::Cons(3, Box::new(List::Nil))),
+              )),
+          );
+      }
+    bug: |
+      A recursive type whose size cannot be computed at compile time triggers E0072. The
+      compiler cannot stack-allocate a List because each Cons would need to contain
+      another List of unknown size. Wrapping in Box<List> stores the tail on the heap
+      via a fixed-size pointer, breaking the recursion and giving the enum a finite size.
+    check: compile-error
+    signal: "E0072"
+  - prompt: |
+      Two Node structs try to share ownership of the same String, but the second
+      assignment moves a value that was already moved. Change value to Rc<String> and
+      use Rc::clone so both nodes can own the same data.
+    kind: fix-it
+    broken_code: |
+      struct Node {
+          value: String,
+      }
+
+      fn main() {
+          let name = String::from("shared");
+          let a = Node { value: name };
+          let b = Node { value: name };   // name was already moved into a
+          println!("{} {}", a.value, b.value);
+      }
+    fixed_code: |
+      use std::rc::Rc;
+
+      struct Node {
+          value: Rc<String>,
+      }
+
+      fn main() {
+          let name = Rc::new(String::from("shared"));
+          let a = Node { value: Rc::clone(&name) };
+          let b = Node { value: Rc::clone(&name) };
+          println!("{} {}", a.value, b.value);
+      }
+    bug: |
+      String does not implement Copy, so assigning name to a moves it. The second use
+      of name is a use of a moved value, firing E0382. Rc<String> enables shared
+      ownership: Rc::clone increments the reference count without copying the underlying
+      String, so both nodes refer to the same heap allocation.
+    check: compile-error
+    signal: "E0382"
+  - prompt: |
+      The Logger trait requires &self, but the implementation needs to push to an
+      internal Vec. Without mutability through &self the compiler rejects the push.
+      Wrap messages in RefCell to enable interior mutability.
+    kind: fix-it
+    broken_code: |
+      trait Logger {
+          fn log(&self, msg: &str);
+      }
+
+      struct MockLogger {
+          messages: Vec<String>,
+      }
+
+      impl Logger for MockLogger {
+          fn log(&self, msg: &str) {
+              self.messages.push(msg.to_string());   // cannot mutate through &self
+          }
+      }
+    fixed_code: |
+      use std::cell::RefCell;
+
+      trait Logger {
+          fn log(&self, msg: &str);
+      }
+
+      struct MockLogger {
+          messages: RefCell<Vec<String>>,
+      }
+
+      impl MockLogger {
+          fn new() -> Self {
+              MockLogger { messages: RefCell::new(vec![]) }
+          }
+
+          fn logged(&self) -> Vec<String> {
+              self.messages.borrow().clone()
+          }
+      }
+
+      impl Logger for MockLogger {
+          fn log(&self, msg: &str) {
+              self.messages.borrow_mut().push(msg.to_string());
+          }
+      }
+    bug: |
+      The trait signature requires &self (immutable receiver) but the implementation
+      needs to mutate the messages field. This is the classic interior mutability
+      pattern. Wrapping in RefCell<Vec<String>> allows mutation through .borrow_mut()
+      even behind a shared reference. If two borrow_mut() calls are live simultaneously
+      the program panics at runtime rather than failing to compile.
+    check: compile-error
+    signal: "E0596"

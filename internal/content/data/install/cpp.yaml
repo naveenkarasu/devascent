@@ -1,0 +1,22 @@
+lang: cpp
+label: C++
+notes: C++ is currently REFERENCE-ONLY in DevAscent — you can read its primers and topics without installing anything, and graded play isn't supported yet. Installing a compiler (below) is optional; it only lets you compile the C++ examples yourself.
+os:
+  windows:
+    link: https://www.msys2.org/
+    steps:
+      - Install MSYS2 from msys2.org, then in its terminal run - "pacman -S mingw-w64-ucrt-x86_64-gcc".
+      - Add the MSYS2 ucrt64\bin folder to your PATH (it contains g++).
+      - Restart DevAscent. (Alternatively, install "Visual Studio Build Tools" with the C++ workload.)
+    verify: g++ --version
+  macos:
+    link: https://developer.apple.com/xcode/
+    steps:
+      - Run "xcode-select --install" to get Apple's clang/clang++ command-line tools.
+      - Restart your terminal.
+    verify: clang++ --version
+  linux:
+    link: https://gcc.gnu.org/
+    steps:
+      - Install GCC/G++, e.g. "sudo apt install build-essential" (Debian/Ubuntu) or "sudo dnf install gcc-c++" (Fedora).
+    verify: g++ --version

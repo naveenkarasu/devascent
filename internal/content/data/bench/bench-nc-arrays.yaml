@@ -1,0 +1,174 @@
+# Canonical NeetCode 150 — Arrays & Hashing (original prompts, own solutions).
+# Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
+- id: nc-contains-duplicate
+  title: Contains Duplicate
+  difficulty: easy
+  pattern: hashing
+  category: Arrays & Hashing
+  lists: [neetcode150, blind75]
+  func_name: contains_duplicate
+  prompt: |
+    Contains Duplicate
+
+    Given an integer array, return True if any value appears at least twice, and
+    False if every element is distinct.
+
+    Examples:
+      contains_duplicate([1,2,3,1]) -> True
+      contains_duplicate([1,2,3,4]) -> False
+  starter: |
+    def contains_duplicate(nums):
+        pass  # write your solution; delete this line
+  solution: |
+    def contains_duplicate(nums):
+        seen = set()
+        for n in nums:
+            if n in seen:
+                return True
+            seen.add(n)
+        return False
+  tests:
+    - {name: case 1, input: [[1,2,3,1]], expected: true}
+    - {name: case 2, input: [[1,2,3,4]], expected: false}
+    - {name: case 3, input: [[]], expected: false}
+
+- id: nc-valid-anagram
+  title: Valid Anagram
+  difficulty: easy
+  pattern: hashing
+  category: Arrays & Hashing
+  lists: [neetcode150, blind75]
+  func_name: is_anagram
+  prompt: |
+    Valid Anagram
+
+    Given two strings s and t, return True if t is an anagram of s (same letters,
+    same counts), else False.
+
+    Examples:
+      is_anagram("anagram", "nagaram") -> True
+      is_anagram("rat", "car") -> False
+  starter: |
+    def is_anagram(s, t):
+        pass  # write your solution; delete this line
+  solution: |
+    def is_anagram(s, t):
+        if len(s) != len(t):
+            return False
+        counts = {}
+        for c in s:
+            counts[c] = counts.get(c, 0) + 1
+        for c in t:
+            if counts.get(c, 0) == 0:
+                return False
+            counts[c] -= 1
+        return True
+  tests:
+    - {name: case 1, input: ["anagram", "nagaram"], expected: true}
+    - {name: case 2, input: ["rat", "car"], expected: false}
+    - {name: case 3, input: ["a", "ab"], expected: false}
+
+- id: nc-two-sum
+  title: Two Sum
+  difficulty: easy
+  pattern: hashing
+  category: Arrays & Hashing
+  lists: [neetcode150, blind75]
+  func_name: two_sum
+  prompt: |
+    Two Sum
+
+    Given an array of integers and a target, return the indices [i, j] (i < j) of
+    the two numbers that add up to the target. Exactly one solution exists.
+
+    Examples:
+      two_sum([2,7,11,15], 9) -> [0, 1]
+      two_sum([3,2,4], 6) -> [1, 2]
+  starter: |
+    def two_sum(nums, target):
+        pass  # write your solution; delete this line
+  solution: |
+    def two_sum(nums, target):
+        seen = {}
+        for i, n in enumerate(nums):
+            need = target - n
+            if need in seen:
+                return [seen[need], i]
+            seen[n] = i
+        return []
+  tests:
+    - {name: case 1, input: [[2,7,11,15], 9], expected: [0,1]}
+    - {name: case 2, input: [[3,2,4], 6], expected: [1,2]}
+    - {name: case 3, input: [[3,3], 6], expected: [0,1]}
+
+- id: nc-product-except-self
+  title: Product of Array Except Self
+  difficulty: medium
+  pattern: arrays
+  category: Arrays & Hashing
+  lists: [neetcode150, blind75]
+  func_name: product_except_self
+  prompt: |
+    Product of Array Except Self
+
+    Return an array where result[i] is the product of every element EXCEPT
+    nums[i]. Do it without using division.
+
+    Examples:
+      product_except_self([1,2,3,4]) -> [24,12,8,6]
+      product_except_self([-1,1,0,-3,3]) -> [0,0,9,0,0]
+  starter: |
+    def product_except_self(nums):
+        pass  # write your solution; delete this line
+  solution: |
+    def product_except_self(nums):
+        n = len(nums)
+        res = [1] * n
+        prefix = 1
+        for i in range(n):
+            res[i] = prefix
+            prefix *= nums[i]
+        suffix = 1
+        for i in range(n - 1, -1, -1):
+            res[i] *= suffix
+            suffix *= nums[i]
+        return res
+  tests:
+    - {name: case 1, input: [[1,2,3,4]], expected: [24,12,8,6]}
+    - {name: case 2, input: [[-1,1,0,-3,3]], expected: [0,0,9,0,0]}
+    - {name: case 3, input: [[2,3]], expected: [3,2]}
+
+- id: nc-longest-consecutive
+  title: Longest Consecutive Sequence
+  difficulty: medium
+  pattern: hashing
+  category: Arrays & Hashing
+  lists: [neetcode150, blind75]
+  func_name: longest_consecutive
+  prompt: |
+    Longest Consecutive Sequence
+
+    Given an unsorted array, return the length of the longest run of consecutive
+    integers (e.g. [1,2,3,4]). Aim for O(n).
+
+    Examples:
+      longest_consecutive([100,4,200,1,3,2]) -> 4
+      longest_consecutive([0,3,7,2,5,8,4,6,0,1]) -> 9
+  starter: |
+    def longest_consecutive(nums):
+        pass  # write your solution; delete this line
+  solution: |
+    def longest_consecutive(nums):
+        s = set(nums)
+        best = 0
+        for n in s:
+            if n - 1 not in s:  # start of a run
+                length = 1
+                while n + length in s:
+                    length += 1
+                best = max(best, length)
+        return best
+  tests:
+    - {name: case 1, input: [[100,4,200,1,3,2]], expected: 4}
+    - {name: case 2, input: [[0,3,7,2,5,8,4,6,0,1]], expected: 9}
+    - {name: case 3, input: [[]], expected: 0}

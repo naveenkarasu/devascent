@@ -1,0 +1,115 @@
+- category: 'Stack'
+  lang: go
+  title: 'Stack — Go refresher'
+  summary: |
+    A stack is a last-in first-out (LIFO) structure. In Go there is no built-in
+    stack type; use a slice and push with append, pop by slicing off the last
+    element. This is idiomatic and zero-allocation-friendly.
+
+    Classic stack problems:
+      - Balanced brackets — push opens, pop-and-compare on closes.
+      - Monotonic stack — keep elements in increasing or decreasing order by
+        popping while the new element violates the invariant.
+      - Expression evaluation and next-greater-element patterns.
+
+    Go notes:
+      - Push: stack = append(stack, v)
+      - Peek top: stack[len(stack)-1]
+      - Pop: stack = stack[:len(stack)-1]
+      - Always check len(stack) > 0 before peeking or popping.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'int stack'
+          code: 'stack := []int{}'
+        - label: 'string stack'
+          code: 'stack := []string{}'
+        - label: 'struct type for stack frames'
+          code: 'type Frame struct{ val, idx int }'
+        - label: 'Frame stack'
+          code: 'stack := []Frame{}'
+    - title: Basic operations
+      ops:
+        - label: 'push'
+          code: 'stack = append(stack, v)'
+        - label: 'peek top (without removing)'
+          code: 'top := stack[len(stack)-1]'
+        - label: 'pop'
+          code: |
+            top := stack[len(stack)-1]
+            stack = stack[:len(stack)-1]
+        - label: 'check empty'
+          code: 'if len(stack) == 0 { ... }'
+        - label: 'stack size'
+          code: 'n := len(stack)'
+    - title: Iteration & loops
+      ops:
+        - label: 'drain the stack'
+          code: |
+            for len(stack) > 0 {
+                top := stack[len(stack)-1]
+                stack = stack[:len(stack)-1]
+                _ = top
+            }
+        - label: 'process until stack empty or condition'
+          code: |
+            for len(stack) > 0 && stack[len(stack)-1] < v {
+                stack = stack[:len(stack)-1]
+            }
+        - label: 'iterate top-to-bottom (read only)'
+          code: 'for i := len(stack) - 1; i >= 0; i-- { _ = stack[i] }'
+    - title: Special operations (stack)
+      ops:
+        - label: 'balanced brackets check'
+          code: |
+            pairs := map[rune]rune{')': '(', ']': '[', '}': '{'}
+            for _, c := range s {
+                if c == '(' || c == '[' || c == '{' {
+                    stack = append(stack, c)
+                } else if len(stack) == 0 || stack[len(stack)-1] != pairs[c] {
+                    return false
+                } else {
+                    stack = stack[:len(stack)-1]
+                }
+            }
+        - label: 'monotonic increasing stack (next greater element)'
+          code: |
+            for len(stack) > 0 && a[stack[len(stack)-1]] < a[i] {
+                j := stack[len(stack)-1]
+                stack = stack[:len(stack)-1]
+                res[j] = a[i]
+            }
+        - label: 'min-stack: track running minimum alongside values'
+          code: |
+            type Pair struct{ v, mn int }
+            stack = append(stack, Pair{v, min(v, stack[len(stack)-1].mn)})
+        - label: 'evaluate RPN expression'
+          code: |
+            a, b := stack[len(stack)-2], stack[len(stack)-1]
+            stack = stack[:len(stack)-2]
+            stack = append(stack, a+b)
+  example: |
+    Worked example — valid parentheses: return true if every bracket is matched.
+
+      Push every opening bracket. On a closing bracket, check that the top of
+      the stack is its matching opener. If the stack is empty when you need to
+      pop, or non-empty when the string ends, return false.
+
+        func isValid(s string) bool {
+            stack := []rune{}
+            pairs := map[rune]rune{')': '(', ']': '[', '}': '{'}
+            for _, c := range s {
+                if c == '(' || c == '[' || c == '{' {
+                    stack = append(stack, c)
+                } else {
+                    if len(stack) == 0 || stack[len(stack)-1] != pairs[c] {
+                        return false
+                    }
+                    stack = stack[:len(stack)-1]
+                }
+            }
+            return len(stack) == 0
+        }
+
+    Takeaway: a Go slice is a perfect stack. Push with append, pop by slicing.
+    Always guard pops with a len > 0 check to avoid an index-out-of-range panic.

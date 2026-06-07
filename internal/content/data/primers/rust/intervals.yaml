@@ -1,0 +1,115 @@
+- category: 'Intervals'
+  lang: rust
+  title: 'Intervals — Rust refresher'
+  summary: |
+    Interval problems involve ranges [start, end] that may overlap. The key tool
+    is sorting: once intervals are sorted by start (or end), overlapping ones
+    become adjacent and can be processed in a single linear scan.
+
+    Common patterns:
+      - Merge overlapping intervals: sort by start, extend current end greedily.
+      - Insert interval: find the position, merge overlapping neighbors.
+      - Meeting rooms / minimum platforms: events-based sweep or sorting.
+      - Non-overlapping intervals (remove minimum): sort by end, greedy.
+
+    Rust notes:
+      - Represent intervals as (i32, i32) tuples or a small struct.
+      - Sort a Vec of tuples: v.sort_by_key(|&(s, _)| s).
+      - .windows(2) iterates consecutive pairs without copying.
+      - last_mut() avoids re-indexing when extending the final merged interval.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'interval as a tuple'
+          code: 'let interval: (i32, i32) = (1, 3);'
+        - label: 'Vec of intervals'
+          code: 'let mut intervals: Vec<(i32, i32)> = vec![(1,3),(2,6),(8,10)];'
+        - label: 'sort by start time'
+          code: 'intervals.sort_by_key(|&(s, _)| s);'
+        - label: 'sort by end time'
+          code: 'intervals.sort_by_key(|&(_, e)| e);'
+    - title: Basic operations
+      ops:
+        - label: 'check if two intervals overlap'
+          code: 'let overlap = a.0 <= b.1 && b.0 <= a.1;'
+        - label: 'merge two overlapping intervals'
+          code: 'let merged = (a.0.min(b.0), a.1.max(b.1));'
+        - label: 'extend the last merged interval'
+          code: |
+            if let Some(last) = merged.last_mut() {
+                last.1 = last.1.max(end);
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'merge overlapping intervals in one pass'
+          code: |
+            intervals.sort_by_key(|&(s, _)| s);
+            let mut merged: Vec<(i32, i32)> = Vec::new();
+            for &(s, e) in &intervals {
+                if let Some(last) = merged.last_mut() {
+                    if s <= last.1 { last.1 = last.1.max(e); continue; }
+                }
+                merged.push((s, e));
+            }
+        - label: 'count minimum meeting rooms (events sweep)'
+          code: |
+            let mut events: Vec<(i32, i32)> = Vec::new();
+            for &(s, e) in &intervals {
+                events.push((s, 1));
+                events.push((e, -1));
+            }
+            events.sort();
+            let (mut rooms, mut max_rooms) = (0i32, 0i32);
+            for &(_, delta) in &events {
+                rooms += delta;
+                max_rooms = max_rooms.max(rooms);
+            }
+    - title: Special operations (intervals)
+      ops:
+        - label: 'insert and merge a new interval'
+          code: |
+            fn insert(mut intervals: Vec<(i32,i32)>, new: (i32,i32)) -> Vec<(i32,i32)> {
+                intervals.push(new);
+                intervals.sort_by_key(|&(s, _)| s);
+                let mut out: Vec<(i32,i32)> = Vec::new();
+                for &(s, e) in &intervals {
+                    if let Some(last) = out.last_mut() {
+                        if s <= last.1 { last.1 = last.1.max(e); continue; }
+                    }
+                    out.push((s, e));
+                }
+                out
+            }
+        - label: 'minimum intervals to remove for no overlap (sort by end)'
+          code: |
+            intervals.sort_by_key(|&(_, e)| e);
+            let mut removed = 0;
+            let mut last_end = i32::MIN;
+            for &(s, e) in &intervals {
+                if s >= last_end { last_end = e; }
+                else { removed += 1; }
+            }
+        - label: 'total coverage of merged intervals'
+          code: |
+            let total: i32 = merged.iter().map(|&(s, e)| e - s).sum();
+  example: |
+    Worked example — merge all overlapping intervals:
+
+      Sort by start. Walk through: if the current interval overlaps the last merged
+      one (its start is within the last end), extend the last end. Otherwise
+      start a new merged interval. One pass after sorting, O(n log n) total.
+
+        fn merge_intervals(mut ivs: Vec<(i32, i32)>) -> Vec<(i32, i32)> {
+            ivs.sort_by_key(|&(s, _)| s);
+            let mut out: Vec<(i32, i32)> = Vec::new();
+            for &(s, e) in &ivs {
+                if let Some(last) = out.last_mut() {
+                    if s <= last.1 { last.1 = last.1.max(e); continue; }
+                }
+                out.push((s, e));
+            }
+            out
+        }
+
+    Takeaway: last_mut() lets you extend the final interval in place without
+    re-indexing. Sorting by start turns the overlap check into a simple <=.

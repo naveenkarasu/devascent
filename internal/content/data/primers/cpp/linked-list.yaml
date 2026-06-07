@@ -1,0 +1,149 @@
+- category: 'Linked List'
+  lang: cpp
+  title: Linked List — C++ refresher
+  summary: |
+    A linked list is a chain of nodes, each holding a value and a pointer to the
+    next node. There is no stdlib singly-linked node type suitable for interview
+    problems — hand-roll a ListNode struct.
+
+    Core operations are O(n) unless you have a direct pointer (head/tail). Random
+    access is O(n), unlike arrays. The pay-off: O(1) insert/delete at a known node.
+
+    Common patterns: two-pointer fast/slow (cycle detection, middle node),
+    dummy head node (simplifies edge cases), reverse in place, merge two sorted
+    lists.
+
+    C++ notes:
+      - Always check if a pointer is non-null before dereferencing (node->val).
+      - Use a dummy (sentinel) head node to avoid special-casing an empty list.
+      - Delete nodes you detach to avoid memory leaks in real code (usually ignored
+        in competitive/interview settings).
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'singly-linked node'
+          code: |
+            struct ListNode {
+                int val;
+                ListNode* next;
+                ListNode(int v) : val(v), next(nullptr) {}
+            };
+        - label: 'dummy head (sentinel to simplify edge cases)'
+          code: |
+            ListNode dummy(0);
+            ListNode* cur = &dummy;
+        - label: 'pointer to the head of the list'
+          code: 'ListNode* head = new ListNode(1);'
+    - title: Basic operations
+      ops:
+        - label: 'traverse to the next node'
+          code: 'cur = cur->next;'
+        - label: 'read value'
+          code: 'int v = cur->val;'
+        - label: 'insert a new node after cur'
+          code: |
+            ListNode* node = new ListNode(x);
+            node->next = cur->next;
+            cur->next = node;
+        - label: 'delete the node after cur'
+          code: |
+            ListNode* tmp = cur->next;
+            cur->next = tmp->next;
+            delete tmp;
+        - label: 'check end of list'
+          code: 'if (!cur->next) { /* last node */ }'
+    - title: Iteration & loops
+      ops:
+        - label: 'walk the whole list'
+          code: |
+            for (ListNode* cur = head; cur; cur = cur->next) {
+                /* use cur->val */
+            }
+        - label: 'fast / slow pointer (detects cycle, finds middle)'
+          code: |
+            ListNode* slow = head, *fast = head;
+            while (fast && fast->next) {
+                slow = slow->next;
+                fast = fast->next->next;
+            }
+            // slow is now at the middle
+        - label: 'reverse a linked list in place'
+          code: |
+            ListNode* prev = nullptr, *cur = head;
+            while (cur) {
+                ListNode* nxt = cur->next;
+                cur->next = prev;
+                prev = cur;
+                cur = nxt;
+            }
+            // prev is the new head
+    - title: Most-used built-in functions
+      ops:
+        - label: 'merge two sorted lists'
+          code: |
+            ListNode* mergeSorted(ListNode* a, ListNode* b) {
+                ListNode dummy(0);
+                ListNode* cur = &dummy;
+                while (a && b) {
+                    if (a->val <= b->val) {
+                        cur->next = a;
+                        a = a->next;
+                    } else {
+                        cur->next = b;
+                        b = b->next;
+                    }
+                    cur = cur->next;
+                }
+                cur->next = a ? a : b;
+                return dummy.next;
+            }
+        - label: 'find length of list'
+          code: |
+            int len = 0;
+            for (ListNode* cur = head; cur; cur = cur->next) len++;
+    - title: Special operations (linked list)
+      ops:
+        - label: 'detect cycle (Floyd two-pointer)'
+          code: |
+            ListNode* slow = head, *fast = head;
+            while (fast && fast->next) {
+                slow = slow->next;
+                fast = fast->next->next;
+                if (slow == fast) return true;
+            }
+            return false;
+        - label: 'find the n-th node from the end (two-pointer gap)'
+          code: |
+            ListNode* fast = head;
+            for (int i = 0; i < n; i++) fast = fast->next;
+            ListNode* slow = head;
+            while (fast->next) {
+                slow = slow->next;
+                fast = fast->next;
+            }
+            // slow->next is the target; use dummy head to simplify removal
+        - label: 'reorder list: find middle, reverse second half, merge'
+          code: |
+            // 1. find middle with slow/fast
+            // 2. reverse second half
+            // 3. interleave first and reversed second halves
+  example: |
+    Worked example — reverse a singly linked list:
+
+      Keep three pointers: prev (the already-reversed tail), cur (current node),
+      and nxt (saved next before we overwrite cur->next). Redirect cur->next to
+      prev, then advance all three pointers. O(n) time, O(1) space.
+
+        ListNode* reverseList(ListNode* head) {
+            ListNode* prev = nullptr, *cur = head;
+            while (cur) {
+                ListNode* nxt = cur->next;
+                cur->next = prev;
+                prev = cur;
+                cur = nxt;
+            }
+            return prev;
+        }
+
+    Takeaway: draw the pointer reassignment on paper first. A dummy head node
+    eliminates most special cases when inserting or removing at the front.

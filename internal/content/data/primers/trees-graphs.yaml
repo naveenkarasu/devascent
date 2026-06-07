@@ -1,0 +1,147 @@
+- category: "Trees & Graphs"
+  lang: python
+  title: "Trees & Graphs — Python refresher"
+  summary: |
+    Trees are connected acyclic graphs; binary trees add left/right children.
+    DFS (recursive or stack) explores depth-first; BFS (deque) explores level
+    by level. Graphs extend this to arbitrary edges — add a visited set to
+    avoid cycles. Reach for DFS on path/subtree problems, BFS on shortest-path
+    or level-order problems.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'TreeNode class'
+          code: |
+            class TreeNode:
+                def __init__(self, val=0, left=None, right=None):
+                    self.val = val
+                    self.left = left
+                    self.right = right
+        - label: 'adjacency list (unweighted)'
+          code: |
+            from collections import defaultdict
+            graph = defaultdict(list)
+        - label: 'adjacency list (weighted)'
+          code: |
+            adj = defaultdict(list)
+            adj[u].append((v, w))
+        - label: 'BFS queue'
+          code: |
+            from collections import deque
+            q = deque([root])
+        - label: 'visited set (graph cycle prevention)'
+          code: 'seen = set()'
+    - title: Basic operations
+      ops:
+        - label: 'add directed edge'
+          code: 'graph[u].append(v)'
+        - label: 'add undirected edge'
+          code: |
+            graph[u].append(v)
+            graph[v].append(u)
+        - label: 'BFS dequeue'
+          code: 'node = q.popleft()'
+        - label: 'BFS enqueue children'
+          code: 'if node.left: q.append(node.left)'
+        - label: 'check if node is leaf'
+          code: 'if not node.left and not node.right: ...'
+    - title: Most-used built-in methods
+      ops:
+        - label: 'topological sort (DFS post-order)'
+          code: |
+            def dfs(u):
+                for v in graph[u]:
+                    if v not in seen:
+                        seen.add(v)
+                        dfs(v)
+                order.append(u)
+        - label: 'in-order DFS (sorted BST traversal)'
+          code: |
+            def inorder(node):
+                inorder(node.left)
+                visit(node)
+                inorder(node.right)
+        - label: 'BFS level iteration'
+          code: |
+            for _ in range(len(q)):
+                node = q.popleft()
+                if node.left: q.append(node.left)
+                if node.right: q.append(node.right)
+    - title: Iteration & loops
+      ops:
+        - label: 'recursive DFS template'
+          code: |
+            def dfs(node):
+                if not node: return
+                dfs(node.left)
+                visit(node)
+                dfs(node.right)
+        - label: 'iterative DFS (stack)'
+          code: |
+            stack = [root]
+            while stack:
+                node = stack.pop()
+                if node.right: stack.append(node.right)
+                if node.left: stack.append(node.left)
+        - label: 'BFS level-order with level tracking'
+          code: |
+            q = deque([root])
+            level = 0
+            while q:
+                for _ in range(len(q)):
+                    node = q.popleft()
+                    if node.left: q.append(node.left)
+                    if node.right: q.append(node.right)
+                level += 1
+        - label: 'graph DFS with visited'
+          code: |
+            def dfs(u):
+                seen.add(u)
+                for v in graph[u]:
+                    if v not in seen: dfs(v)
+    - title: Special operations (trees & graphs)
+      ops:
+        - label: 'LCA (lowest common ancestor) by recursion'
+          code: |
+            def lca(node, p, q):
+                if not node or node in (p, q): return node
+                L = lca(node.left, p, q)
+                R = lca(node.right, p, q)
+                return node if L and R else L or R
+        - label: 'post-order: compute subtree property'
+          code: 'return 1 + max(depth(node.left), depth(node.right))'
+        - label: 'serialize tree (BFS)'
+          code: |
+            vals = []
+            q = deque([root])
+            while q:
+                node = q.popleft()
+                vals.append(str(node.val) if node else "null")
+                if node:
+                    q.append(node.left)
+                    q.append(node.right)
+        - label: 'detect cycle in directed graph (DFS coloring)'
+          code: |
+            WHITE, GRAY, BLACK = 0, 1, 2
+            color = {u: WHITE for u in graph}
+            def dfs(u):
+                color[u] = GRAY
+                for v in graph[u]:
+                    if color[v] == GRAY: return True   # back edge
+                    if color[v] == WHITE and dfs(v): return True
+                color[u] = BLACK
+                return False
+  example: |
+    Worked example — Maximum Depth of Binary Tree:
+      DFS: the depth of a node is 1 + max(depth(left), depth(right)). Base case:
+      depth of None is 0.
+
+        def max_depth(root):
+            if not root:
+                return 0
+            return 1 + max(max_depth(root.left), max_depth(root.right))
+
+      BFS alternative: count how many levels you dequeue before the queue is empty.
+
+    Takeaway: post-order DFS (process children first, then combine) solves most
+    tree "compute property of subtree" problems in O(n).

@@ -1,0 +1,186 @@
+lang: typescript
+group: any / unknown / never
+title: "any / unknown / never — The Escape Hatches and Safety Spectrum"
+tag: E
+summary: |
+  These three types define the extremes of the TS type lattice:
+
+  - any: assignable to and from everything; all operations permitted; no checking;
+    no safety. Infects callers — a function returning any makes the call site any
+    ("any erosion").
+  - unknown: assignable from everything; not assignable to anything without
+    narrowing; no operations permitted until narrowed. The correct type for values of
+    truly uncertain type (user input, API responses, JSON.parse).
+  - never: assignable to everything; nothing assignable to it; no value can exist.
+    Used for functions that never return (throw, infinite loops) and as the
+    exhaustiveness signal in switch/if chains.
+
+  any is the primary mechanism for "any erosion" — a single any propagating through a
+  codebase silently. unknown forces narrowing before use and does not propagate.
+
+  Common mistakes: any is contagious — one any return type propagates through the
+  entire call chain silently; `as T` is a type assertion not a cast — no runtime check
+  is performed; useUnknownInCatchVariables (part of strict) makes catch (e) bind e as
+  unknown in TS 4.4+ — old code may need updating; JSON.parse returns any — a common
+  entry point for any erosion; wrap it in a validator.
+exercises:
+  - prompt: |
+      `parseConfig` currently uses `any`, which lets unsafe property access slip
+      through. Refactor to accept `unknown` and add narrowing so it compiles safely.
+    kind: fix-it
+    broken_code: |
+      function parseConfig(raw: any) {
+        return raw.timeout * 1000;
+      }
+
+      parseConfig(null); // no error, but crashes at runtime
+    fixed_code: |
+      function parseConfig(raw: unknown): number {
+        if (
+          typeof raw === "object" &&
+          raw !== null &&
+          "timeout" in raw &&
+          typeof (raw as { timeout: unknown }).timeout === "number"
+        ) {
+          return (raw as { timeout: number }).timeout * 1000;
+        }
+        throw new TypeError("Invalid config: expected { timeout: number }");
+      }
+    bug: |
+      `any` allows property access without any check — `raw.timeout` compiles even if
+      `raw` is null. Changing to `unknown` makes every operation on the value a
+      compile error until the type is narrowed. The narrowing chain (typeof object,
+      !== null, in check, typeof number) guides TS to accept the multiplication.
+    check: compiles
+    signal: ""
+  - prompt: |
+      Trace any erosion through a three-function chain and fix each layer so `any`
+      does not propagate.
+    kind: fix-it
+    broken_code: |
+      function parseJSON(s: string): any {
+        return JSON.parse(s);
+      }
+
+      function getTimeout(cfg: any): number {
+        return cfg.timeout;
+      }
+
+      function multiply(n: number): number {
+        return n * 1000;
+      }
+
+      const result = multiply(getTimeout(parseJSON('{"timeout":5}')));
+    fixed_code: |
+      function parseJSON(s: string): unknown {
+        return JSON.parse(s);
+      }
+
+      function getTimeout(cfg: unknown): number {
+        if (
+          typeof cfg === "object" &&
+          cfg !== null &&
+          "timeout" in cfg &&
+          typeof (cfg as { timeout: unknown }).timeout === "number"
+        ) {
+          return (cfg as { timeout: number }).timeout;
+        }
+        throw new TypeError("timeout must be a number");
+      }
+
+      function multiply(n: number): number {
+        return n * 1000;
+      }
+
+      const result = multiply(getTimeout(parseJSON('{"timeout":5}')));
+    bug: |
+      `JSON.parse` returns `any`, so every downstream function that accepts the result
+      also types its parameter as `any` — each propagating the lack of type-safety.
+      Annotating `parseJSON` to return `unknown` forces `getTimeout` to accept
+      `unknown`, which in turn forces explicit narrowing. The `multiply` call then
+      receives a properly typed `number`.
+    check: compiles
+    signal: ""
+  - prompt: |
+      Implement `assertNever` and wire it into a discriminated union switch. Add a
+      new union member without updating the switch and confirm the compile error
+      appears at the right site.
+    kind: fix-it
+    broken_code: |
+      type Action =
+        | { type: "increment" }
+        | { type: "decrement" };
+
+      function handle(a: Action): string {
+        switch (a.type) {
+          case "increment":
+            return "+1";
+          case "decrement":
+            return "-1";
+        }
+        // TS might not warn if a new member is added
+      }
+    fixed_code: |
+      function assertNever(x: never): never {
+        throw new Error(`Unhandled action type: ${JSON.stringify(x)}`);
+      }
+
+      type Action =
+        | { type: "increment" }
+        | { type: "decrement" }
+        | { type: "reset" };   // new member — intentionally not handled
+
+      function handle(a: Action): string {
+        switch (a.type) {
+          case "increment":
+            return "+1";
+          case "decrement":
+            return "-1";
+          default:
+            return assertNever(a); // compile error: Action with type "reset" is not never
+        }
+      }
+    bug: |
+      Without the `assertNever` call, adding a new union member produces no compile
+      error — the function silently falls off the switch and returns `undefined`.
+      Calling `assertNever(a)` in the default branch forces TS to verify that `a` is
+      `never` there. When `"reset"` is added but not handled, `a` is narrowed to
+      `{ type: "reset" }` at the default — not `never` — so the compiler rejects the
+      call with a clear error pointing to this exact line.
+    check: compiles
+    signal: ""
+  - prompt: |
+      Why does `const config = JSON.parse(rawJson) as { port: number }` compile but
+      still break at runtime? Explain the problem and show a safer alternative using
+      `unknown` + a type guard.
+    kind: spot-the-bug
+    broken_code: |
+      const rawJson = "{}";
+      const config = JSON.parse(rawJson) as { port: number };
+      console.log(config.port.toFixed()); // TypeError at runtime — port is undefined
+    fixed_code: |
+      function isConfig(val: unknown): val is { port: number } {
+        return (
+          typeof val === "object" &&
+          val !== null &&
+          "port" in val &&
+          typeof (val as { port: unknown }).port === "number"
+        );
+      }
+
+      const rawJson = "{}";
+      const parsed: unknown = JSON.parse(rawJson);
+
+      if (isConfig(parsed)) {
+        console.log(parsed.port.toFixed()); // safe — port is verified at runtime
+      } else {
+        throw new TypeError("Invalid config");
+      }
+    bug: |
+      `as { port: number }` is a type assertion — it tells TS to trust the developer,
+      but performs zero runtime validation. `JSON.parse("{}")` returns an empty object
+      at runtime, so `config.port` is `undefined` even though TS believes it is
+      `number`. A type guard validates the shape at runtime before narrowing the type,
+      closing the gap between the compile-time belief and the runtime reality.
+    check: none
+    signal: ""

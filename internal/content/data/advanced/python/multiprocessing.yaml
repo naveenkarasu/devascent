@@ -1,0 +1,119 @@
+lang: python
+group: Concurrency
+title: "multiprocessing — CPU-bound parallelism, Pool, Queue"
+tag: E
+summary: |
+  `multiprocessing` bypasses the GIL by spawning separate OS processes, each with
+  its own CPython interpreter and memory space. This enables true CPU-parallel
+  execution for compute-intensive workloads.
+
+  Key interfaces:
+    - `multiprocessing.Pool.map(fn, items)` — distributes items across a pool of
+      worker processes and returns results in order.
+    - `concurrent.futures.ProcessPoolExecutor` — higher-level Pool equivalent;
+      works like `ThreadPoolExecutor` but uses processes.
+    - `multiprocessing.Queue` — process-safe FIFO queue for passing data between
+      producer and consumer processes.
+
+  Because processes don't share memory, objects are serialised (pickled) before
+  crossing process boundaries. Lambdas and locally-defined functions are NOT
+  picklable — define worker functions at module level.
+
+  On Windows and macOS (spawn start method), every worker process imports `__main__`,
+  so code that starts processes MUST be guarded with `if __name__ == "__main__":`.
+  On Linux (fork start method) this is not required but is still good practice.
+
+  Process startup is expensive (~50–100ms per process). For few tasks, sequential
+  is often faster than a pool. Use multiprocessing only when work items are large
+  enough to amortise the overhead.
+
+  Common mistakes:
+  - Using `multiprocessing.Pool` for I/O-bound work — `ThreadPoolExecutor` is
+    simpler and avoids pickle overhead.
+  - Passing non-picklable objects (lambdas, file handles, locks) across process
+    boundaries raises `PicklingError` at runtime.
+  - Omitting the `if __name__ == "__main__":` guard on Windows causes infinite
+    recursive spawning.
+exercises:
+  - prompt: |
+      `count_primes_pool(numbers)` should check primality for each number in the
+      list and return a list of booleans using `multiprocessing.Pool.map` for
+      parallel execution.
+
+      The broken version uses a local lambda as the worker function, which is not
+      picklable and raises `AttributeError` or `PicklingError` when passed to the pool.
+
+      Fix it by replacing the lambda with a module-level `is_prime` function.
+    kind: fix-it
+    broken_code: |
+      from multiprocessing import Pool
+
+      def count_primes_pool(numbers):
+          # Bug: lambda is not picklable — raises PicklingError
+          is_prime = lambda n: n > 1 and all(n % i != 0 for i in range(2, int(n**0.5) + 1))
+          with Pool() as pool:
+              return pool.map(is_prime, numbers)
+    fixed_code: |
+      from multiprocessing import Pool
+
+      def _is_prime(n):
+          if n < 2:
+              return False
+          return all(n % i != 0 for i in range(2, int(n ** 0.5) + 1))
+
+      def count_primes_pool(numbers):
+          with Pool() as pool:
+              return pool.map(_is_prime, numbers)
+    bug: |
+      Worker functions passed to `Pool.map` must be picklable so they can be sent
+      to child processes. A `lambda` defined inside a function is a local object
+      that the pickle module cannot serialise — it raises `AttributeError` (can't
+      pickle local object). Moving the worker to module level (`_is_prime`) makes it
+      importable and therefore picklable.
+    check: none
+    signal: ""
+
+  - prompt: |
+      `parallel_squares(numbers)` should use `ProcessPoolExecutor` to compute
+      squares of all numbers in parallel and return them in the same order as
+      the input.
+
+      The broken version uses `executor.submit` in a loop and collects results with
+      `result()` in the same loop — this blocks on each future immediately, making
+      it effectively sequential (loses all parallelism).
+
+      Fix it so all tasks are submitted first, then results are collected in order.
+    kind: fix-it
+    broken_code: |
+      from concurrent.futures import ProcessPoolExecutor
+
+      def _square(n):
+          return n * n
+
+      def parallel_squares(numbers):
+          results = []
+          with ProcessPoolExecutor() as executor:
+              for n in numbers:
+                  # Bug: .result() blocks immediately — no parallelism!
+                  future = executor.submit(_square, n)
+                  results.append(future.result())
+          return results
+    fixed_code: |
+      from concurrent.futures import ProcessPoolExecutor
+
+      def _square(n):
+          return n * n
+
+      def parallel_squares(numbers):
+          with ProcessPoolExecutor() as executor:
+              futures = [executor.submit(_square, n) for n in numbers]
+          return [f.result() for f in futures]
+    bug: |
+      Calling `.result()` immediately after `submit()` blocks the main process until
+      that task completes — the next `submit()` can't happen until the previous one
+      finishes, so the tasks run one at a time. The fix submits ALL tasks first
+      (collecting futures), exits the `with` block to wait for completion, then
+      collects results in order. `executor.map(_square, numbers)` is an even more
+      concise alternative.
+    check: none
+    signal: ""

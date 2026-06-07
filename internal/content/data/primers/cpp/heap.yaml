@@ -1,0 +1,131 @@
+- category: 'Heap / Priority Queue'
+  lang: cpp
+  title: Heap / Priority Queue — C++ refresher
+  summary: |
+    A heap (priority queue) gives you O(log n) insert and O(1) peek at the
+    max (or min) element. Use std::priority_queue<T>.
+
+    IMPORTANT: C++ priority_queue is a MAX-HEAP by default (largest element on
+    top). For a MIN-HEAP — what most interview problems want — you must add the
+    comparator: priority_queue<int, vector<int>, greater<int>>.
+
+    Common patterns: k-th largest/smallest element, merge k sorted lists, sliding
+    window maximum, Dijkstra's shortest path, median of a data stream (two heaps).
+
+    C++ notes:
+      - Always check empty() before calling top().
+      - To heap-sort a vector, push all elements then drain.
+      - For custom objects, define a comparator struct or use a lambda with the
+        appropriate type alias.
+      - make_heap / push_heap / pop_heap work on vectors if you need direct access.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'max-heap (default — largest on top)'
+          code: 'priority_queue<int> maxH;'
+        - label: 'min-heap (smallest on top)'
+          code: 'priority_queue<int, vector<int>, greater<int>> minH;'
+        - label: 'max-heap of pairs (sorted by first element descending)'
+          code: 'priority_queue<pair<int,int>> pq;'
+        - label: 'min-heap of pairs'
+          code: 'priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> pq;'
+        - label: 'build from a vector in O(n) (linear heapify)'
+          code: 'priority_queue<int> pq(v.begin(), v.end());'
+    - title: Basic operations
+      ops:
+        - label: 'push element'
+          code: 'pq.push(x);'
+        - label: 'peek at top (do NOT call on empty heap)'
+          code: 'int t = pq.top();'
+        - label: 'remove top'
+          code: 'pq.pop();'
+        - label: 'check empty'
+          code: 'pq.empty();'
+        - label: 'size'
+          code: '(int)pq.size();'
+    - title: Most-used built-in functions
+      ops:
+        - label: 'push then immediately pop if heap exceeds size k (keep k smallest)'
+          code: |
+            maxH.push(x);
+            if ((int)maxH.size() > k) {
+                maxH.pop();
+            }
+        - label: 'k-th largest: maintain a min-heap of size k'
+          code: |
+            priority_queue<int, vector<int>, greater<int>> minH;
+            for (int x : nums) {
+                minH.push(x);
+                if ((int)minH.size() > k) minH.pop();
+            }
+            // minH.top() is the k-th largest
+        - label: 'drain heap into sorted order'
+          code: |
+            vector<int> sorted;
+            while (!pq.empty()) {
+                sorted.push_back(pq.top());
+                pq.pop();
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'process all elements in priority order'
+          code: |
+            while (!pq.empty()) {
+                auto [priority, node] = pq.top();
+                pq.pop();
+                // process node
+            }
+        - label: 'merge k sorted lists: push first node of each list'
+          code: |
+            for (auto* node : lists)
+                if (node) pq.push({node->val, node});
+            while (!pq.empty()) {
+                auto [val, node] = pq.top();
+                pq.pop();
+                if (node->next) pq.push({node->next->val, node->next});
+            }
+    - title: Special operations (heap / priority queue)
+      ops:
+        - label: 'median of data stream: max-heap (lower half) + min-heap (upper half)'
+          code: |
+            priority_queue<int> lo;                              // max-heap
+            priority_queue<int, vector<int>, greater<int>> hi;  // min-heap
+            // keep sizes: lo.size() == hi.size() or lo.size() == hi.size()+1
+        - label: 'Dijkstra: min-heap of (distance, node)'
+          code: |
+            priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> pq;
+            pq.push({0, src});
+            while (!pq.empty()) {
+                auto [d, u] = pq.top();
+                pq.pop();
+                for (auto [v, w] : adj[u]) {
+                    if (d + w < dist[v]) {
+                        dist[v] = d + w;
+                        pq.push({dist[v], v});
+                    }
+                }
+            }
+        - label: 'task scheduler: max-heap of frequencies'
+          code: |
+            unordered_map<char, int> freq;
+            for (char c : tasks) freq[c]++;
+            priority_queue<int> pq;
+            for (auto& [c, f] : freq) pq.push(f);
+  example: |
+    Worked example — find the k-th largest element in an array:
+
+      Maintain a min-heap of size k. Push every element; when the heap grows
+      beyond k, pop the minimum. After processing all elements the heap holds
+      the k largest values and its top is the k-th largest.
+
+        int findKthLargest(vector<int>& nums, int k) {
+            priority_queue<int, vector<int>, greater<int>> minH;
+            for (int x : nums) {
+                minH.push(x);
+                if ((int)minH.size() > k) minH.pop();
+            }
+            return minH.top();
+        }
+
+    Takeaway: C++ priority_queue is a MAX-heap by default. For a min-heap add
+    greater<int> as the third template argument. Always check empty() before top().

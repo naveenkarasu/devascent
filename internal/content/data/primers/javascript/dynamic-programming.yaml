@@ -1,0 +1,118 @@
+- category: 'Dynamic Programming'
+  lang: javascript
+  title: 'Dynamic Programming — JavaScript refresher'
+  summary: |
+    Dynamic programming (DP) solves problems by breaking them into overlapping
+    subproblems, solving each once, and storing the result to avoid recomputation.
+    Two styles: top-down (memoization — recursion + cache) and bottom-up (tabulation —
+    fill a table iteratively from smaller subproblems to larger).
+
+    Classic DP problems: Fibonacci, climbing stairs, 0/1 knapsack, longest common
+    subsequence, longest increasing subsequence, coin change.
+
+    JavaScript notes:
+      - Use a plain object {} or Map for memoization caches.
+      - 2-D DP tables: Array.from({length: m}, () => new Array(n).fill(0)).
+        NEVER new Array(m).fill(new Array(n)) — all rows share the same array.
+      - Infinity and -Infinity work as initial min/max sentinels.
+  sections:
+    - title: Declarations
+      ops:
+        - label: '1-D DP table'
+          code: 'const dp = new Array(n + 1).fill(0);'
+        - label: '2-D DP table (safe per-row allocation)'
+          code: 'const dp = Array.from({length: m + 1}, () => new Array(n + 1).fill(0));'
+        - label: 'memoization cache (object or Map)'
+          code: 'const memo = {};   // or new Map()'
+        - label: 'initialize with sentinel for min-cost problems'
+          code: |
+            const dp = new Array(n + 1).fill(Infinity);
+            dp[0] = 0;
+    - title: Basic operations
+      ops:
+        - label: 'fill base case'
+          code: |
+            dp[0] = 0;
+            dp[1] = 1;
+        - label: 'bottom-up recurrence'
+          code: 'dp[i] = dp[i - 1] + dp[i - 2];   // e.g. Fibonacci'
+        - label: 'memoized recursion lookup'
+          code: |
+            if (key in memo) return memo[key];
+            /* compute */
+            memo[key] = result;
+            return result;
+        - label: 'read final answer'
+          code: 'return dp[n];   // or dp[m][n] for 2-D'
+    - title: Iteration & loops
+      ops:
+        - label: 'bottom-up 1-D DP loop'
+          code: |
+            for (let i = 2; i <= n; i++) {
+              dp[i] = dp[i-1] + dp[i-2];
+            }
+        - label: 'bottom-up 2-D DP loop'
+          code: |
+            for (let i = 1; i <= m; i++) {
+              for (let j = 1; j <= n; j++) {
+                /* fill dp[i][j] */
+              }
+            }
+        - label: 'coin change inner loop (unbounded knapsack)'
+          code: |
+            for (const coin of coins) {
+              if (coin <= i) dp[i] = Math.min(dp[i], dp[i - coin] + 1);
+            }
+    - title: Special operations (dynamic programming)
+      ops:
+        - label: 'coin change — minimum coins to make amount'
+          code: |
+            const dp = new Array(amount + 1).fill(Infinity);
+            dp[0] = 0;
+            for (let i = 1; i <= amount; i++) {
+                for (const coin of coins) {
+                    if (coin <= i) dp[i] = Math.min(dp[i], dp[i - coin] + 1);
+                }
+            }
+            return dp[amount] === Infinity ? -1 : dp[amount];
+        - label: 'longest common subsequence'
+          code: |
+            const dp = Array.from({length: m + 1}, () => new Array(n + 1).fill(0));
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (a[i-1] === b[j-1]) dp[i][j] = dp[i-1][j-1] + 1;
+                    else dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
+                }
+            }
+            return dp[m][n];
+        - label: '0/1 knapsack (process items, shrink weight loop downward)'
+          code: |
+            const dp = new Array(capacity + 1).fill(0);
+            for (const [weight, value] of items) {
+                for (let w = capacity; w >= weight; w--) {
+                    dp[w] = Math.max(dp[w], dp[w - weight] + value);
+                }
+            }
+  example: |
+    Worked example — coin change: minimum number of coins to make a target amount:
+
+      dp[i] = minimum coins to make exactly amount i. Start with dp[0] = 0 (zero coins
+      needed for amount 0) and Infinity for all others. For each amount i, try every
+      coin: if coin <= i, we can extend the solution for dp[i - coin] by one coin.
+      Take the minimum over all coins.
+
+        function coinChange(coins, amount) {
+            const dp = new Array(amount + 1).fill(Infinity);
+            dp[0] = 0;
+            for (let i = 1; i <= amount; i++) {
+                for (const coin of coins) {
+                    if (coin <= i) {
+                        dp[i] = Math.min(dp[i], dp[i - coin] + 1);
+                    }
+                }
+            }
+            return dp[amount] === Infinity ? -1 : dp[amount];
+        }
+
+    Takeaway: DP tables must be allocated safely in JS. Use Array.from with a factory
+    function for 2-D tables — never .fill([]) or all rows will share one array.

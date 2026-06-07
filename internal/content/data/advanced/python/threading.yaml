@@ -1,0 +1,126 @@
+lang: python
+group: Concurrency
+title: "threading — concurrent I/O, Lock, ThreadPoolExecutor"
+tag: E
+summary: |
+  The `threading` module enables concurrent I/O-bound work within a single
+  process. Because the GIL is released during I/O operations (network calls,
+  file I/O, DB queries), threads run truly concurrently for those workloads —
+  multiple threads can be blocked in I/O simultaneously while others proceed.
+
+  `threading.Lock()` is the fundamental synchronisation primitive. Always acquire
+  a lock with `with lock:` (context manager) rather than manually calling
+  `.acquire()` / `.release()` — the `with` form guarantees release even on
+  exception.
+
+  `concurrent.futures.ThreadPoolExecutor` provides a high-level interface for
+  managing a thread pool. `executor.map(fn, items)` returns results in submission
+  order. `executor.submit(fn, *args)` returns a `Future`; use `as_completed(futures)`
+  to process results as they arrive.
+
+  `threading.local()` provides per-thread storage without sharing.
+
+  IMPORTANT: `threading` does NOT speed up CPU-bound Python code. The GIL
+  prevents parallel bytecode execution — threads take turns. Use `multiprocessing`
+  for CPU-bound parallelism.
+
+  Common mistakes:
+  - Forgetting to `join()` threads allows the main thread to exit before workers
+    finish, silently losing results.
+  - Accessing shared mutable state from multiple threads without a `Lock` causes
+    race conditions — the count may be less than expected even for simple
+    increment operations.
+  - Thread-local state (`threading.local()`) is not shared across threads.
+exercises:
+  - prompt: |
+      The shared counter below is incremented by 5 threads, each adding 1000 to
+      a global `counter`. Without synchronisation the final value is often less
+      than 5000 due to a race condition.
+
+      The broken version has no lock. Fix it by adding a `threading.Lock` and
+      acquiring it around the increment inside the worker.
+    kind: fix-it
+    broken_code: |
+      import threading
+
+      counter = 0
+
+      def worker():
+          global counter
+          for _ in range(1000):
+              counter += 1   # Bug: read-modify-write is NOT atomic!
+
+      threads = [threading.Thread(target=worker) for _ in range(5)]
+      for t in threads:
+          t.start()
+      for t in threads:
+          t.join()
+
+      print(counter)   # often less than 5000
+    fixed_code: |
+      import threading
+
+      counter = 0
+      lock = threading.Lock()
+
+      def worker():
+          global counter
+          for _ in range(1000):
+              with lock:
+                  counter += 1
+
+      threads = [threading.Thread(target=worker) for _ in range(5)]
+      for t in threads:
+          t.start()
+      for t in threads:
+          t.join()
+
+      print(counter)   # always 5000
+    bug: |
+      `counter += 1` compiles to separate LOAD, ADD, and STORE bytecodes. The GIL
+      can switch threads between any two of these instructions, so two threads can
+      both read the old value, both increment it, and write the same result —
+      losing one increment. Wrapping the increment in `with lock:` makes the
+      read-modify-write sequence atomic: only one thread holds the lock at a time.
+    check: none
+    signal: ""
+
+  - prompt: |
+      `fetch_all_sequential(urls)` simulates fetching URLs one at a time. The
+      broken version does not use a thread pool — it fetches each URL sequentially
+      which is slow.
+
+      Fix it to use `concurrent.futures.ThreadPoolExecutor` with `executor.map`
+      so all URLs are fetched concurrently. Return a list of results in the SAME
+      ORDER as `urls`.
+    kind: fix-it
+    broken_code: |
+      import time
+
+      def fake_fetch(url):
+          time.sleep(0.1)   # simulate I/O
+          return f"content:{url}"
+
+      def fetch_all_sequential(urls):
+          # Bug: sequential — O(n * latency) instead of O(1 * latency)
+          return [fake_fetch(url) for url in urls]
+    fixed_code: |
+      import time
+      from concurrent.futures import ThreadPoolExecutor
+
+      def fake_fetch(url):
+          time.sleep(0.1)   # simulate I/O
+          return f"content:{url}"
+
+      def fetch_all_sequential(urls):
+          with ThreadPoolExecutor() as executor:
+              return list(executor.map(fake_fetch, urls))
+    bug: |
+      The list comprehension calls `fake_fetch` one URL at a time, waiting for each
+      before starting the next — total time scales linearly with the number of URLs.
+      `ThreadPoolExecutor.map` submits all calls at once and returns results in
+      submission order; because the GIL releases during `time.sleep` (simulating
+      real I/O), all fetches run concurrently and total time is approximately the
+      latency of a single request.
+    check: none
+    signal: ""

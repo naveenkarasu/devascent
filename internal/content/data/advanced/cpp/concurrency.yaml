@@ -1,0 +1,206 @@
+lang: cpp
+group: Concurrency — Threads, Mutexes, Atomics, async/future
+title: "Concurrency — Threads, Mutexes, Atomics, async/future"
+tag: E
+summary: |
+  C++11 introduced a portable threading model: std::thread, std::mutex /
+  std::lock_guard / std::unique_lock, std::atomic<T>, and std::async /
+  std::future / std::promise.
+
+    - std::thread launches a new OS thread. The thread must be joined or detached
+      before the thread object is destroyed — failing to do so calls std::terminate().
+    - std::mutex + RAII lock guards — std::lock_guard<std::mutex> (non-movable,
+      simple) and std::unique_lock<std::mutex> (movable, supports deferred locking
+      and condition variables). Never lock manually without RAII — throws bypass
+      unlock().
+    - std::atomic<T> — lock-free atomic operations for simple shared state (flags,
+      counters). std::atomic<bool> for stop flags; std::atomic<int> for counters.
+      Does not replace a mutex for multi-step operations.
+    - std::async + std::future — launches a callable asynchronously, returns a
+      future<T> to retrieve the result. std::async with std::launch::async guarantees
+      a new thread; std::launch::deferred evaluates lazily on .get().
+
+  Memory model ([C] sub-topic): the C++11 memory model defines how operations on
+  shared data are ordered across threads. std::memory_order variants (seq_cst,
+  acquire/release, relaxed) control visibility guarantees. Sequential consistency
+  (seq_cst, the default) is safe but slowest; relaxed orderings require deep expertise
+  and are a source of subtle race conditions.
+
+  Gotchas:
+    - A std::thread object that is joinable (neither joined nor detached) when its
+      destructor runs calls std::terminate().
+    - std::atomic protects individual operations, not multi-step sequences — a check-
+      then-act on two separate atomics is still a race.
+    - std::shared_ptr reference counting is thread-safe; modifying the pointed-to
+      object through multiple shared_ptrs is not.
+    - Relaxed std::memory_order is not safe to use without deep understanding of
+      happens-before; seq_cst is the correct default.
+exercises:
+  - prompt: |
+      Two threads increment a shared int counter without synchronisation. Run under
+      -fsanitize=thread to confirm the data race, then fix with either a
+      std::mutex + lock_guard or std::atomic<int>.
+    kind: fix-it
+    broken_code: |
+      int counter = 0;   // shared mutable state — no protection
+
+      void increment(int n) {
+          for (int i = 0; i < n; ++i)
+              ++counter;   // data race: non-atomic read-modify-write
+      }
+
+      void demo() {
+          std::thread t1(increment, 100'000);
+          std::thread t2(increment, 100'000);
+          t1.join();
+          t2.join();
+          std::printf("counter = %d\n", counter);   // UB: likely != 200000
+      }
+    fixed_code: |
+      // Option A: mutex
+      std::mutex mtx;
+      int counter_a = 0;
+
+      void increment_a(int n) {
+          for (int i = 0; i < n; ++i) {
+              std::lock_guard<std::mutex> lock(mtx);
+              ++counter_a;
+          }
+      }
+
+      // Option B: atomic (preferred for a single integer counter)
+      std::atomic<int> counter_b{0};
+
+      void increment_b(int n) {
+          for (int i = 0; i < n; ++i)
+              ++counter_b;   // atomic fetch_add — no race
+      }
+    bug: |
+      ++counter compiles to three machine instructions (load, add, store). If two threads
+      interleave these steps, increments are lost — this is a classic data race and is
+      undefined behaviour in C++. ThreadSanitizer (TSan) makes the race deterministic to
+      detect. For a single counter, std::atomic<int> is the lightest fix; std::mutex is
+      required when the critical section involves multiple variables or multi-step logic.
+    check: none
+    signal: ""
+
+  - prompt: |
+      A function acquires a mutex with mtx.lock() and calls mtx.unlock() at the end.
+      An early-return path bypasses the unlock, leaving the mutex permanently locked.
+      Any thread that subsequently tries to acquire it deadlocks. Fix by replacing the
+      manual lock/unlock pair with std::lock_guard.
+    kind: fix-it
+    broken_code: |
+      std::mutex mtx;
+      int shared_value = 0;
+
+      void update(int new_val) {
+          mtx.lock();
+          if (new_val < 0) {
+              return;           // BUG: early return bypasses mtx.unlock()
+          }
+          shared_value = new_val;
+          mtx.unlock();
+      }
+    fixed_code: |
+      std::mutex mtx;
+      int shared_value = 0;
+
+      void update(int new_val) {
+          std::lock_guard<std::mutex> guard(mtx);   // unlocks on any exit path
+          if (new_val < 0) return;
+          shared_value = new_val;
+      }
+    bug: |
+      A mutex locked with .lock() must be unlocked on every exit path — early returns,
+      exception throws, and normal completion. Manual lock/unlock is fragile; a missed
+      path causes all future waiters to deadlock. std::lock_guard acquires the mutex in
+      its constructor and releases it in its destructor, guaranteeing the unlock runs
+      regardless of how the function exits — the RAII pattern applied to mutual
+      exclusion.
+    check: none
+    signal: ""
+
+  - prompt: |
+      A std::thread captures a reference to a local variable in the enclosing function.
+      The function returns before .join() is called. The thread destructor fires on the
+      still-joinable thread object, calling std::terminate(). Fix by joining before
+      return (or using a RAII join guard).
+    kind: spot-the-bug
+    broken_code: |
+      void spawn_worker() {
+          int local = 42;
+          std::thread t([&local]() {
+              std::this_thread::sleep_for(std::chrono::milliseconds(10));
+              std::printf("local = %d\n", local);   // dangling ref if function returned
+          });
+          // BUG: t goes out of scope while still joinable → std::terminate()
+      }
+    fixed_code: |
+      void spawn_worker() {
+          int local = 42;
+          std::thread t([local]() {          // capture by value: no dangling ref
+              std::this_thread::sleep_for(std::chrono::milliseconds(10));
+              std::printf("local = %d\n", local);
+          });
+          t.join();                          // wait for thread before local is destroyed
+      }
+
+      // Alternative: RAII join guard (C++20 std::jthread joins automatically)
+      // std::jthread t([local]() { ... });  // destructor calls join()
+    bug: |
+      Two bugs compound here. First, capturing local by reference is dangerous — if the
+      function returns first, local is destroyed and the thread accesses freed stack
+      memory (UB). Second, destroying a joinable std::thread (one that has not been
+      .join()ed or .detach()ed) calls std::terminate() — not a graceful failure. Both
+      are fixed by capturing by value and calling .join() before return. C++20
+      std::jthread automatically joins in its destructor, avoiding the terminate() trap.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Use std::async(std::launch::async, expensive_fn) to run a computation on a
+      background thread. While it runs, the main thread does other work. Retrieve the
+      result with .get(). Show that an exception thrown inside the async task is
+      re-thrown at the .get() call site — and catch it there.
+    kind: fix-it
+    broken_code: |
+      int expensive_fn() {
+          std::this_thread::sleep_for(std::chrono::milliseconds(50));
+          throw std::runtime_error("task failed");
+          return 42;
+      }
+
+      void demo() {
+          auto fut = std::async(std::launch::async, expensive_fn);
+          // ... do other work ...
+          int result = fut.get();   // exception propagates here — but uncaught
+          std::printf("result = %d\n", result);
+      }
+    fixed_code: |
+      int expensive_fn() {
+          std::this_thread::sleep_for(std::chrono::milliseconds(50));
+          throw std::runtime_error("task failed");
+          return 42;
+      }
+
+      void demo() {
+          auto fut = std::async(std::launch::async, expensive_fn);
+          // ... do other work on the main thread ...
+          try {
+              int result = fut.get();   // re-throws the stored exception
+              std::printf("result = %d\n", result);
+          } catch (const std::exception& e) {
+              std::fprintf(stderr, "async task threw: %s\n", e.what());
+          }
+      }
+    bug: |
+      When an async task throws, the exception is captured and stored in the shared
+      state. It is not re-thrown until .get() is called — at which point it propagates
+      from the .get() call site. If .get() is not wrapped in a try/catch, the exception
+      is unhandled and calls std::terminate(). The fix: always wrap .get() in a
+      try/catch when the task might throw. Additional gotcha: if the std::future
+      returned by std::launch::async is neither .get()d nor stored in a variable with
+      a longer lifetime, its destructor blocks until the task completes.
+    check: none
+    signal: ""

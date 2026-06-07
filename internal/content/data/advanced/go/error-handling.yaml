@@ -1,0 +1,382 @@
+lang: go
+group: Error Handling
+title: "Error Handling — values, wrapping & defer"
+tag: E
+summary: |
+  Go has no exceptions. Errors are ordinary values returned as the last return value,
+  typed as the built-in error interface (Error() string). This makes all error paths
+  explicit and forces callers to decide what to do — ignore, wrap and return, or handle.
+
+  The idiomatic open-file pattern:
+
+    f, err := os.Open(name)
+    if err != nil {
+        return fmt.Errorf("open config: %w", err)  // wrap with context
+    }
+    defer f.Close()
+
+  Error wrapping (Go 1.13+): fmt.Errorf("...: %w", err) wraps err so that
+  errors.Is(wrapped, target) and errors.As(wrapped, &target) traverse the error chain.
+  Use %v instead of %w to add human-readable context without exposing the inner error
+  as part of your public API contract — once wrapped with %w it is a commitment.
+
+  Custom errors: implement error on a struct to carry structured data that callers can
+  inspect with errors.As:
+
+    type ParseError struct { Line int; Msg string }
+    func (e *ParseError) Error() string {
+        return fmt.Sprintf("line %d: %s", e.Line, e.Msg)
+    }
+
+  defer executes registered functions in LIFO order when the enclosing function returns
+  by any path (normal return, explicit return, or panic). Canonical use: defer f.Close()
+  immediately after opening a file, defer mu.Unlock() immediately after locking — keeps
+  cleanup paired with acquisition and impossible to accidentally omit.
+
+  defer interacts with named return values in a subtle way: a deferred closure can read
+  and modify them after the return statement executes, before the function actually
+  returns to the caller. This is used intentionally for error-wrapping middlewares.
+
+  panic unwinds the stack, running deferred functions along the way. recover (callable
+  only inside a deferred function) stops the unwind and returns the panic value. The
+  pattern: libraries should not let panics escape — a web server uses recover in a
+  middleware to turn unexpected panics into 500 responses. Do not use panic/recover for
+  ordinary control flow.
+
+  Common gotchas:
+  - Returning a *ConcreteError nil pointer via an error return triggers the typed-nil
+    problem (see Interfaces). Return nil directly.
+  - Using %w makes the inner error part of your public API; %v is the safer default.
+  - Returning err without context: if err != nil { return err } gives callers no
+    information about where the error originated. Always add fmt.Errorf("op: %w", err).
+  - Ignoring errors with _: f, _ := os.Open(...) hides real failures silently.
+exercises:
+  - prompt: |
+      The multi-layer call chain below wraps a sentinel ErrNotFound. The caller uses
+      == to detect it, which fails once the error is wrapped. Fix the comparison to
+      work through any number of wrap layers.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import (
+          "errors"
+          "fmt"
+      )
+
+      var ErrNotFound = errors.New("not found")
+
+      func dbLookup(id int) error {
+          return ErrNotFound
+      }
+
+      func serviceGet(id int) error {
+          err := dbLookup(id)
+          if err != nil {
+              return fmt.Errorf("serviceGet %d: %w", id, err)
+          }
+          return nil
+      }
+
+      func handleGet(id int) {
+          err := serviceGet(id)
+          if err == ErrNotFound { // direct == fails on wrapped error
+              fmt.Println("handled: not found")
+              return
+          }
+          if err != nil {
+              fmt.Println("unexpected error:", err)
+          }
+      }
+
+      func main() {
+          handleGet(42)
+      }
+    fixed_code: |
+      package main
+
+      import (
+          "errors"
+          "fmt"
+      )
+
+      var ErrNotFound = errors.New("not found")
+
+      func dbLookup(id int) error {
+          return ErrNotFound
+      }
+
+      func serviceGet(id int) error {
+          err := dbLookup(id)
+          if err != nil {
+              return fmt.Errorf("serviceGet %d: %w", id, err)
+          }
+          return nil
+      }
+
+      func handleGet(id int) {
+          err := serviceGet(id)
+          if errors.Is(err, ErrNotFound) { // traverses the wrap chain
+              fmt.Println("handled: not found")
+              return
+          }
+          if err != nil {
+              fmt.Println("unexpected error:", err)
+          }
+      }
+
+      func main() {
+          handleGet(42)
+      }
+    bug: |
+      err == ErrNotFound only matches when err IS ErrNotFound — it fails once the error
+      is wrapped by fmt.Errorf with %w because the wrapped value is a different object.
+      errors.Is(err, ErrNotFound) unwraps the error chain recursively using the Unwrap
+      method until it finds a match. Always use errors.Is for sentinel comparison and
+      errors.As for typed-error extraction when errors may be wrapped.
+    check: stdout
+    signal: "handled: not found"
+
+  - prompt: |
+      A *ParseError is buried under two wrap layers. Use errors.As to extract it and
+      print its Line field.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import (
+          "fmt"
+      )
+
+      type ParseError struct {
+          Line int
+          Msg  string
+      }
+
+      func (e *ParseError) Error() string {
+          return fmt.Sprintf("line %d: %s", e.Line, e.Msg)
+      }
+
+      func parse(src string) error {
+          return &ParseError{Line: 7, Msg: "unexpected token"}
+      }
+
+      func process(src string) error {
+          if err := parse(src); err != nil {
+              return fmt.Errorf("process: %w", err)
+          }
+          return nil
+      }
+
+      func run(src string) error {
+          if err := process(src); err != nil {
+              return fmt.Errorf("run: %w", err)
+          }
+          return nil
+      }
+
+      func main() {
+          err := run("bad source")
+          if err != nil {
+              // TODO: use errors.As to get *ParseError and print its Line
+              fmt.Println("error:", err)
+          }
+      }
+    fixed_code: |
+      package main
+
+      import (
+          "errors"
+          "fmt"
+      )
+
+      type ParseError struct {
+          Line int
+          Msg  string
+      }
+
+      func (e *ParseError) Error() string {
+          return fmt.Sprintf("line %d: %s", e.Line, e.Msg)
+      }
+
+      func parse(src string) error {
+          return &ParseError{Line: 7, Msg: "unexpected token"}
+      }
+
+      func process(src string) error {
+          if err := parse(src); err != nil {
+              return fmt.Errorf("process: %w", err)
+          }
+          return nil
+      }
+
+      func run(src string) error {
+          if err := process(src); err != nil {
+              return fmt.Errorf("run: %w", err)
+          }
+          return nil
+      }
+
+      func main() {
+          err := run("bad source")
+          var pe *ParseError
+          if errors.As(err, &pe) {
+              fmt.Println("parse error at line", pe.Line)
+          } else if err != nil {
+              fmt.Println("error:", err)
+          }
+      }
+    bug: |
+      The original code prints only the full error string and cannot access structured
+      fields like Line. errors.As(err, &pe) unwraps the chain until it finds a value
+      that can be assigned to *pe (a *ParseError). The target must be a non-nil pointer
+      to the type you want. Once As returns true, pe points to the original *ParseError
+      and you can access any exported field.
+    check: stdout
+    signal: "parse error at line 7"
+
+  - prompt: |
+      The function below opens two files but only defers the first close. If the second
+      Open fails, the first file is leaked. Fix it so both files are always closed,
+      demonstrating LIFO defer ordering.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import (
+          "fmt"
+          "os"
+      )
+
+      func process(path1, path2 string) error {
+          f1, err := os.Open(path1)
+          if err != nil {
+              return fmt.Errorf("open %s: %w", path1, err)
+          }
+          defer f1.Close()
+
+          f2, err := os.Open(path2)
+          if err != nil {
+              // f1 is leaked here if path2 does not exist
+              return fmt.Errorf("open %s: %w", path2, err)
+          }
+          // Missing defer f2.Close()
+
+          fmt.Println("processing", f1.Name(), "and", f2.Name())
+          return nil
+      }
+
+      func main() {
+          if err := process("go.mod", "go.sum"); err != nil {
+              fmt.Println("error:", err)
+          }
+      }
+    fixed_code: |
+      package main
+
+      import (
+          "fmt"
+          "os"
+      )
+
+      func process(path1, path2 string) error {
+          f1, err := os.Open(path1)
+          if err != nil {
+              return fmt.Errorf("open %s: %w", path1, err)
+          }
+          defer f1.Close() // registered first — runs second (LIFO)
+
+          f2, err := os.Open(path2)
+          if err != nil {
+              return fmt.Errorf("open %s: %w", path2, err)
+          }
+          defer f2.Close() // registered second — runs first (LIFO)
+
+          fmt.Println("processing", f1.Name(), "and", f2.Name())
+          return nil
+      }
+
+      func main() {
+          if err := process("go.mod", "go.sum"); err != nil {
+              fmt.Println("error:", err)
+          }
+      }
+    bug: |
+      defer f2.Close() is missing. When process returns (by any path — success or the
+      second Open failing), deferred functions run in LIFO order: f2.Close() runs first,
+      then f1.Close(). Without the second defer, f2 leaks its file descriptor. The
+      idiomatic rule: defer Close (or any cleanup) immediately after the successful
+      acquisition, before any code that might return early.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Wrap the panicking handler function with a recover-based middleware. The middleware
+      must catch any panic, log it, and return a safe error to the caller without
+      letting the panic propagate.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import "fmt"
+
+      func riskyHandler(input string) string {
+          if input == "" {
+              panic("empty input not allowed")
+          }
+          return "processed: " + input
+      }
+
+      // safeHandler should wrap riskyHandler, recover from panics, and return
+      // ("", error) on panic instead of crashing the program.
+      func safeHandler(input string) (result string, err error) {
+          return riskyHandler(input), nil // no recovery
+      }
+
+      func main() {
+          res, err := safeHandler("hello")
+          fmt.Println(res, err)
+
+          res, err = safeHandler("") // should not crash
+          fmt.Println(res, err)
+      }
+    fixed_code: |
+      package main
+
+      import (
+          "fmt"
+          "errors"
+      )
+
+      func riskyHandler(input string) string {
+          if input == "" {
+              panic("empty input not allowed")
+          }
+          return "processed: " + input
+      }
+
+      func safeHandler(input string) (result string, err error) {
+          defer func() {
+              if r := recover(); r != nil {
+                  err = errors.New(fmt.Sprint(r))
+              }
+          }()
+          return riskyHandler(input), nil
+      }
+
+      func main() {
+          res, err := safeHandler("hello")
+          fmt.Println(res, err)
+
+          res, err = safeHandler("")
+          fmt.Println(res, err)
+      }
+    bug: |
+      Without defer/recover, a panic from riskyHandler propagates up the stack and
+      terminates the program. recover() is only effective when called inside a deferred
+      function — it stops the unwind and returns the panic value. The deferred closure
+      captures the named return variable err; when recover returns a non-nil value, the
+      closure sets err to a new error. Because Go evaluates named returns before deferred
+      functions run, the caller receives ("", <error>) instead of a crash.
+    check: none
+    signal: ""

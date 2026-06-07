@@ -1,0 +1,248 @@
+lang: java
+group: Modern Java
+title: "Modern Java — records, sealed classes, pattern matching & var"
+tag: E
+summary: |
+  Java 14-21 delivered a cluster of language features that modernise the syntax
+  without changing the execution model. All are stable (non-preview) in Java 21 LTS:
+
+  Records (Java 16): immutable, transparent data carriers. `record Point(int x, int y){}`
+  auto-generates a canonical constructor, accessors x() and y(), equals(), hashCode(),
+  and toString(). Fields are private final. Records cannot extend other classes (they
+  implicitly extend java.lang.Record) but can implement interfaces. Custom constructors
+  and static methods are allowed. Records are shallowly immutable — a record with a
+  List field still exposes that list through its accessor.
+
+  Sealed classes (Java 17): `sealed interface Shape permits Circle, Rectangle, Triangle`
+  restricts which classes may extend or implement the type. Enables exhaustive pattern
+  matching — the compiler knows all permitted subtypes and can enforce coverage.
+
+  Pattern matching for instanceof (Java 16): `if (obj instanceof String s)` binds `s`
+  without an explicit cast; `s` is in scope only where the pattern is definitely matched.
+
+  Pattern matching for switch (Java 21 — final): full patterns in case labels, `when`
+  guards for additional conditions, null handling in case, exhaustiveness checking with
+  sealed types. Label order matters — more specific / guarded patterns must precede
+  more general ones or the compiler reports a "dominates" error.
+
+  var (Java 10): local variable type inference. The inferred type is static, determined
+  at compile time — not dynamic typing. Cannot be used for fields, method parameters,
+  or return types. Cannot be initialised with null (type cannot be inferred).
+
+  Switch expressions (Java 14): `switch` as an expression yielding a value. Arrow form
+  (`case X ->`) prevents fall-through. Block arms use `yield` to return a value.
+
+  Gotchas:
+  - Records cannot extend classes, but CAN implement interfaces — a common misconception.
+  - Adding a `default` arm to a switch over a sealed type defeats the exhaustiveness
+    benefit: adding a new permitted subclass no longer causes a compile error.
+  - `var` is a reserved type name, not a keyword — it can be used as a variable or
+    method name in legacy code (ugly but valid).
+  - Pattern variable scope in switch: a variable bound in one case arm is not in scope
+    in another arm.
+exercises:
+  - prompt: |
+      Replace the verbose PersonDTO POJO below with a record. Add a compact constructor
+      that validates the name is non-blank. Then explain why the record is still NOT
+      deeply immutable if the tags list can be mutated externally — and show the fix
+      that makes it truly immutable: use List.copyOf() in the compact constructor AND
+      note that the accessor returns the internal copy (so no second wrapping is needed).
+    kind: fix-it
+    broken_code: |
+      class PersonDTO {
+          private final String name;
+          private final List<String> tags;
+
+          PersonDTO(String name, List<String> tags) {
+              if (name == null || name.isBlank()) throw new IllegalArgumentException("name required");
+              this.name = name;
+              this.tags = tags;   // stores the caller's list — mutable reference leak
+          }
+
+          String name() { return name; }
+          List<String> tags() { return tags; }   // exposes mutable list
+
+          @Override public boolean equals(Object o) { /* boilerplate */ return false; }
+          @Override public int hashCode() { return 0; }
+          @Override public String toString() { return "PersonDTO[" + name + "]"; }
+      }
+    fixed_code: |
+      record PersonDTO(String name, List<String> tags) {
+          // Compact constructor: validate + defensive-copy in one place
+          PersonDTO {
+              if (name == null || name.isBlank())
+                  throw new IllegalArgumentException("name required");
+              // List.copyOf() creates an unmodifiable snapshot of the caller's list.
+              // The record accessor tags() returns this internal copy directly —
+              // because the copy is already unmodifiable, no further wrapping is needed.
+              // Using new ArrayList<>(tags) alone is NOT sufficient: the accessor
+              // would still return a mutable copy that callers could modify.
+              tags = List.copyOf(tags);
+          }
+      }
+
+      // Proof of immutability:
+      List<String> mutable = new ArrayList<>(List.of("a", "b"));
+      PersonDTO p = new PersonDTO("Alice", mutable);
+      mutable.add("c");                   // does not affect p.tags()
+      // p.tags().add("x");               // throws UnsupportedOperationException
+      System.out.println(p.tags());       // [a, b]
+    bug: |
+      Records are shallowly immutable: the field reference is final, but the object
+      the reference points to can still be mutated. Without defensive copying in the
+      compact constructor, a caller who keeps a reference to the original mutable list
+      can modify it and silently corrupt the record. Using new ArrayList<>(tags) in the
+      constructor prevents that, but the accessor still returns a mutable copy —
+      callers of tags() can mutate their copy. List.copyOf() (or
+      Collections.unmodifiableList) in the compact constructor makes the stored list
+      unmodifiable, and the accessor exposes that same unmodifiable list, sealing both
+      leaks in one step.
+    check: stdout
+    signal: "[a, b]"
+
+  - prompt: |
+      Model a Shape hierarchy as sealed with three permitted subtypes: Circle,
+      Rectangle, and Triangle. Write a double area(Shape s) method using a
+      pattern-matching switch with no default arm. Then remove Triangle from the
+      permits list and observe the compile error that results.
+    kind: implement
+    broken_code: |
+      // Non-sealed hierarchy — switch cannot be exhaustive, default is required:
+      abstract class Shape {}
+      class Circle    extends Shape { double radius; Circle(double r)    { radius = r; } }
+      class Rectangle extends Shape { double w, h;  Rectangle(double w, double h) { this.w=w; this.h=h; } }
+      class Triangle  extends Shape { double base, height; Triangle(double b, double h) { base=b; height=h; } }
+
+      static double area(Shape s) {
+          // forced to add default because compiler cannot verify exhaustiveness:
+          return switch (s) {
+              case Circle c    -> Math.PI * c.radius * c.radius;
+              case Rectangle r -> r.w * r.h;
+              case Triangle t  -> 0.5 * t.base * t.height;
+              default          -> throw new IllegalArgumentException("Unknown shape");
+          };
+      }
+    fixed_code: |
+      sealed interface Shape permits Circle, Rectangle, Triangle {}
+
+      record Circle   (double radius)       implements Shape {}
+      record Rectangle(double w, double h)  implements Shape {}
+      record Triangle (double base, double height) implements Shape {}
+
+      static double area(Shape s) {
+          // No default needed — compiler verifies all permits are covered:
+          return switch (s) {
+              case Circle c    -> Math.PI * c.radius() * c.radius();
+              case Rectangle r -> r.w() * r.h();
+              case Triangle t  -> 0.5 * t.base() * t.height();
+          };
+      }
+
+      // If Triangle is removed from permits, the switch is no longer exhaustive
+      // and the compiler reports: "the switch expression does not cover all possible
+      // input values" — the compiler enforces that new subtypes are handled everywhere.
+    bug: |
+      Without sealed, the compiler cannot know all subtypes of Shape at compile time,
+      so a switch must include a default arm. With sealed + permits, the compiler
+      knows exactly which subtypes exist and can verify the switch covers all of them.
+      Removing a permits type without updating all switch sites produces a compile
+      error — this is the explicit design contract sealed types provide.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Write a method classify(Object obj) using a pattern-matching switch that:
+      - Returns "large integer" for Integer values > 100
+      - Returns "small integer" for any other Integer
+      - Returns "has digit" for Strings that contain a digit character
+      - Returns "other" as the default
+      Use when guards. The broken version has guards in the wrong order — fix the
+      label ordering so the more specific guarded case comes first.
+    kind: fix-it
+    broken_code: |
+      static String classify(Object obj) {
+          return switch (obj) {
+              // BUG: the unguarded Integer case dominates the guarded one —
+              // the compiler reports a "dominates" error (or the guard is never reached)
+              case Integer i               -> "small integer";
+              case Integer i when i > 100  -> "large integer";   // unreachable
+              case String  s when s.chars().anyMatch(Character::isDigit) -> "has digit";
+              default                      -> "other";
+          };
+      }
+    fixed_code: |
+      static String classify(Object obj) {
+          return switch (obj) {
+              // More specific (guarded) case must come BEFORE the general case:
+              case Integer i when i > 100  -> "large integer";
+              case Integer i               -> "small integer";
+              case String  s when s.chars().anyMatch(Character::isDigit) -> "has digit";
+              default                      -> "other";
+          };
+      }
+    bug: |
+      In a pattern-matching switch, a case label that is more general than a later
+      label "dominates" it — making the later label unreachable. The compiler reports
+      a dominance error (or the guarded case is never evaluated). The fix: always put
+      guarded (narrower) cases before their corresponding unguarded (wider) cases.
+    check: compile-error
+    signal: "this case label is dominated by a preceding case label"
+
+  - prompt: |
+      Audit the code below and identify: (a) three places where var improves
+      readability, and (b) two places where var hurts it. For each, show the var
+      version and explain the readability trade-off. Also show the compile error that
+      results from using var with a null initialiser.
+    kind: explain-and-implement
+    broken_code: |
+      // Verbose redundant type — same type on both sides:
+      HashMap<String, List<Integer>> groupedScores = new HashMap<String, List<Integer>>();
+
+      // Long but readable — method name makes the type obvious:
+      var result = compute();   // what type does compute() return? Unknown without IDE
+
+      // Loop variable — type is clear from context:
+      for (Iterator<String> it = list.iterator(); it.hasNext(); ) {
+          String item = it.next();
+      }
+
+      // Numeric literal — misleading without the type:
+      var x = 42;               // int? long? double?
+
+      // Null initialiser — does not compile:
+      var name = null;
+    fixed_code: |
+      // (a) GOOD uses of var — type is obvious from the right-hand side:
+
+      // 1. Long generic on both sides — var eliminates redundancy:
+      var groupedScores = new HashMap<String, List<Integer>>();
+
+      // 2. Loop iteration variable — cleaner than repeating the element type:
+      for (var item : list) {
+          System.out.println(item);
+      }
+
+      // 3. Result of a constructor — type is right there:
+      var client = new HttpClient.Builder().connectTimeout(Duration.ofSeconds(5)).build();
+
+      // (b) BAD uses of var — type is not obvious:
+
+      // 1. Method return variable — you must look up the signature to know the type:
+      Map<String, List<Employee>> result = loadEmployeesByDept();   // explicit is clearer
+      // var result = loadEmployeesByDept();  // what does loadEmployeesByDept return?
+
+      // 2. Numeric literal — the type is ambiguous at a glance:
+      long timeout = 5_000L;    // explicit long, not int
+      // var timeout = 5_000L;  // technically works but hides the fact it's a long
+
+      // 3. Null initialiser — compile error: type cannot be inferred
+      // var name = null;  // error: cannot infer type for local variable name
+      String name = null;   // must be explicit
+    bug: |
+      var is local-variable type inference — the type is still static and checked at
+      compile time; it is NOT dynamic typing. The guideline: use var when the type is
+      obvious from the right-hand side (constructor, factory, literal with clear type),
+      and avoid it when the type adds meaningful information the right-hand side does
+      not convey (method return types, numeric literals where the exact type matters).
+    check: compile-error
+    signal: "cannot infer type for local variable"

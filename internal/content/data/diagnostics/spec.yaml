@@ -1,0 +1,112 @@
+# Slot: spec — read a problem statement, state inputs & output (free text).
+# Graded leniently by synonym groups (one word from each group must appear).
+- id: spec_double
+  slot: spec
+  order: 6
+  difficulty: 1
+  measures: spec
+  kind: spec
+  prompt: |
+    Reading a problem statement is half the job. Here's a simple one:
+
+      "Write a function that takes a number and returns it doubled."
+
+    In your own words: what is the INPUT, and what is the OUTPUT?
+  spec:
+    required: ["number|value|integer|n", "double|twice|two|2x|times 2"]
+    answer: >
+      Input: a number. Output: that number doubled (number x 2). Spotting
+      "a number in, a number out" is the whole point.
+
+- id: spec_first
+  slot: spec
+  order: 6
+  difficulty: 1
+  measures: spec
+  kind: spec
+  prompt: |
+    Here's a simple problem statement:
+
+      "Given a list of items, return the first item."
+
+    In your own words: what is the INPUT, and what is the OUTPUT?
+  spec:
+    required: ["list|array|items|collection", "first|1st|front|beginning|start"]
+    answer: >
+      Input: a list of items. Output: the first item in that list.
+- id: spec_largest
+  slot: spec
+  order: 6
+  difficulty: 2
+  measures: spec
+  kind: spec
+  prompt: |
+    Reading a problem statement is half the job. Here's one:
+
+      "Write a function that takes a list of numbers and returns the
+       largest one."
+
+    In your own words: what is the INPUT, and what is the OUTPUT?
+    (Type a sentence or two, then [enter].)
+  spec:
+    required: ["list|array|collection|numbers", "largest|biggest|max|maximum|greatest|highest"]
+    answer: >
+      Input: a list (array) of numbers. Output: a single number — the largest
+      (maximum) value. The exact words don't matter; what matters is spotting
+      what goes IN and what comes OUT.
+
+- id: spec_count
+  slot: spec
+  order: 6
+  difficulty: 2
+  measures: spec
+  kind: spec
+  prompt: |
+    Here's a problem statement:
+
+      "Given a sentence (a string), return how many words it contains."
+
+    In your own words: what is the INPUT, and what is the OUTPUT?
+  spec:
+    required: ["string|sentence|text|words", "count|number|how many|total|amount"]
+    answer: >
+      Input: a string (a sentence). Output: a number — the count of words in it.
+      Spotting "string in, a count out" is the whole skill here.
+
+- id: spec_evens
+  slot: spec
+  order: 6
+  difficulty: 2
+  measures: spec
+  kind: spec
+  prompt: |
+    Here's a problem statement:
+
+      "Given a list of integers, return a new list containing only the
+       even numbers."
+
+    In your own words: what is the INPUT, and what is the OUTPUT?
+  spec:
+    required: ["list|array|integers|numbers", "even"]
+    answer: >
+      Input: a list of integers. Output: a new list with only the even numbers.
+      Note the output is itself a list, not a single value.
+
+- id: spec_search
+  slot: spec
+  order: 6
+  difficulty: 2
+  measures: spec
+  kind: spec
+  prompt: |
+    Here's a problem statement:
+
+      "Given a list of names and a target name, return True if the target
+       is in the list, otherwise False."
+
+    In your own words: what are the INPUTS, and what is the OUTPUT?
+  spec:
+    required: ["list|names|array", "target|name", "true|false|boolean|yes|no|present|found"]
+    answer: >
+      Inputs: a list of names AND a target name. Output: True/False — whether the
+      target is in the list. Two inputs and a yes/no answer.

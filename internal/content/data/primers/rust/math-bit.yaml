@@ -1,0 +1,114 @@
+- category: 'Math & Bit'
+  lang: rust
+  title: 'Math & Bit — Rust refresher'
+  summary: |
+    Bit manipulation and integer math let you solve certain problems in O(1) space
+    and very fast. Common patterns: XOR to find the single non-duplicate element,
+    AND/OR/shift for masking and packing bits, power-of-two checks.
+
+    Rust integer primitives: i32, i64, u32, u64, usize. Methods are on the type:
+    i32::MAX, u32::count_ones(), value.leading_zeros(), etc.
+
+    Key Rust math built-ins:
+      - n.abs(), n.pow(exp), n.sqrt() (on f64), (a as f64).sqrt() as i64.
+      - i32::MAX, i32::MIN for sentinel values.
+      - Overflow: debug mode panics on overflow; use wrapping_add / checked_add
+        or cast to i64 when intermediate values might overflow i32.
+
+    Common bit tricks:
+      - n & 1 == 0 means even.
+      - n & (n-1) clears the lowest set bit (power-of-two check: result == 0).
+      - n ^ n == 0; a ^ 0 == a — XOR each element to isolate the unpaired one.
+      - 1 << k sets bit k; (n >> k) & 1 reads bit k.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'integer max constant'
+          code: 'let max = i32::MAX;'
+        - label: 'integer min constant'
+          code: 'let min = i32::MIN;'
+        - label: 'absolute value'
+          code: 'let a = n.abs();'
+        - label: 'integer power'
+          code: 'let p = base.pow(exp as u32);'
+        - label: 'integer square root via f64'
+          code: 'let r = (n as f64).sqrt() as i64;'
+    - title: Basic operations
+      ops:
+        - label: 'bitwise AND'
+          code: 'let r = a & b;'
+        - label: 'bitwise OR'
+          code: 'let r = a | b;'
+        - label: 'bitwise XOR'
+          code: 'let r = a ^ b;'
+        - label: 'bitwise NOT'
+          code: 'let r = !a;'
+        - label: 'left shift'
+          code: 'let r = n << k;'
+        - label: 'right shift'
+          code: 'let r = n >> k;'
+        - label: 'read bit k'
+          code: 'let bit = (n >> k) & 1;'
+        - label: 'set bit k'
+          code: 'let r = n | (1 << k);'
+        - label: 'clear bit k'
+          code: 'let r = n & !(1 << k);'
+        - label: 'modulo'
+          code: 'let r = n % m;'
+        - label: 'integer division'
+          code: 'let q = n / m;'
+    - title: Iteration & loops
+      ops:
+        - label: 'iterate over set bits'
+          code: |
+            let mut x = n;
+            while x != 0 {
+                let bit = x & (-x);  // lowest set bit
+                // process bit
+                x &= x - 1;         // clear lowest set bit
+            }
+        - label: 'iterate k from 0 to 31 and check each bit'
+          code: |
+            for k in 0..32u32 {
+                if (n >> k) & 1 == 1 { /* bit k is set */ }
+            }
+    - title: Special operations (math & bit)
+      ops:
+        - label: 'count set bits (popcount)'
+          code: 'let ones = n.count_ones();  // u32 method'
+        - label: 'power of two check'
+          code: 'let is_pow2 = n > 0 && (n & (n - 1)) == 0;'
+        - label: 'XOR to find single non-duplicate element'
+          code: 'let single = nums.iter().fold(0, |acc, &x| acc ^ x);'
+        - label: 'greatest common divisor (Euclidean)'
+          code: |
+            fn gcd(a: u64, b: u64) -> u64 {
+                if b == 0 { a } else { gcd(b, a % b) }
+            }
+        - label: 'least common multiple'
+          code: 'fn lcm(a: u64, b: u64) -> u64 { a / gcd(a, b) * b }'
+        - label: 'fast exponentiation mod p'
+          code: |
+            fn pow_mod(mut base: u64, mut exp: u64, p: u64) -> u64 {
+                let mut result = 1u64;
+                base %= p;
+                while exp > 0 {
+                    if exp & 1 == 1 { result = result * base % p; }
+                    base = base * base % p;
+                    exp >>= 1;
+                }
+                result
+            }
+  example: |
+    Worked example — find the single number that appears once (all others appear twice):
+
+      XOR every element. Identical pairs cancel to zero (n ^ n == 0) and zero XOR
+      anything is that value (0 ^ x == x). The sole survivor is the answer.
+      One pass, O(1) extra space — no HashMap needed.
+
+        fn single_number(nums: &[i32]) -> i32 {
+            nums.iter().fold(0, |acc, &x| acc ^ x)
+        }
+
+    Takeaway: XOR is zero-cost and naturally cancels duplicates. Combine with
+    the lowest-set-bit trick (n & -n) for two-single-number variants.

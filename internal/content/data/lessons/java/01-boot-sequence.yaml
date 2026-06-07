@@ -1,0 +1,61 @@
+id: boot-sequence
+lang: java
+order: 1
+title: Boot Sequence
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A program runs instructions top to bottom. Two things you'll do constantly:
+      *show* a value and *hand back* a value.
+
+          class Solution {
+              public String boot() {
+                  return "ready";
+              }
+          }
+
+      System.out.println(x) displays x; return x hands x back to whoever called the
+      method. In DevAscent we grade by what you RETURN, not what you print.
+      A Java method declares its return type before the method name — here, String.
+      All methods live inside a class; the player writes class Solution { ... }.
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: A method signature is written for you. Make it hand back the exact text Hello, world!
+    task:
+      prompt: Make greet() return the exact text "Hello, world!"
+      func_name: greet
+      starter: |
+        class Solution {
+            public String greet() {
+                // hint: text goes in double quotes. Use  return "Hello, world!";  (exact punctuation)
+            }
+        }
+      solution: |
+        class Solution {
+            public String greet() {
+                return "Hello, world!";
+            }
+        }
+      tests:
+        - {name: 'greet()', input: [], expected: "Hello, world!"}
+  - kind: you_do
+    title: You do — solo
+    body: Now on your own.
+    task:
+      prompt: Make announce() return the exact text "DevAscent online"
+      func_name: announce
+      starter: |
+        class Solution {
+            public String announce() {
+                // <- delete this line and write your code
+            }
+        }
+      solution: |
+        class Solution {
+            public String announce() {
+                return "DevAscent online";
+            }
+        }
+      tests:
+        - {name: 'announce()', input: [], expected: "DevAscent online"}

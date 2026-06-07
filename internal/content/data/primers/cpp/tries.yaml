@@ -1,0 +1,147 @@
+- category: 'Tries'
+  lang: cpp
+  title: Tries — C++ refresher
+  summary: |
+    A trie (prefix tree) stores strings character by character, sharing prefixes
+    between words. Look-up, insert, and prefix-search are all O(L) where L is the
+    word length — independent of how many words are stored.
+
+    Classic uses: autocomplete, word search with wildcards, longest common prefix,
+    checking if any stored word is a prefix of another.
+
+    C++ notes:
+      - There is no stdlib Trie — hand-roll a TrieNode struct.
+      - Each node holds an array of 26 child pointers (for lowercase letters) or
+        an unordered_map<char, TrieNode*> for a sparser alphabet.
+      - Mark the end of a word with a bool isEnd flag on the node.
+      - To save memory, use unordered_map<char, TrieNode*> children instead of
+        array<TrieNode*, 26> when the alphabet is large or sparse.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'trie node with fixed 26-child array'
+          code: |
+            struct TrieNode {
+                TrieNode* children[26] = {};
+                bool isEnd = false;
+            };
+        - label: 'trie node with sparse map (large/variable alphabet)'
+          code: |
+            struct TrieNode {
+                unordered_map<char, TrieNode*> children;
+                bool isEnd = false;
+            };
+        - label: 'trie root'
+          code: 'TrieNode* root = new TrieNode();'
+    - title: Basic operations
+      ops:
+        - label: 'insert a word'
+          code: |
+            void insert(const string& word) {
+                TrieNode* cur = root;
+                for (char c : word) {
+                    int i = c - 'a';
+                    if (!cur->children[i]) cur->children[i] = new TrieNode();
+                    cur = cur->children[i];
+                }
+                cur->isEnd = true;
+            }
+        - label: 'search for an exact word'
+          code: |
+            bool search(const string& word) {
+                TrieNode* cur = root;
+                for (char c : word) {
+                    int i = c - 'a';
+                    if (!cur->children[i]) return false;
+                    cur = cur->children[i];
+                }
+                return cur->isEnd;
+            }
+        - label: 'check if any word starts with prefix'
+          code: |
+            bool startsWith(const string& prefix) {
+                TrieNode* cur = root;
+                for (char c : prefix) {
+                    int i = c - 'a';
+                    if (!cur->children[i]) return false;
+                    cur = cur->children[i];
+                }
+                return true;
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'traverse all words in the trie (DFS)'
+          code: |
+            void dfs(TrieNode* node, string& path, vector<string>& res) {
+                if (node->isEnd) res.push_back(path);
+                for (int i = 0; i < 26; i++) {
+                    if (node->children[i]) {
+                        path += (char)('a' + i);
+                        dfs(node->children[i], path, res);
+                        path.pop_back();
+                    }
+                }
+            }
+        - label: 'autocomplete: collect all words with a given prefix'
+          code: |
+            // 1. walk down to the prefix node
+            // 2. run DFS from that node collecting isEnd paths
+    - title: Special operations (tries)
+      ops:
+        - label: 'word search II: backtrack on grid + trie pruning'
+          code: |
+            // at each grid cell check trie->children[board[r][c] - 'a']
+            // advance the trie pointer as you recurse deeper
+            // when node->isEnd, record the word; clear isEnd to avoid duplicates
+        - label: 'longest word built one character at a time (prefix check)'
+          code: |
+            // insert all words, then for each word verify every prefix is also present
+            // use startsWith or search(word.substr(0, k)) for each k
+        - label: 'replace words: find shortest root in trie for each token'
+          code: |
+            TrieNode* cur = root;
+            for (int i = 0; i < (int)word.size(); i++) {
+                int ci = word[i] - 'a';
+                if (!cur->children[ci] || cur->isEnd) break;
+                cur = cur->children[ci];
+            }
+            // if cur->isEnd we found a root prefix
+  example: |
+    Worked example — implement a trie supporting insert, search, and startsWith:
+
+      A TrieNode holds 26 child pointers (initially null) and an isEnd flag.
+      Insert walks the chain, creating nodes as needed. Search walks the chain
+      and returns isEnd at the last character. startsWith is identical but
+      returns true regardless of isEnd.
+
+        struct TrieNode {
+            TrieNode* children[26] = {};
+            bool isEnd = false;
+        };
+
+        struct Trie {
+            TrieNode* root = new TrieNode();
+
+            void insert(const string& w) {
+                TrieNode* cur = root;
+                for (char c : w) {
+                    int i = c - 'a';
+                    if (!cur->children[i]) cur->children[i] = new TrieNode();
+                    cur = cur->children[i];
+                }
+                cur->isEnd = true;
+            }
+
+            bool search(const string& w) {
+                TrieNode* cur = root;
+                for (char c : w) {
+                    int i = c - 'a';
+                    if (!cur->children[i]) return false;
+                    cur = cur->children[i];
+                }
+                return cur->isEnd;
+            }
+        };
+
+    Takeaway: tries trade memory for speed. Each node needs O(26) pointers for a
+    lowercase-only alphabet; use unordered_map<char, TrieNode*> for larger sets.

@@ -1,0 +1,193 @@
+lang: javascript
+group: Gotchas
+title: "Gotchas — var leakage, float precision, + coercion, NaN"
+tag: E
+summary: |
+  This topic is a cross-cutting drill on the JS footguns that trip up even experienced
+  developers. Covered here: `var` leakage, floating-point precision, the `+` operator's
+  string/number overloading, and the `isNaN` vs `Number.isNaN` distinction. Other
+  gotchas — `this` rebinding, `==` coercion, TDZ, async ordering — are covered under
+  their respective topics and cross-referenced here.
+
+  `var` leakage: `var` is function-scoped, not block-scoped. A `var` declared inside an
+  `if`, `for`, or `try` block is visible throughout the entire enclosing function. In a
+  browser global context, `var` declarations also attach to `window`. The fix: always use
+  `const`/`let`.
+
+  Floating-point and NaN:
+    - IEEE 754 double-precision: `0.1 + 0.2 === 0.30000000000000004`, not `0.3`. For
+      money or precision math, use integer arithmetic (store cents) or a library
+      (`decimal.js`, `big.js`).
+    - `NaN` is the result of failed numeric operations (`Number("foo")`, `0/0`). It is
+      the only value not equal to itself.
+    - `Number.isNaN(x)` (safe, no coercion) vs `isNaN(x)` (coerces first:
+      `isNaN("foo") === true`).
+
+  `typeof null === "object"`: a legacy bug in the spec. Always check for null with
+  `=== null`.
+
+  Implicit global creation (non-strict): assigning to an undeclared variable (`x = 5`)
+  creates a global. Strict mode throws instead. All ES modules are implicitly strict.
+
+  `+` operator overloading: `"5" + 3 === "53"` (string concatenation wins); `"5" - 3
+  === 2` (numeric subtraction, no string form of `-`). Mixed arithmetic with `+` and
+  strings is a prolific source of bugs.
+
+  Cross-topic gotcha index:
+    - `this` rebinding in callbacks → Core / Functions
+    - `==` coercion surprises → Types & Coercion
+    - Hoisting / TDZ crash → Core
+    - Async ordering (microtask vs macrotask) → Async
+    - `var` leakage & closure-in-loop → here
+    - `0.1 + 0.2 !== 0.3` / NaN comparison → here
+    - `+` operator coercion with strings → here
+    - `typeof null === "object"` → here
+exercises:
+  - prompt: |
+      This function has two `var` scoping bugs. Identify both unexpected behaviors
+      (variable visible outside its block; loop variable accessible after the loop),
+      then rewrite with `const`/`let` to fix them.
+    kind: spot-the-bug
+    broken_code: |
+      function processData(data) {
+        if (data.length > 0) {
+          var result = data[0] * 2; // var leaks out of the if-block
+        }
+        console.log(result); // prints a number OR undefined — not a ReferenceError
+
+        for (var i = 0; i < data.length; i++) {
+          var item = data[i];
+        }
+        console.log(i);    // prints data.length — loop var leaked
+        console.log(item); // prints last element — leaked too
+      }
+
+      processData([10, 20, 30]);
+    fixed_code: |
+      function processData(data) {
+        if (data.length > 0) {
+          const result = data[0] * 2;
+          console.log(result);
+        }
+
+        for (let i = 0; i < data.length; i++) {
+          const item = data[i];
+        }
+        // i and item are not in scope here
+      }
+
+      processData([10, 20, 30]);
+    bug: |
+      `var` is function-scoped: all three declarations (`result`, `i`, `item`) are hoisted
+      to the top of `processData` regardless of the block they appear in. If `data` is
+      empty, `result` is `undefined` — no error. After the loop, `i` holds `data.length`
+      and `item` holds the last element — both accessible outside the loop body.
+      `const`/`let` are block-scoped: they do not exist outside the block where declared,
+      making these bugs into `ReferenceError`s instead of silent surprises.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Each snippet has a floating-point precision issue. Identify the problem in each and
+      provide the correct fix.
+    kind: fix-it
+    broken_code: |
+      // Snippet 1: direct comparison
+      const a = 0.1 + 0.2;
+      console.log(a === 0.3); // false — not a rounding fix
+
+      // Snippet 2: price calculation
+      const price = 1.005;
+      const taxed = (price * 1.1).toFixed(2);
+      console.log(taxed); // "1.11" or "1.10" depending on runtime — unreliable
+
+      // Snippet 3: equality check for a running total
+      let total = 0;
+      for (let i = 0; i < 10; i++) total += 0.1;
+      console.log(total === 1); // false
+    fixed_code: |
+      // Snippet 1: use Number.EPSILON tolerance
+      const a = 0.1 + 0.2;
+      console.log(Math.abs(a - 0.3) < Number.EPSILON); // true
+
+      // Snippet 2: integer arithmetic (store cents, divide at display time)
+      const priceCents = 100; // $1.00 as integer cents
+      const taxedCents = Math.round(priceCents * 1.1);
+      console.log((taxedCents / 100).toFixed(2)); // "1.10" — reliable
+
+      // Snippet 3: round before comparing
+      let total = 0;
+      for (let i = 0; i < 10; i++) total += 0.1;
+      console.log(Math.round(total * 10) / 10 === 1); // true
+    bug: |
+      IEEE 754 double-precision cannot represent `0.1` or `0.2` exactly — their sum is
+      `0.30000000000000004`. Direct `===` comparisons with float results are almost always
+      wrong. Fixes: `Number.EPSILON` tolerance for near-equality; integer arithmetic (store
+      smallest unit, divide at display) for money; `Math.round` to snap to a known
+      precision. `toFixed` returns a string and its rounding is implementation-defined for
+      edge cases — never use it as the basis for further numeric computation.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Predict the output of each `+` expression. Pay special attention to the order of
+      operands and mixed types.
+    kind: predict-output
+    broken_code: |
+      console.log(1 + "2");
+      console.log("3" - 1);
+      console.log(true + true);
+      console.log(true + "1");
+      console.log([] + []);
+      console.log([] + {});
+    fixed_code: |
+      // Annotated:
+      console.log(1 + "2");     // "12"  — number coerces to string, concatenation wins
+      console.log("3" - 1);     // 2     — "-" has no string form; "3" coerces to number
+      console.log(true + true); // 2     — both booleans coerce to 1
+      console.log(true + "1");  // "true1" — string present; true coerces to "true"
+      console.log([] + []);     // ""    — [].toString() === ""; "" + "" === ""
+      console.log([] + {});     // "[object Object]" — [].toString()===""; {}→"[object Object]"
+    bug: |
+      `+` is both addition and string concatenation. If either operand is a string (after
+      `.toString()` conversion), concatenation wins. Numbers, booleans, `null`, and
+      `undefined` coerce to their string representations when mixed with a string. Arrays
+      and objects call `.toString()`: `[].toString() === ""`, `({}).toString() ===
+      "[object Object]"`. The `-` operator has no string form, so both operands coerce to
+      numbers. Note: `{} + []` at the statement level (not inside `console.log`) is
+      parsed differently — the `{}` is treated as an empty block, not an object literal,
+      giving `+[] === 0`. Inside `console.log(...)` it is expression context, giving
+      `"[object Object]"`.
+    check: stdout
+    signal: "12\n2\n2\ntrue1\n\n[object Object]"
+
+  - prompt: |
+      Predict both outputs. Then write a safe `parseAndCheck` function that returns `true`
+      only for real finite numbers (not `NaN`, not `Infinity`).
+    kind: predict-output
+    broken_code: |
+      console.log(isNaN("not a number"));
+      console.log(Number.isNaN("not a number"));
+    fixed_code: |
+      console.log(isNaN("not a number"));        // true  — string coerced to NaN first
+      console.log(Number.isNaN("not a number")); // false — string is not the NaN value
+
+      function parseAndCheck(input) {
+        const n = Number(input);
+        return Number.isFinite(n); // false for NaN, Infinity, -Infinity
+      }
+
+      console.log(parseAndCheck("42"));    // true
+      console.log(parseAndCheck("3.14"));  // true
+      console.log(parseAndCheck("abc"));   // false
+      console.log(parseAndCheck(""));      // false — Number("") === 0, but "" isn't a number
+    bug: |
+      Global `isNaN(x)` coerces its argument before checking: `isNaN("not a number")`
+      converts the string to a number first (which gives `NaN`), then checks — so it
+      returns `true` even though the argument is a string, not the `NaN` value.
+      `Number.isNaN(x)` returns `true` only if `x` is exactly the `NaN` value — no
+      coercion. For form validation, `Number.isFinite(Number(input))` is the most robust
+      check: it returns `false` for `NaN`, `Infinity`, non-numeric strings, and empty
+      strings.
+    check: stdout
+    signal: "true\nfalse"

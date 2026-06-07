@@ -1,0 +1,74 @@
+id: loops
+lang: csharp
+order: 4
+title: Repeat Until Done
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A loop repeats a block.  for (long i = 1; i <= n; i++)  runs once for each i
+      from 1 up to and including n (start; condition; step). The *accumulator*
+      pattern: start a variable at 0 (or ""), update it each pass, return it AFTER
+      the loop.
+
+          public class Solution {
+              public long count_to(long n) {
+                  long c = 0;
+                  for (long i = 1; i <= n; i++) {
+                      c = c + 1;
+                  }
+                  return c;
+              }
+          }
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: Add up every whole number from 1 to n (inclusive).
+    task:
+      prompt: Return the sum of 1..n inclusive.
+      func_name: count_up
+      starter: |
+        public class Solution {
+            public long count_up(long n) {
+                // hint: long result = 0; for (long i = 1; i <= n; i++) { result += i; } return result;
+            }
+        }
+      solution: |
+        public class Solution {
+            public long count_up(long n) {
+                long result = 0;
+                for (long i = 1; i <= n; i++) {
+                    result += i;
+                }
+                return result;
+            }
+        }
+      tests:
+        - {name: 'count_up(5)', input: [5], expected: 15}
+        - {name: 'count_up(1)', input: [1], expected: 1}
+        - {name: 'count_up(10)', input: [10], expected: 55}
+  - kind: you_do
+    title: You do — solo
+    body: 'Build a string this time. Tip: in C# you grow a string with  result += ch  inside the loop.'
+    task:
+      prompt: Return ch repeated 'times' times. If times is 0, return "".
+      func_name: repeat_char
+      starter: |
+        public class Solution {
+            public string repeat_char(string ch, long times) {
+                // <- start with string result = ""; and append ch each pass
+            }
+        }
+      solution: |
+        public class Solution {
+            public string repeat_char(string ch, long times) {
+                string result = "";
+                for (long i = 0; i < times; i++) {
+                    result += ch;
+                }
+                return result;
+            }
+        }
+      tests:
+        - {name: 'repeat_char(a, 3)', input: ["a", 3], expected: "aaa"}
+        - {name: 'repeat_char(x, 0)', input: ["x", 0], expected: ""}
+        - {name: 'repeat_char(*, 5)', input: ["*", 5], expected: "*****"}

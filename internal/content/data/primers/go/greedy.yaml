@@ -1,0 +1,128 @@
+- category: 'Greedy'
+  lang: go
+  title: 'Greedy — Go refresher'
+  summary: |
+    A greedy algorithm makes the locally optimal choice at each step, hoping
+    the local optima combine into a global optimum. When a greedy strategy is
+    valid (provable by exchange argument or induction), it is often O(n log n)
+    due to a single sort, and much simpler than dynamic programming.
+
+    Common greedy patterns:
+      - Interval scheduling: sort by end time, always pick the earliest-ending.
+      - Jump game: track the furthest reachable index as you scan.
+      - Activity selection, task scheduling, minimum coins/changes.
+
+    Go notes:
+      - sort.Slice(s, less) is your main tool — define the comparison inline.
+      - sort.Ints, sort.Strings for simple cases.
+      - No need for a priority queue in pure greedy; a single sort usually suffices.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'interval type (common in greedy)'
+          code: 'type Interval struct{ start, end int }'
+        - label: 'accumulator for greedy result'
+          code: 'count, reach := 0, 0'
+        - label: 'sorted input'
+          code: 'sort.Slice(intervals, func(i, j int) bool { return intervals[i].end < intervals[j].end })'
+    - title: Basic operations
+      ops:
+        - label: 'sort ints ascending'
+          code: 'sort.Ints(nums)'
+        - label: 'sort by custom field'
+          code: 'sort.Slice(jobs, func(i, j int) bool { return jobs[i][1] < jobs[j][1] })'
+        - label: 'update running maximum'
+          code: 'if v > maxVal { maxVal = v }'
+        - label: 'track furthest reachable index'
+          code: 'reach = max(reach, i+nums[i])'
+    - title: Iteration & loops
+      ops:
+        - label: 'greedy interval scan'
+          code: |
+            lastEnd := -1 << 62
+            for _, iv := range intervals {
+                if iv.start >= lastEnd {
+                    count++
+                    lastEnd = iv.end
+                }
+            }
+        - label: 'jump game scan'
+          code: |
+            reach := 0
+            for i := 0; i <= reach && reach < len(nums)-1; i++ {
+                if i+nums[i] > reach {
+                    reach = i + nums[i]
+                }
+            }
+        - label: 'two-pointer greedy (sorted)'
+          code: |
+            lo, hi := 0, len(nums)-1
+            for lo < hi {
+                if nums[lo]+nums[hi] > target {
+                    hi--
+                } else {
+                    lo++
+                }
+            }
+    - title: Special operations (greedy)
+      ops:
+        - label: 'minimum number of intervals to remove (non-overlapping)'
+          code: |
+            remove := 0
+            end := -1 << 62
+            for _, iv := range sorted {
+                if iv[0] >= end {
+                    end = iv[1]
+                } else {
+                    remove++
+                    if iv[1] < end {
+                        end = iv[1]
+                    }
+                }
+            }
+        - label: 'greedy coin change (canonical denominations)'
+          code: |
+            for i := len(coins)-1; i >= 0 && amount > 0; i-- {
+                count += amount / coins[i]
+                amount %= coins[i]
+            }
+        - label: 'partition labels (extend label end greedily)'
+          code: |
+            last := make(map[byte]int)
+            for i := 0; i < len(s); i++ {
+                last[s[i]] = i
+            }
+        - label: 'assign cookies (sort both, match greedily)'
+          code: |
+            sort.Ints(g)
+            sort.Ints(s)
+            j := 0
+            for i := 0; i < len(s) && j < len(g); i++ {
+                if s[i] >= g[j] {
+                    j++
+                }
+            }
+  example: |
+    Worked example — non-overlapping intervals: minimum removals so none overlap.
+
+      Sort intervals by end time. Greedily keep each interval whose start is
+      at or after the last kept end. When an overlap is detected, remove the
+      one with the later end (i.e. keep the current end if it is smaller).
+
+        func eraseOverlapIntervals(intervals [][]int) int {
+            sort.Slice(intervals, func(i, j int) bool {
+                return intervals[i][1] < intervals[j][1]
+            })
+            remove, end := 0, -(1 << 62)
+            for _, iv := range intervals {
+                if iv[0] >= end {
+                    end = iv[1] // keep this interval
+                } else {
+                    remove++ // overlap — discard the one ending later (already sorted)
+                }
+            }
+            return remove
+        }
+
+    Takeaway: sort by end time so you always extend the schedule as little as
+    possible. The exchange argument shows no other choice can do better.

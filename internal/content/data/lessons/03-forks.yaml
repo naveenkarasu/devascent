@@ -1,0 +1,43 @@
+id: forks
+order: 3
+title: Forks in the Road
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      Code chooses paths with if / elif / else. The if tests a condition
+      (true/false); if true its indented block runs, else control falls through.
+      Compare with > < >= <= == (equal) != (not equal). Indentation (4 spaces)
+      tells Python which lines belong inside the branch.
+
+          def label(n):
+              if n >= 0:
+                  return "non-negative"
+              else:
+                  return "negative"
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: Given an age, return "allowed" if 18 or older, otherwise "denied".
+    task:
+      prompt: Return "allowed" if age >= 18 else "denied".
+      func_name: can_enter
+      starter: |
+        def can_enter(age):
+            pass  # hint: "18 or older" is  age >= 18 . Use if/else returning the two texts.
+      tests:
+        - {name: can_enter(20), input: [20], expected: "allowed"}
+        - {name: can_enter(18), input: [18], expected: "allowed"}
+        - {name: can_enter(12), input: [12], expected: "denied"}
+  - kind: you_do
+    title: You do — solo
+    body: Three-way choice this time.
+    task:
+      prompt: Return "positive" if n>0, "negative" if n<0, "zero" if exactly 0.
+      func_name: sign_of
+      starter: |
+        def sign_of(n):
+            pass  # <- use if / elif / else
+      tests:
+        - {name: sign_of(7), input: [7], expected: "positive"}
+        - {name: sign_of(-3), input: [-3], expected: "negative"}
+        - {name: sign_of(0), input: [0], expected: "zero"}

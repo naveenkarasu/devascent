@@ -1,0 +1,113 @@
+- category: Dynamic Programming
+  lang: java
+  title: Dynamic Programming — Java refresher
+  summary: |
+    Dynamic Programming (DP) solves a big problem by combining answers to smaller
+    overlapping subproblems, and STORING each subproblem's answer so it is computed
+    only once. It applies when a problem has:
+      1. Optimal substructure — the best answer is built from best answers to pieces.
+      2. Overlapping subproblems — the same piece is needed many times.
+
+    Two styles:
+      - Top-down (memoization): write the natural recursion, then cache results in an
+        array or HashMap so repeats are instant.
+      - Bottom-up (tabulation): fill a dp[] table from the base cases upward in a loop.
+
+    The hardest part is defining the STATE: "what does dp[i] mean?" Pin that down in
+    one sentence, write the recurrence (how dp[i] depends on earlier entries), set the
+    base case, and the code follows.
+
+    Java notes:
+      - int[] dp = new int[n + 1]; arrays default to 0 (handy for counting/sums).
+      - For memo of "not computed yet", fill with -1: Arrays.fill(memo, -1).
+      - Watch overflow: counts/sums may need long.
+  sections:
+    - title: Declarations
+      ops:
+        - label: '1-D dp table (zeroed by default)'
+          code: 'int[] dp = new int[n + 1];'
+        - label: '2-D dp table'
+          code: 'int[][] dp = new int[rows + 1][cols + 1];'
+        - label: 'memo array init to "uncomputed"'
+          code: |
+            int[] memo = new int[n];
+            Arrays.fill(memo, -1);
+        - label: 'HashMap memo (when key is not a simple index)'
+          code: 'Map<String, Integer> memo = new HashMap<>();'
+    - title: Basic operations
+      ops:
+        - label: 'set base case (no elements)'
+          code: 'dp[0] = 0;'
+        - label: 'set base case (one element)'
+          code: 'dp[1] = a[0];'
+        - label: 'recurrence combining two subproblems'
+          code: 'dp[i] = Math.max(dp[i - 1], dp[i - 2] + a[i]);'
+        - label: 'recurrence combining a subproblem + item choice'
+          code: 'dp[i][w] = Math.max(dp[i-1][w], dp[i-1][w-wt] + val);'
+        - label: 'fill a 2-D table row by row'
+          code: |
+            for (int i = 1; i <= m; i++)
+                for (int j = 1; j <= n; j++)
+                    dp[i][j] = ...;
+        - label: 'read the answer'
+          code: 'return dp[n];   // or dp[m][n] for 2-D'
+    - title: Iteration & loops
+      ops:
+        - label: 'bottom-up 1-D tabulation'
+          code: 'for (int i = 2; i <= n; i++) dp[i] = dp[i-1] + dp[i-2];'
+        - label: 'coin change: inner loop over coins'
+          code: 'for (int coin : coins) if (coin <= i) dp[i] = Math.min(dp[i], dp[i - coin] + 1);'
+        - label: 'top-down with memo check'
+          code: |
+            if (memo[i] != -1) return memo[i];
+            memo[i] = solve(i-1) + solve(i-2);
+            return memo[i];
+        - label: 'space-optimized: two rolling variables'
+          code: |
+            int prev2 = 0, prev1 = a[0];
+            for (int i = 2; i <= n; i++) {
+                int cur = Math.max(prev1, prev2 + a[i-1]);
+                prev2 = prev1;
+                prev1 = cur;
+            }
+    - title: Special operations (dynamic programming)
+      ops:
+        - label: 'longest common subsequence recurrence'
+          code: 'dp[i][j] = (a[i-1] == b[j-1]) ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1]);'
+        - label: 'knapsack 0/1 recurrence'
+          code: 'dp[i][w] = (wt[i-1] > w) ? dp[i-1][w] : Math.max(dp[i-1][w], dp[i-1][w-wt[i-1]] + val[i-1]);'
+        - label: 'initialize "impossible" states to MAX_VALUE / 2 (avoid overflow in min)'
+          code: |
+            Arrays.fill(dp, Integer.MAX_VALUE / 2);
+            dp[0] = 0;
+        - label: 'partition equal subset: set DP'
+          code: |
+            boolean[] dp = new boolean[target + 1];
+            dp[0] = true;
+            for (int num : nums)
+                for (int j = target; j >= num; j--)
+                    dp[j] |= dp[j - num];
+  example: |
+    Worked example — House Robber (max sum of non-adjacent values; you cannot rob
+    two neighbours):
+
+      State: dp[i] = the most you can rob from the first i houses. At house i you
+      either SKIP it (keep dp[i-1]) or ROB it (a[i-1] plus dp[i-2], since i-1 is now
+      off-limits). Take the better of the two.
+
+        int rob(int[] a) {
+            int n = a.length;
+            if (n == 0) return 0;
+            int[] dp = new int[n + 1];
+            dp[0] = 0;            // no houses
+            dp[1] = a[0];         // one house
+            for (int i = 2; i <= n; i++) {
+                dp[i] = Math.max(dp[i - 1],          // skip house i
+                                 dp[i - 2] + a[i - 1]); // rob house i
+            }
+            return dp[n];
+        }
+
+    Each dp[i] only looks back at dp[i-1] and dp[i-2], so this is O(n) time (and could
+    drop to O(1) space with two variables). Takeaway: name the state, write how it
+    builds on smaller states, set the base case — the loop is then mechanical.

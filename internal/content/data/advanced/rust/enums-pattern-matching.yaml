@@ -1,0 +1,170 @@
+lang: rust
+group: Enums & Pattern Matching
+title: "Enums & Pattern Matching — algebraic types and exhaustive handling"
+tag: E
+summary: |
+  Rust enums are algebraic data types — each variant can carry data of any type and
+  structure. The match expression enforces exhaustive handling of all variants at compile
+  time, eliminating the "forgot to handle the new case" class of bugs entirely. Option<T>
+  replaces null; Result<T, E> encodes recoverable errors (covered in Error Handling).
+
+  Pattern matching goes beyond simple value tests: it supports destructuring structs,
+  tuples, and enum payloads inline; match guards (if conditions on arms); @ bindings to
+  capture matched values; and .. to ignore remaining fields. if let is ergonomic sugar
+  for matching exactly one variant without the verbosity of a full match block.
+
+  A key design property: adding a new variant to an enum immediately breaks every match
+  expression that does not cover it — the compiler surfaces every affected call site.
+  This makes enum-driven refactors safe and mechanical. For public library enums where
+  downstream code should not break, the #[non_exhaustive] attribute signals that callers
+  must add a _ catch-all arm.
+
+  (Reference-only for now: Rust is not graded yet. When the toolchain is wired these
+  exercises auto-grade against the exact compiler errors they carry.)
+exercises:
+  - prompt: |
+      The match expression does not cover all variants of Direction. Add the missing arms
+      (or a _ catch-all) and explain the trade-off between the two approaches.
+    kind: fix-it
+    broken_code: |
+      enum Direction {
+          North,
+          South,
+          East,
+          West,
+      }
+
+      fn describe(d: Direction) -> &'static str {
+          match d {
+              Direction::North => "up",
+              Direction::South => "down",
+              // East and West are not covered
+          }
+      }
+    fixed_code: |
+      enum Direction {
+          North,
+          South,
+          East,
+          West,
+      }
+
+      fn describe(d: Direction) -> &'static str {
+          match d {
+              Direction::North => "up",
+              Direction::South => "down",
+              Direction::East => "right",
+              Direction::West => "left",
+          }
+      }
+    bug: |
+      Rust requires match to cover every possible variant at compile time. East and West
+      are not handled, so E0004 fires. Adding explicit arms is preferred over _ because
+      it means the compiler will alert you again if a fifth variant is added later.
+      A _ catch-all silences future exhaustiveness checks — useful for public enums
+      marked #[non_exhaustive], but a maintenance risk for internal enums.
+    check: compile-error
+    signal: "E0004"
+  - prompt: |
+      Write a process function that uses match to destructure all three Message variants
+      and print an appropriate message for each. Use struct-like destructuring for the
+      Move variant.
+    kind: spot-the-bug
+    broken_code: |
+      enum Message {
+          Move { x: i32, y: i32 },
+          Write(String),
+          Quit,
+      }
+
+      fn process(msg: Message) {
+          // TODO: match on msg and handle all three variants
+          // Move { x, y } -> print "moving to (x, y)"
+          // Write(text)   -> print the text
+          // Quit           -> print "quitting"
+      }
+
+      fn main() {
+          process(Message::Move { x: 10, y: 20 });
+          process(Message::Write(String::from("hello")));
+          process(Message::Quit);
+      }
+    fixed_code: |
+      enum Message {
+          Move { x: i32, y: i32 },
+          Write(String),
+          Quit,
+      }
+
+      fn process(msg: Message) {
+          match msg {
+              Message::Move { x, y } => println!("moving to ({x}, {y})"),
+              Message::Write(text) => println!("{text}"),
+              Message::Quit => println!("quitting"),
+          }
+      }
+
+      fn main() {
+          process(Message::Move { x: 10, y: 20 });
+          process(Message::Write(String::from("hello")));
+          process(Message::Quit);
+      }
+    bug: |
+      The function body is empty so the match is missing entirely. The exercise
+      demonstrates inline destructuring: struct variants use { field } syntax, tuple
+      variants use (binding) syntax, and unit variants match bare. All three must be
+      covered for the match to compile.
+    check: none
+    signal: ""
+  - prompt: |
+      An existing codebase has a two-variant Status enum and a match on it. Add a
+      Suspended variant, then fix every compiler error about non-exhaustive patterns.
+    kind: fix-it
+    broken_code: |
+      enum Status {
+          Active,
+          Inactive,
+      }
+
+      fn describe_status(s: Status) -> &'static str {
+          match s {
+              Status::Active => "account is active",
+              Status::Inactive => "account is inactive",
+          }
+      }
+
+      fn is_billable(s: Status) -> bool {
+          match s {
+              Status::Active => true,
+              Status::Inactive => false,
+          }
+      }
+    fixed_code: |
+      enum Status {
+          Active,
+          Inactive,
+          Suspended,
+      }
+
+      fn describe_status(s: Status) -> &'static str {
+          match s {
+              Status::Active => "account is active",
+              Status::Inactive => "account is inactive",
+              Status::Suspended => "account is suspended",
+          }
+      }
+
+      fn is_billable(s: Status) -> bool {
+          match s {
+              Status::Active => true,
+              Status::Inactive => false,
+              Status::Suspended => false,
+          }
+      }
+    bug: |
+      Adding Suspended causes E0004 at every match site that does not cover it. The
+      compiler lists each unhandled location, making the refactor safe and mechanical.
+      This is the exhaustive-match guarantee in practice: a new case is impossible to
+      silently ignore because every affected match site becomes a compile error.
+    check: compile-error
+    signal: "E0004"

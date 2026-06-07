@@ -1,0 +1,227 @@
+lang: csharp
+group: LINQ
+title: "LINQ — Language Integrated Query and deferred execution"
+tag: E
+summary: |
+  LINQ (Language Integrated Query) provides a uniform query model over any
+  IEnumerable<T> or IQueryable<T> source. It has two syntaxes: query syntax
+  (from … where … select) and method syntax (.Where(…).Select(…)), which are
+  equivalent — the compiler translates query syntax to method calls.
+
+  LINQ is lazy: most operators (Where, Select, OrderBy, GroupBy) return an
+  IEnumerable<T> that executes only when enumerated. Terminal operators (Count,
+  ToList, ToArray, First, Sum) execute immediately.
+
+  Execution modes:
+  - Deferred streaming: Where, Select, Take — elements yielded one at a time.
+  - Deferred non-streaming: OrderBy, GroupBy, Reverse — buffer the full source first.
+  - Immediate: Count, ToList, ToArray, Sum, First, Max — execute at call time.
+
+  LINQ works over in-memory collections (IEnumerable<T>), databases (EF Core
+  translates to SQL via IQueryable<T>), XML, and custom providers.
+
+  Common mistakes:
+  - OrderBy + GroupBy are non-streaming; avoid on very large IEnumerable<T> pipelines.
+  - First() throws on empty sequences; use FirstOrDefault() and handle the nullable result.
+  - LINQ to Objects uses Equals for equality; LINQ to SQL/EF translates to SQL —
+    behaviour can differ (case sensitivity, culture).
+  - Mixing async lambdas with LINQ without forcing evaluation causes deferred async
+    calls, leading to ordering surprises and unstarted tasks.
+exercises:
+  - prompt: |
+      Rewrite the imperative loop as a LINQ method chain. Then prove deferred execution:
+      modify the source list AFTER the query is declared but BEFORE enumeration and show
+      the change is picked up. Finally, force immediate execution with .ToList() to
+      demonstrate it is NOT re-evaluated.
+    kind: fix-it
+    broken_code: |
+      var orders = new List<Order>
+      {
+          new("A", 150),
+          new("B", 50),
+          new("C", 200),
+      };
+
+      // Imperative loop to convert
+      var results = new List<string>();
+      foreach (var o in orders)
+      {
+          if (o.Amount > 100)
+              results.Add(o.Id.ToUpper());
+      }
+
+      record Order(string Id, decimal Amount);
+    fixed_code: |
+      var orders = new List<Order>
+      {
+          new("A", 150),
+          new("B", 50),
+          new("C", 200),
+      };
+
+      // LINQ method chain — still lazy at this point
+      var query = orders
+          .Where(o => o.Amount > 100)
+          .Select(o => o.Id.ToUpper());
+
+      // Deferred proof: add to source before enumeration
+      orders.Add(new("D", 300));
+      foreach (var id in query)
+          Console.Write(id + " ");
+      // Prints: A C D  (D is included — query re-reads the list)
+      Console.WriteLine();
+
+      // Immediate execution snapshot — D was already in the list at ToList() time
+      var snapshot = query.ToList();
+      orders.Add(new("E", 400));
+      foreach (var id in snapshot)
+          Console.Write(id + " ");
+      // Prints: A C D  (E is NOT included — snapshot was taken at ToList())
+
+      record Order(string Id, decimal Amount);
+    bug: |
+      LINQ queries are not snapshots — they re-read the source each time they are
+      enumerated. This is a feature (live view) but also a trap: enumerating twice
+      runs the pipeline twice, which is expensive or side-effecting for remote sources.
+      ToList() / ToArray() materialises to a fixed snapshot and prevents re-enumeration.
+    check: none
+    signal: ""
+
+  - prompt: |
+      The method below enumerates numbers twice: once for Count() and once for foreach.
+      Identify the double-enumeration and explain why it is a problem for an expensive
+      or remote IEnumerable<T>. Fix it by materialising at the right place.
+    kind: fix-it
+    broken_code: |
+      static void PrintStats(IEnumerable<int> numbers)
+      {
+          // First enumeration
+          int count = numbers.Count();
+
+          // Second enumeration — if numbers comes from a DB query or a
+          // generator with side effects, this runs the pipeline again.
+          int sum = 0;
+          foreach (var n in numbers)
+              sum += n;
+
+          Console.WriteLine($"Count={count}, Sum={sum}");
+      }
+    fixed_code: |
+      static void PrintStats(IEnumerable<int> numbers)
+      {
+          // Materialise once — only one enumeration of the source
+          var list = numbers.ToList();
+
+          int count = list.Count;
+          int sum   = list.Sum();
+
+          Console.WriteLine($"Count={count}, Sum={sum}");
+      }
+    bug: |
+      Enumerating an IEnumerable<T> twice (e.g., Count() then foreach) executes the
+      full query pipeline twice. For in-memory collections this is wasteful; for remote
+      sources (DB, HTTP, file) it issues two round trips and may return different data.
+      The fix is to call .ToList() or .ToArray() before any multi-use, then work with
+      the materialised collection.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Rewrite each query-syntax expression in method syntax. For the third one, explain
+      why 'let' has no direct method equivalent and how to replicate it.
+    kind: fix-it
+    broken_code: |
+      // (1) Simple join
+      var joined =
+          from o in orders
+          join c in customers on o.CustomerId equals c.Id
+          select new { o.Id, c.Name };
+
+      // (2) Group-by
+      var grouped =
+          from o in orders
+          group o by o.Status into g
+          select new { Status = g.Key, Total = g.Sum(o => o.Amount) };
+
+      // (3) Let — intermediate binding (no direct method equivalent)
+      var withTax =
+          from o in orders
+          let tax = o.Amount * 0.2m
+          where tax > 50
+          select new { o.Id, Tax = tax };
+
+      record Order(string Id, string CustomerId, string Status, decimal Amount);
+      record Customer(string Id, string Name);
+      List<Order>    orders    = [];
+      List<Customer> customers = [];
+    fixed_code: |
+      // (1) Join
+      var joined = orders
+          .Join(customers,
+                o => o.CustomerId,
+                c => c.Id,
+                (o, c) => new { o.Id, c.Name });
+
+      // (2) GroupBy
+      var grouped = orders
+          .GroupBy(o => o.Status)
+          .Select(g => new { Status = g.Key, Total = g.Sum(o => o.Amount) });
+
+      // (3) let → intermediate anonymous projection in Select
+      var withTax = orders
+          .Select(o => new { o.Id, Tax = o.Amount * 0.2m })
+          .Where(x => x.Tax > 50)
+          .Select(x => new { x.Id, x.Tax });
+
+      record Order(string Id, string CustomerId, string Status, decimal Amount);
+      record Customer(string Id, string Name);
+      List<Order>    orders    = [];
+      List<Customer> customers = [];
+    bug: |
+      let introduces a named intermediate binding inside query syntax. Method syntax
+      has no let keyword; you replicate it with a chained Select that projects an
+      anonymous type carrying both the original item and the derived value. The second
+      Select then picks the final shape.
+    check: none
+    signal: ""
+
+  - prompt: |
+      The async LINQ expression below passes a lazy sequence directly to Task.WhenAll.
+      Explain the deferred-execution risk and why materialising with .ToArray() first
+      is required for correct concurrent behaviour.
+    kind: fix-it
+    broken_code: |
+      static async Task<User[]> FetchAllAsync(IEnumerable<int> userIds)
+      {
+          // LINQ is lazy: the Select does NOT start tasks immediately.
+          // Task.WhenAll internally iterates the sequence — tasks are
+          // created one by one as WhenAll pulls each element, not all at once.
+          var tasks = userIds.Select(id => FetchUserAsync(id));
+          return await Task.WhenAll(tasks);
+      }
+
+      static Task<User> FetchUserAsync(int id) =>
+          Task.FromResult(new User(id));
+
+      record User(int Id);
+    fixed_code: |
+      static async Task<User[]> FetchAllAsync(IEnumerable<int> userIds)
+      {
+          // Materialise first: all tasks are created (and started) immediately.
+          var tasks = userIds.Select(id => FetchUserAsync(id)).ToArray();
+          return await Task.WhenAll(tasks);
+      }
+
+      static Task<User> FetchUserAsync(int id) =>
+          Task.FromResult(new User(id));
+
+      record User(int Id);
+    bug: |
+      Deferred LINQ inside async code means async calls do not fire until enumeration.
+      Without .ToArray() / .ToList(), Task.WhenAll iterates the lazy sequence itself —
+      tasks are created one at a time rather than all upfront. While technically
+      correct for hot-path Task methods, it serialises task creation and is a latent
+      correctness bug for any generator that has side effects or limited concurrency.
+      Always materialise before passing to Task.WhenAll.
+    check: none
+    signal: ""

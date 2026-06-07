@@ -1,0 +1,225 @@
+# Blind 75 completion — set A (scalar / canonical-output gaps). Original prompts.
+- id: nc-sum-two-integers
+  title: Sum of Two Integers
+  difficulty: medium
+  pattern: bit
+  category: Math & Bit
+  lists: [neetcode150, blind75]
+  func_name: get_sum
+  prompt: |
+    Sum of Two Integers
+
+    Return a + b WITHOUT using the + or - operators (use bitwise ops). Works for
+    negative numbers too (32-bit two's complement).
+
+    Examples:
+      get_sum(1, 2) -> 3
+      get_sum(-2, 3) -> 1
+  starter: |
+    def get_sum(a, b):
+        pass  # write your solution; delete this line
+  solution: |
+    def get_sum(a, b):
+        mask = 0xFFFFFFFF
+        while b & mask:
+            carry = ((a & b) << 1) & mask
+            a = (a ^ b) & mask
+            b = carry
+        a &= mask
+        return a if a <= 0x7FFFFFFF else ~(a ^ mask)
+  tests:
+    - {name: case 1, input: [1, 2], expected: 3}
+    - {name: case 2, input: [-2, 3], expected: 1}
+    - {name: case 3, input: [0, 0], expected: 0}
+
+- id: nc-reverse-bits
+  title: Reverse Bits
+  difficulty: easy
+  pattern: bit
+  category: Math & Bit
+  lists: [neetcode150, blind75]
+  func_name: reverse_bits
+  prompt: |
+    Reverse Bits
+
+    Reverse the bits of a 32-bit unsigned integer and return the resulting
+    unsigned integer.
+
+    Examples:
+      reverse_bits(43261596) -> 964176192
+      reverse_bits(1) -> 2147483648
+  starter: |
+    def reverse_bits(n):
+        pass  # write your solution; delete this line
+  solution: |
+    def reverse_bits(n):
+        result = 0
+        for _ in range(32):
+            result = (result << 1) | (n & 1)
+            n >>= 1
+        return result
+  tests:
+    - {name: case 1, input: [43261596], expected: 964176192}
+    - {name: case 2, input: [1], expected: 2147483648}
+    - {name: case 3, input: [0], expected: 0}
+
+- id: nc-meeting-rooms-ii
+  title: Meeting Rooms II
+  difficulty: medium
+  pattern: intervals
+  category: Intervals
+  lists: [neetcode150, blind75]
+  func_name: min_meeting_rooms
+  prompt: |
+    Meeting Rooms II
+
+    Given meeting intervals [start, end], return the minimum number of rooms
+    needed so no two meetings in the same room overlap.
+
+    Examples:
+      min_meeting_rooms([[0,30],[5,10],[15,20]]) -> 2
+      min_meeting_rooms([[7,10],[2,4]]) -> 1
+  starter: |
+    def min_meeting_rooms(intervals):
+        pass  # write your solution; delete this line
+  solution: |
+    def min_meeting_rooms(intervals):
+        if not intervals:
+            return 0
+        starts = sorted(i[0] for i in intervals)
+        ends = sorted(i[1] for i in intervals)
+        rooms = 0
+        best = 0
+        s = e = 0
+        while s < len(starts):
+            if starts[s] < ends[e]:
+                rooms += 1
+                s += 1
+                best = max(best, rooms)
+            else:
+                rooms -= 1
+                e += 1
+        return best
+  tests:
+    - {name: case 1, input: [[[0,30],[5,10],[15,20]]], expected: 2}
+    - {name: case 2, input: [[[7,10],[2,4]]], expected: 1}
+    - {name: case 3, input: [[]], expected: 0}
+
+- id: nc-top-k-frequent
+  title: Top K Frequent Elements
+  difficulty: medium
+  pattern: heap
+  category: Heap / Priority Queue
+  lists: [neetcode150, blind75]
+  func_name: top_k_frequent
+  prompt: |
+    Top K Frequent Elements
+
+    Return the k most frequent elements. To keep the answer deterministic,
+    return them as a list SORTED ascending; break frequency ties by the smaller
+    value.
+
+    Examples:
+      top_k_frequent([1,1,1,2,2,3], 2) -> [1,2]
+      top_k_frequent([1], 1) -> [1]
+  starter: |
+    def top_k_frequent(nums, k):
+        pass  # write your solution; delete this line
+  solution: |
+    def top_k_frequent(nums, k):
+        from collections import Counter
+        c = Counter(nums)
+        top = sorted(c.keys(), key=lambda x: (-c[x], x))[:k]
+        return sorted(top)
+  tests:
+    - {name: case 1, input: [[1,1,1,2,2,3], 2], expected: [1,2]}
+    - {name: case 2, input: [[1], 1], expected: [1]}
+    - {name: case 3, input: [[4,4,5,5,6], 2], expected: [4,5]}
+
+- id: nc-group-anagrams
+  title: Group Anagrams
+  difficulty: medium
+  pattern: hashing
+  category: Arrays & Hashing
+  lists: [neetcode150, blind75]
+  func_name: group_anagrams
+  prompt: |
+    Group Anagrams
+
+    Group the strings that are anagrams of each other. To keep the answer
+    deterministic, return each group sorted, and the list of groups sorted.
+
+    Example:
+      group_anagrams(["eat","tea","tan","ate","nat","bat"])
+        -> [["ate","eat","tea"],["bat"],["nat","tan"]]
+  starter: |
+    def group_anagrams(strs):
+        pass  # write your solution; delete this line
+  solution: |
+    def group_anagrams(strs):
+        from collections import defaultdict
+        groups = defaultdict(list)
+        for s in strs:
+            groups["".join(sorted(s))].append(s)
+        res = [sorted(g) for g in groups.values()]
+        res.sort()
+        return res
+  tests:
+    - {name: case 1, input: [["eat","tea","tan","ate","nat","bat"]], expected: [["ate","eat","tea"],["bat"],["nat","tan"]]}
+    - {name: case 2, input: [[""]], expected: [[""]]}
+    - {name: case 3, input: [["a"]], expected: [["a"]]}
+
+- id: nc-alien-dictionary
+  title: Alien Dictionary
+  difficulty: hard
+  pattern: graph
+  category: Trees & Graphs
+  lists: [neetcode150, blind75]
+  func_name: alien_order
+  prompt: |
+    Alien Dictionary
+
+    Given words sorted lexicographically by an unknown alphabet's rules, return
+    a valid character order. If several are valid, return the lexicographically
+    smallest. Return "" if the ordering is invalid.
+
+    Examples:
+      alien_order(["wrt","wrf","er","ett","rftt"]) -> "wertf"
+      alien_order(["z","x"]) -> "zx"
+  starter: |
+    def alien_order(words):
+        pass  # write your solution; delete this line
+  solution: |
+    def alien_order(words):
+        import heapq
+        from collections import defaultdict
+        adj = defaultdict(set)
+        indeg = {c: 0 for w in words for c in w}
+        for i in range(len(words) - 1):
+            a, b = words[i], words[i + 1]
+            m = min(len(a), len(b))
+            if len(a) > len(b) and a[:m] == b[:m]:
+                return ""
+            for j in range(m):
+                if a[j] != b[j]:
+                    if b[j] not in adj[a[j]]:
+                        adj[a[j]].add(b[j])
+                        indeg[b[j]] += 1
+                    break
+        heap = [c for c in indeg if indeg[c] == 0]
+        heapq.heapify(heap)
+        res = []
+        while heap:
+            c = heapq.heappop(heap)
+            res.append(c)
+            for nxt in sorted(adj[c]):
+                indeg[nxt] -= 1
+                if indeg[nxt] == 0:
+                    heapq.heappush(heap, nxt)
+        if len(res) != len(indeg):
+            return ""
+        return "".join(res)
+  tests:
+    - {name: case 1, input: [["wrt","wrf","er","ett","rftt"]], expected: "wertf"}
+    - {name: case 2, input: [["z","x"]], expected: "zx"}
+    - {name: case 3, input: [["abc","ab"]], expected: ""}

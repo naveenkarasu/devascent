@@ -1,0 +1,140 @@
+lang: typescript
+group: Gotchas
+title: "TypeScript Gotchas — Widening, Erasure, Structural Surprises"
+tag: E
+summary: |
+  This topic collects cross-cutting footguns not tied to a single feature.
+
+  - Type widening: `let x = "hello"` infers `string`, not `"hello"`. Prevents
+    assignment back to a narrower type. Fix with `as const` or explicit annotation.
+  - `as const` narrowing: `const arr = ["a", "b"] as const` makes the type
+    `readonly ["a", "b"]` and `typeof arr[number]` = `"a" | "b"`. Without `as const`,
+    inferred as `string[]`.
+  - Structural surprise: a value satisfying `interface User` can have extra fields;
+    this allows a SuperUser to be passed where User is expected, which is usually fine
+    but can surprise when mutation is involved.
+  - Enum numeric value collision: two numeric enum members can accidentally share a
+    value if auto-increment is used after a manual value:
+    `enum E { A = 2, B, C = 2 }` — B is 3, C aliases A.
+  - Type-vs-runtime erasure: TypeScript types exist only at compile time; `as`
+    assertions, `Readonly`, and other type constructs give no runtime guarantees.
+
+  See also: any/unknown/never topic for `any` erosion and unsafe `as` casts;
+  enums-unions topic for enum quirks; interfaces-types topic for structural surprises
+  and excess property checking.
+exercises:
+  - prompt: |
+      `DIRECTIONS` is inferred as `string[]` so `Direction` is just `string` and the
+      function accepts `"up"`. Fix it with `as const` and derive a proper `Direction`
+      union type.
+    kind: fix-it
+    broken_code: |
+      const DIRECTIONS = ["north", "south", "east", "west"];
+      type Direction = typeof DIRECTIONS[number]; // string — too wide
+
+      function move(d: Direction): void {
+        console.log(`Moving ${d}`);
+      }
+
+      move("up"); // should error, but doesn't
+    fixed_code: |
+      const DIRECTIONS = ["north", "south", "east", "west"] as const;
+      type Direction = (typeof DIRECTIONS)[number]; // "north" | "south" | "east" | "west"
+
+      function move(d: Direction): void {
+        console.log(`Moving ${d}`);
+      }
+
+      move("north"); // OK
+      // move("up"); // error: Argument of type '"up"' is not assignable to parameter of type 'Direction'
+    bug: |
+      Without `as const`, TS widens the array literal to `string[]` — all elements
+      lose their literal types. `typeof DIRECTIONS[number]` then evaluates to
+      `string`, so any string passes the function. Adding `as const` freezes the
+      inferred type to the exact tuple `readonly ["north", "south", "east", "west"]`,
+      and the indexed access type correctly resolves to the literal union.
+    check: compiles
+    signal: ""
+  - prompt: |
+      `config.port` is `undefined` at runtime even though TS says it is `number`.
+      Explain why the `as` cast is dangerous and refactor to use `unknown` + a guard.
+    kind: spot-the-bug
+    broken_code: |
+      const rawJson = "{}";
+      const config = JSON.parse(rawJson) as { port: number };
+      console.log(config.port.toFixed(0)); // TypeError at runtime
+    fixed_code: |
+      function hasPort(val: unknown): val is { port: number } {
+        return (
+          typeof val === "object" &&
+          val !== null &&
+          "port" in val &&
+          typeof (val as { port: unknown }).port === "number"
+        );
+      }
+
+      const rawJson = "{}";
+      const parsed: unknown = JSON.parse(rawJson);
+
+      if (hasPort(parsed)) {
+        console.log(parsed.port.toFixed(0));
+      } else {
+        throw new TypeError("Config missing required 'port' field");
+      }
+    bug: |
+      `as { port: number }` is erased at runtime — TS trusts the assertion completely
+      without any check. `JSON.parse("{}")` produces an empty object, so `config.port`
+      is `undefined` at runtime despite the compile-time belief. A type guard
+      validates the shape before narrowing, aligning runtime reality with the type.
+    check: none
+    signal: ""
+  - prompt: |
+      `resetX` mutates a `Point` in-place. Call it with a `Point3D` and observe that
+      the z field is untouched — but the original `Point3D` object is still mutated.
+      Explain what this reveals about structural subtyping and shared object identity.
+    kind: spot-the-bug
+    broken_code: |
+      interface Point {
+        x: number;
+        y: number;
+      }
+
+      interface Point3D extends Point {
+        z: number;
+      }
+
+      function resetX(p: Point): void {
+        p.x = 0;
+      }
+
+      const p3: Point3D = { x: 5, y: 10, z: 15 };
+      resetX(p3);
+      console.log(p3); // what is p3.x now?
+    fixed_code: |
+      interface Point {
+        x: number;
+        y: number;
+      }
+
+      interface Point3D extends Point {
+        z: number;
+      }
+
+      // Safe alternative: operate on a copy when mutation is undesired
+      function resetX(p: Point): Point {
+        return { ...p, x: 0 };
+      }
+
+      const p3: Point3D = { x: 5, y: 10, z: 15 };
+      const reset = resetX(p3) as Point3D;
+      console.log(p3);    // { x: 5, y: 10, z: 15 } — original unchanged
+      console.log(reset); // { x: 0, y: 10, z: 15 }
+    bug: |
+      Structural typing correctly allows passing `Point3D` where `Point` is expected —
+      `Point3D` has all of `Point`'s fields and more. However, `resetX` receives the
+      original object by reference and mutates it directly, so `p3.x` becomes 0 after
+      the call. This is structurally sound from TS's perspective but surprises
+      developers expecting `resetX` to work on a copy. Returning a spread copy makes
+      the function pure and avoids the aliasing surprise.
+    check: none
+    signal: ""

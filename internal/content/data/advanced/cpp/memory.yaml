@@ -1,0 +1,234 @@
+lang: cpp
+group: Memory — Pointers, RAII, Smart Pointers
+title: "Memory — Pointers, RAII, Smart Pointers"
+tag: E
+summary: |
+  C++ gives the programmer direct control over object lifetime and storage. Objects
+  can live on the stack (automatic storage — destroyed when the enclosing scope
+  exits), on the heap (dynamic allocation via new/delete), or in static storage. The
+  central idiom for safe resource management is RAII (Resource Acquisition Is
+  Initialization): resources (heap memory, file handles, sockets, locks) are acquired
+  in a constructor and released in the destructor. Because destructors run
+  deterministically on scope exit — including during stack unwinding for exceptions —
+  RAII makes leaks and double-frees structurally impossible when used correctly.
+
+  Raw new/delete is error-prone; idiomatic C++11+ uses smart pointers:
+    - std::unique_ptr<T>  — sole ownership, zero overhead, not copyable, movable.
+      Prefer for single owners.
+    - std::shared_ptr<T>  — shared ownership via reference counting. Small runtime
+      cost; use when multiple owners genuinely share lifetime.
+    - std::weak_ptr<T>    — non-owning observer of a shared_ptr; must .lock() to
+      access, breaking cycles.
+
+  std::make_unique (C++14) and std::make_shared (C++11) are preferred over new
+  directly — they are exception-safe and can consolidate the allocation.
+
+  Gotchas:
+    - Forgetting virtual destructor in a base class causes UB when deleting a derived
+      object through a base pointer (partial destruction).
+    - shared_ptr cycles silently leak; only detectable with leak detectors or careful
+      design.
+    - Never store .c_str() of a temporary std::string beyond its lifetime.
+    - unique_ptr is not copyable — attempting to copy triggers a hard compile error,
+      which is the intended safety check.
+exercises:
+  - prompt: |
+      FileHandle wraps a raw FILE* opened with fopen. The class has no destructor and
+      no copy/move controls — it leaks the file handle on every exit path. Add:
+        1. A destructor that calls fclose if the pointer is non-null.
+        2. Delete the copy constructor and copy-assignment operator.
+        3. A move constructor and move-assignment operator that steal the pointer and
+           set the source to nullptr.
+    kind: fix-it
+    broken_code: |
+      class FileHandle {
+      public:
+          explicit FileHandle(const char* path)
+              : file_(std::fopen(path, "r")) {}
+
+          FILE* get() const { return file_; }
+
+      private:
+          FILE* file_;
+      };
+    fixed_code: |
+      class FileHandle {
+      public:
+          explicit FileHandle(const char* path)
+              : file_(std::fopen(path, "r")) {}
+
+          ~FileHandle() {
+              if (file_) std::fclose(file_);
+          }
+
+          FileHandle(const FileHandle&)            = delete;
+          FileHandle& operator=(const FileHandle&) = delete;
+
+          FileHandle(FileHandle&& other) noexcept
+              : file_(other.file_) {
+              other.file_ = nullptr;
+          }
+
+          FileHandle& operator=(FileHandle&& other) noexcept {
+              if (this != &other) {
+                  if (file_) std::fclose(file_);
+                  file_       = other.file_;
+                  other.file_ = nullptr;
+              }
+              return *this;
+          }
+
+          FILE* get() const { return file_; }
+
+      private:
+          FILE* file_;
+      };
+    bug: |
+      No destructor means fclose is never called — FILE* leaks on every return path,
+      including exceptions. The compiler-generated copy constructor copies the raw
+      pointer, so two FileHandle objects would both fclose the same FILE* (double-
+      close). Deleting copy and providing move operations makes ownership explicit and
+      safe.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Graph stores nodes as Node* allocated with new[] and freed with delete[] in the
+      destructor. The compiler-generated copy constructor does a shallow pointer copy,
+      so copying a Graph causes a double-free when both destructors run.
+      Rewrite the storage using std::vector<std::unique_ptr<Node>> so the Rule of Zero
+      applies and copies are impossible without explicit cloning.
+    kind: fix-it
+    broken_code: |
+      struct Node { int value; };
+
+      class Graph {
+      public:
+          explicit Graph(std::size_t n)
+              : size_(n), nodes_(new Node[n]) {}
+
+          ~Graph() { delete[] nodes_; }
+
+          Node& node(std::size_t i) { return nodes_[i]; }
+
+      private:
+          std::size_t size_;
+          Node*       nodes_;
+      };
+    fixed_code: |
+      struct Node { int value; };
+
+      class Graph {
+      public:
+          explicit Graph(std::size_t n) {
+              nodes_.reserve(n);
+              for (std::size_t i = 0; i < n; ++i)
+                  nodes_.push_back(std::make_unique<Node>());
+          }
+
+          Node& node(std::size_t i) { return *nodes_[i]; }
+
+      private:
+          std::vector<std::unique_ptr<Node>> nodes_;
+      };
+    bug: |
+      The compiler-generated copy constructor copies nodes_ (the raw pointer) without
+      allocating new storage, so both the original and the copy point to the same array.
+      When both destructors run, delete[] fires twice on the same pointer — double-free
+      UB. Switching to vector<unique_ptr<Node>> makes copy construction a compile error
+      (unique_ptr is non-copyable), and the destructor becomes a no-op thanks to RAII.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Parent holds a shared_ptr<Child> and Child holds a shared_ptr<Parent>. Neither
+      object's destructor ever runs — the reference counts never reach zero. Fix the
+      cycle by converting Child's back-link to std::weak_ptr<Parent>.
+    kind: fix-it
+    broken_code: |
+      struct Child;
+
+      struct Parent {
+          std::shared_ptr<Child> child;
+          ~Parent() { /* never called */ }
+      };
+
+      struct Child {
+          std::shared_ptr<Parent> parent;   // cycle: keeps Parent alive forever
+          ~Child() { /* never called */ }
+      };
+
+      void create() {
+          auto p = std::make_shared<Parent>();
+          auto c = std::make_shared<Child>();
+          p->child  = c;
+          c->parent = p;   // ref-count cycle
+      }
+    fixed_code: |
+      struct Child;
+
+      struct Parent {
+          std::shared_ptr<Child> child;
+          ~Parent() {}
+      };
+
+      struct Child {
+          std::weak_ptr<Parent> parent;   // non-owning link breaks the cycle
+          ~Child() {}
+
+          void use_parent() {
+              if (auto p = parent.lock()) {
+                  // p is a temporary shared_ptr valid for this scope
+              }
+          }
+      };
+
+      void create() {
+          auto p = std::make_shared<Parent>();
+          auto c = std::make_shared<Child>();
+          p->child  = c;
+          c->parent = p;   // weak_ptr does not increment the ref-count
+      }
+    bug: |
+      When two shared_ptr-managed objects point to each other, their reference counts
+      can never reach zero — even after the last external shared_ptr goes out of scope.
+      The objects are orphaned, their destructors never run, and the memory leaks. A
+      weak_ptr does not contribute to the reference count; calling .lock() produces a
+      temporary shared_ptr (or nullptr if the object has been destroyed), breaking the
+      ownership cycle.
+    check: none
+    signal: ""
+
+  - prompt: |
+      The function below returns a const char* obtained from .c_str() of a local
+      std::string. The caller immediately stores the pointer and uses it — by which
+      time the std::string has been destroyed. Identify the dangling pointer and fix by
+      returning std::string by value.
+    kind: spot-the-bug
+    broken_code: |
+      const char* get_label(int code) {
+          std::string label = "item_" + std::to_string(code);
+          return label.c_str();   // dangling: label is destroyed on return
+      }
+
+      void caller() {
+          const char* p = get_label(42);
+          std::printf("%s\n", p);   // UB: p points to freed stack memory
+      }
+    fixed_code: |
+      std::string get_label(int code) {
+          return "item_" + std::to_string(code);
+      }
+
+      void caller() {
+          std::string label = get_label(42);
+          std::printf("%s\n", label.c_str());   // safe: label is alive
+      }
+    bug: |
+      label is a local std::string with automatic storage duration — it is destroyed
+      when get_label returns. The returned const char* points into freed stack memory;
+      any subsequent use is UB (commonly a crash or garbage output, detectable with
+      ASan stack-use-after-scope). Returning std::string by value extends the lifetime
+      of the string data to the caller's scope.
+    check: none
+    signal: ""

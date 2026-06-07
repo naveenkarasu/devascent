@@ -1,0 +1,15 @@
+# Go build output
+*.exe
+*.test
+/devascent
+/cmd/devascent/devascent
+
+# Release artifacts (GoReleaser / manual cross-compile)
+/dist/
+
+# Local player save data (when DEVASCENT_SAVE_DIR points into the repo)
+/.devascent-save/
+
+# OS
+.DS_Store
+Thumbs.db

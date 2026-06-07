@@ -1,0 +1,204 @@
+lang: javascript
+group: Async
+title: "Async — Event Loop, Promises, async/await"
+tag: E
+summary: |
+  JavaScript is single-threaded. Its concurrency model is built on an event loop: the
+  call stack runs to completion; when it empties, the event loop picks the next job from
+  a queue and pushes it onto the stack.
+
+  Two queues — task vs microtask:
+    - Macrotask queue (task queue): `setTimeout`, `setInterval`, I/O events, UI rendering
+      callbacks. The event loop picks one macrotask per loop iteration.
+    - Microtask queue: Promise `.then`/`.catch`/`.finally` callbacks, `queueMicrotask()`,
+      `MutationObserver`. After every macrotask (and after each script), the event loop
+      drains the entire microtask queue before moving on. Microtasks have higher priority.
+
+  Practical consequence: `Promise.resolve().then(fn)` always runs before
+  `setTimeout(fn, 0)`.
+
+  async/await is syntactic sugar over Promises. An `async` function always returns a
+  Promise. `await` pauses the function (without blocking the thread) and resumes it as a
+  microtask when the awaited Promise settles. `try/catch` around `await` handles
+  rejections idiomatically.
+
+  Promise concurrency methods:
+    - `Promise.all([...])` — resolves when all resolve; rejects on the first rejection.
+    - `Promise.allSettled([...])` (ES2020) — always resolves; results include
+      `{status, value/reason}` for each; never rejects.
+    - `Promise.race([...])` — resolves/rejects with whichever settles first.
+    - `Promise.any([...])` (ES2021) — resolves with the first fulfillment; rejects only
+      if all reject (`AggregateError`).
+
+  Gotchas: forgetting `await` silently gives a pending Promise instead of the resolved
+  value. `await` inside `forEach` does not pause the outer function — use `for...of` or
+  `Promise.all(arr.map(async fn))`. An un-`try/catch`-wrapped rejection becomes an
+  unhandled promise rejection. `async` functions always return a Promise, even
+  `return 42` — callers must `await` or `.then()` them.
+exercises:
+  - prompt: |
+      Predict the exact output order. Then explain why each line appears where it does.
+    kind: predict-output
+    broken_code: |
+      console.log("1 - sync start");
+
+      setTimeout(() => {
+        console.log("2 - setTimeout");
+      }, 0);
+
+      Promise.resolve()
+        .then(() => {
+          console.log("3 - promise then 1");
+        })
+        .then(() => {
+          console.log("4 - promise then 2");
+        });
+
+      console.log("5 - sync end");
+    fixed_code: |
+      // Annotated — output order:
+      // "1 - sync start"   synchronous
+      // "5 - sync end"     synchronous
+      // "3 - promise then 1"  microtask, drained before macrotask
+      // "4 - promise then 2"  microtask, chained then — still in microtask queue
+      // "2 - setTimeout"   macrotask, runs after microtask queue is empty
+      console.log("1 - sync start");
+
+      setTimeout(() => {
+        console.log("2 - setTimeout");
+      }, 0);
+
+      Promise.resolve()
+        .then(() => {
+          console.log("3 - promise then 1");
+        })
+        .then(() => {
+          console.log("4 - promise then 2");
+        });
+
+      console.log("5 - sync end");
+    bug: |
+      Synchronous code runs first (lines 1 and 5). After the script completes, the
+      microtask queue is drained in full before the event loop picks the next macrotask.
+      Both `.then` callbacks are microtasks — they run in order, chained. Only after the
+      microtask queue is empty does the `setTimeout` macrotask execute. Deeply nested
+      `.then` chains all complete before any `setTimeout(fn, 0)` fires.
+    check: stdout
+    signal: "1 - sync start\n5 - sync end\n3 - promise then 1\n4 - promise then 2\n2 - setTimeout"
+
+  - prompt: |
+      This `fetch` wrapper assumes the request succeeded if `fetch` didn't throw. It
+      silently swallows HTTP error responses. Fix it to handle both network failures and
+      HTTP error statuses.
+    kind: fix-it
+    broken_code: |
+      async function getUser(id) {
+        try {
+          const res = await fetch(`/api/users/${id}`);
+          const data = await res.json();
+          return data;
+        } catch (err) {
+          console.error("network error:", err.message);
+          return null;
+        }
+      }
+    fixed_code: |
+      async function getUser(id) {
+        try {
+          const res = await fetch(`/api/users/${id}`);
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          }
+          const data = await res.json();
+          return data;
+        } catch (err) {
+          console.error("request failed:", err.message);
+          return null;
+        }
+      }
+    bug: |
+      `fetch` only rejects (throws) on network failures — DNS lookup failures, connection
+      refused, no network. HTTP error responses (400, 404, 500, etc.) resolve successfully
+      with `res.ok === false`. The fix is to explicitly check `res.ok` after `await fetch`
+      and throw a meaningful error if the status is not in the 2xx range, so the `catch`
+      block handles all failure modes uniformly.
+    check: none
+    signal: ""
+
+  - prompt: |
+      These two functions both fetch a user and their settings, but one takes twice as
+      long. Identify which is slow, explain why, and rewrite it to run both requests in
+      parallel.
+    kind: fix-it
+    broken_code: |
+      async function loadProfileSlow(userId) {
+        const user = await fetchUser(userId);
+        const settings = await fetchSettings(userId);
+        return { user, settings };
+      }
+
+      async function loadProfileFast(userId) {
+        const [user, settings] = await Promise.all([
+          fetchUser(userId),
+          fetchSettings(userId),
+        ]);
+        return { user, settings };
+      }
+    fixed_code: |
+      async function loadProfile(userId) {
+        const [user, settings] = await Promise.all([
+          fetchUser(userId),
+          fetchSettings(userId),
+        ]);
+        return { user, settings };
+      }
+    bug: |
+      `loadProfileSlow` uses sequential `await`: it waits for `fetchUser` to complete
+      before starting `fetchSettings`. Because the two requests are independent, the total
+      time is `fetchUser_latency + fetchSettings_latency`. `loadProfileFast` starts both
+      Promises simultaneously and awaits them together with `Promise.all`, so the total
+      time is `max(fetchUser_latency, fetchSettings_latency)` — roughly half for equal
+      latencies. Always use `Promise.all` (or `Promise.allSettled`) for independent
+      concurrent operations.
+    check: none
+    signal: ""
+
+  - prompt: |
+      This code uses `await` inside `forEach`. Predict what happens, then fix it so
+      all items are processed before the final log.
+    kind: fix-it
+    broken_code: |
+      async function processAll(ids) {
+        ids.forEach(async (id) => {
+          const result = await processItem(id);
+          console.log(`done: ${id} → ${result}`);
+        });
+        console.log("all done");
+      }
+    fixed_code: |
+      async function processAll(ids) {
+        for (const id of ids) {
+          const result = await processItem(id);
+          console.log(`done: ${id} → ${result}`);
+        }
+        console.log("all done");
+      }
+
+      // Or, for parallel processing:
+      async function processAllParallel(ids) {
+        await Promise.all(
+          ids.map(async (id) => {
+            const result = await processItem(id);
+            console.log(`done: ${id} → ${result}`);
+          }),
+        );
+        console.log("all done");
+      }
+    bug: |
+      `forEach` ignores the Promise returned by its callback — the `async` callback fires
+      for each item but `forEach` moves on immediately without waiting for any of them.
+      `"all done"` is logged before any `processItem` completes. The fix is `for...of`
+      (sequential, awaits each item) or `Promise.all(arr.map(async fn))` (parallel, awaits
+      all). Never use `await` inside `forEach`; use `for...of` or `Promise.all(map)`.
+    check: none
+    signal: ""

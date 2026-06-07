@@ -1,0 +1,23 @@
+lang: rust
+label: Rust
+notes: rustup installs the Rust compiler (rustc) and Cargo, and configures a default toolchain.
+os:
+  windows:
+    link: https://rustup.rs/
+    steps:
+      - Download and run rustup-init.exe from rustup.rs.
+      - Choose the default install (option 1). It may prompt you to install the MSVC build tools - accept.
+      - Restart DevAscent.
+    verify: rustc --version
+  macos:
+    link: https://rustup.rs/
+    steps:
+      - Run the rustup command from rustup.rs in your terminal.
+      - Run "source $HOME/.cargo/env" or restart your terminal.
+    verify: rustc --version
+  linux:
+    link: https://rustup.rs/
+    steps:
+      - Run the rustup command from rustup.rs in your terminal.
+      - Run "source $HOME/.cargo/env" or restart your terminal.
+    verify: rustc --version

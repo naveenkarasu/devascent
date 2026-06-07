@@ -1,0 +1,362 @@
+# Canonical NeetCode 150 — Trees (binary-tree node harness; shape: tree).
+# Trees are level-order arrays with null for missing children. The player gets a
+# real TreeNode and returns an int/bool/list (ret_kind: raw). Original prompts.
+- id: nc-diameter-tree
+  title: Diameter of Binary Tree
+  difficulty: easy
+  pattern: tree
+  category: Trees & Graphs
+  lists: [neetcode150]
+  func_name: diameter_of_binary_tree
+  shape: tree
+  arg_kinds: [node]
+  ret_kind: raw
+  prompt: |
+    Diameter of Binary Tree
+
+    Return the length (in edges) of the longest path between any two nodes. The
+    path need not pass through the root. You receive a real TreeNode.
+
+    Trees are level-order with null for missing children: [1,2,3,4,5] is
+    1 with children 2,3 and 2's children 4,5.
+  starter: |
+    # class TreeNode: val, left, right  (provided by the grader)
+
+    def diameter_of_binary_tree(root):
+        pass  # write your solution; delete this line
+  solution: |
+    def diameter_of_binary_tree(root):
+        best = [0]
+        def height(node):
+            if node is None:
+                return 0
+            l = height(node.left)
+            r = height(node.right)
+            best[0] = max(best[0], l + r)
+            return 1 + max(l, r)
+        height(root)
+        return best[0]
+  tests:
+    - {name: case 1, input: [[1,2,3,4,5]], expected: 3}
+    - {name: case 2, input: [[1,2]], expected: 1}
+    - {name: case 3, input: [[]], expected: 0}
+
+- id: nc-balanced-tree
+  title: Balanced Binary Tree
+  difficulty: easy
+  pattern: tree
+  category: Trees & Graphs
+  lists: [neetcode150]
+  func_name: is_balanced
+  shape: tree
+  arg_kinds: [node]
+  ret_kind: raw
+  prompt: |
+    Balanced Binary Tree
+
+    Return True if the tree is height-balanced — for every node, the heights of
+    its two subtrees differ by at most 1.
+  starter: |
+    # class TreeNode: val, left, right  (provided by the grader)
+
+    def is_balanced(root):
+        pass  # write your solution; delete this line
+  solution: |
+    def is_balanced(root):
+        def height(node):
+            if node is None:
+                return 0
+            l = height(node.left)
+            if l < 0:
+                return -1
+            r = height(node.right)
+            if r < 0:
+                return -1
+            if abs(l - r) > 1:
+                return -1
+            return 1 + max(l, r)
+        return height(root) >= 0
+  tests:
+    - {name: case 1, input: [[3,9,20,null,null,15,7]], expected: true}
+    - {name: case 2, input: [[1,2,2,3,3,null,null,4,4]], expected: false}
+    - {name: case 3, input: [[]], expected: true}
+
+- id: nc-subtree-of-another
+  title: Subtree of Another Tree
+  difficulty: easy
+  pattern: tree
+  category: Trees & Graphs
+  lists: [neetcode150, blind75]
+  func_name: is_subtree
+  shape: tree
+  arg_kinds: [node, node]
+  ret_kind: raw
+  prompt: |
+    Subtree of Another Tree
+
+    Given roots root and sub, return True if sub is a subtree of root (a node of
+    root and all its descendants match sub exactly). Both are TreeNodes.
+  starter: |
+    # class TreeNode: val, left, right  (provided by the grader)
+
+    def is_subtree(root, sub):
+        pass  # write your solution; delete this line
+  solution: |
+    def is_subtree(root, sub):
+        def same(a, b):
+            if a is None and b is None:
+                return True
+            if a is None or b is None or a.val != b.val:
+                return False
+            return same(a.left, b.left) and same(a.right, b.right)
+        if sub is None:
+            return True
+        def dfs(node):
+            if node is None:
+                return False
+            if same(node, sub):
+                return True
+            return dfs(node.left) or dfs(node.right)
+        return dfs(root)
+  tests:
+    - {name: case 1, input: [[3,4,5,1,2], [4,1,2]], expected: true}
+    - {name: case 2, input: [[3,4,5,1,2,null,null,null,null,0], [4,1,2]], expected: false}
+    - {name: case 3, input: [[1,1], [1]], expected: true}
+
+- id: nc-validate-bst
+  title: Validate Binary Search Tree
+  difficulty: medium
+  pattern: tree
+  category: Trees & Graphs
+  lists: [neetcode150, blind75]
+  func_name: is_valid_bst
+  shape: tree
+  arg_kinds: [node]
+  ret_kind: raw
+  prompt: |
+    Validate Binary Search Tree
+
+    Return True if the tree is a valid BST: every node's left subtree has only
+    smaller values, the right only larger, and both subtrees are also BSTs.
+  starter: |
+    # class TreeNode: val, left, right  (provided by the grader)
+
+    def is_valid_bst(root):
+        pass  # write your solution; delete this line
+  solution: |
+    def is_valid_bst(root):
+        def valid(node, lo, hi):
+            if node is None:
+                return True
+            if not (lo < node.val < hi):
+                return False
+            return valid(node.left, lo, node.val) and valid(node.right, node.val, hi)
+        return valid(root, float("-inf"), float("inf"))
+  tests:
+    - {name: case 1, input: [[2,1,3]], expected: true}
+    - {name: case 2, input: [[5,1,4,null,null,3,6]], expected: false}
+    - {name: case 3, input: [[]], expected: true}
+
+- id: nc-kth-smallest-bst
+  title: Kth Smallest Element in a BST
+  difficulty: medium
+  pattern: tree
+  category: Trees & Graphs
+  lists: [neetcode150, blind75]
+  func_name: kth_smallest
+  shape: tree
+  arg_kinds: [node, raw]
+  ret_kind: raw
+  prompt: |
+    Kth Smallest Element in a BST
+
+    Return the kth smallest value (1-indexed) in the BST. root is a TreeNode, k
+    is a plain integer.
+  starter: |
+    # class TreeNode: val, left, right  (provided by the grader)
+
+    def kth_smallest(root, k):
+        pass  # write your solution; delete this line
+  solution: |
+    def kth_smallest(root, k):
+        stack = []
+        cur = root
+        while stack or cur is not None:
+            while cur is not None:
+                stack.append(cur)
+                cur = cur.left
+            cur = stack.pop()
+            k -= 1
+            if k == 0:
+                return cur.val
+            cur = cur.right
+        return -1
+  tests:
+    - {name: case 1, input: [[3,1,4,null,2], 1], expected: 1}
+    - {name: case 2, input: [[5,3,6,2,4,null,null,1], 3], expected: 3}
+    - {name: case 3, input: [[1], 1], expected: 1}
+
+- id: nc-level-order
+  title: Binary Tree Level Order Traversal
+  difficulty: medium
+  pattern: tree
+  category: Trees & Graphs
+  lists: [neetcode150, blind75]
+  func_name: level_order
+  shape: tree
+  arg_kinds: [node]
+  ret_kind: raw
+  prompt: |
+    Binary Tree Level Order Traversal
+
+    Return the node values level by level, top to bottom, each level left to
+    right, as a list of lists.
+
+    [3,9,20,null,null,15,7] -> [[3],[9,20],[15,7]]
+  starter: |
+    # class TreeNode: val, left, right  (provided by the grader)
+
+    def level_order(root):
+        pass  # write your solution; delete this line
+  solution: |
+    def level_order(root):
+        if root is None:
+            return []
+        from collections import deque
+        q = deque([root])
+        res = []
+        while q:
+            level = []
+            for _ in range(len(q)):
+                node = q.popleft()
+                level.append(node.val)
+                if node.left is not None:
+                    q.append(node.left)
+                if node.right is not None:
+                    q.append(node.right)
+            res.append(level)
+        return res
+  tests:
+    - {name: case 1, input: [[3,9,20,null,null,15,7]], expected: [[3],[9,20],[15,7]]}
+    - {name: case 2, input: [[1]], expected: [[1]]}
+    - {name: case 3, input: [[]], expected: []}
+
+- id: nc-right-side-view
+  title: Binary Tree Right Side View
+  difficulty: medium
+  pattern: tree
+  category: Trees & Graphs
+  lists: [neetcode150]
+  func_name: right_side_view
+  shape: tree
+  arg_kinds: [node]
+  ret_kind: raw
+  prompt: |
+    Binary Tree Right Side View
+
+    Imagine standing to the right of the tree. Return the values you can see,
+    top to bottom (the rightmost node of each level).
+
+    [1,2,3,null,5,null,4] -> [1,3,4]
+  starter: |
+    # class TreeNode: val, left, right  (provided by the grader)
+
+    def right_side_view(root):
+        pass  # write your solution; delete this line
+  solution: |
+    def right_side_view(root):
+        if root is None:
+            return []
+        from collections import deque
+        q = deque([root])
+        res = []
+        while q:
+            n = len(q)
+            for i in range(n):
+                node = q.popleft()
+                if i == n - 1:
+                    res.append(node.val)
+                if node.left is not None:
+                    q.append(node.left)
+                if node.right is not None:
+                    q.append(node.right)
+        return res
+  tests:
+    - {name: case 1, input: [[1,2,3,null,5,null,4]], expected: [1,3,4]}
+    - {name: case 2, input: [[1,2,3]], expected: [1,3]}
+    - {name: case 3, input: [[]], expected: []}
+
+- id: nc-lca-bst
+  title: Lowest Common Ancestor of a BST
+  difficulty: medium
+  pattern: tree
+  category: Trees & Graphs
+  lists: [neetcode150, blind75]
+  func_name: lca_bst
+  shape: tree
+  arg_kinds: [node, raw, raw]
+  ret_kind: raw
+  prompt: |
+    Lowest Common Ancestor of a Binary Search Tree
+
+    Given a BST root and two values p and q (both present), return the value of
+    their lowest common ancestor. root is a TreeNode; p and q are plain integers.
+  starter: |
+    # class TreeNode: val, left, right  (provided by the grader)
+
+    def lca_bst(root, p, q):
+        pass  # write your solution; delete this line
+  solution: |
+    def lca_bst(root, p, q):
+        node = root
+        while node is not None:
+            if p < node.val and q < node.val:
+                node = node.left
+            elif p > node.val and q > node.val:
+                node = node.right
+            else:
+                return node.val
+        return -1
+  tests:
+    - {name: case 1, input: [[6,2,8,0,4,7,9,null,null,3,5], 2, 8], expected: 6}
+    - {name: case 2, input: [[6,2,8,0,4,7,9,null,null,3,5], 2, 4], expected: 2}
+    - {name: case 3, input: [[2,1,3], 1, 3], expected: 2}
+
+- id: nc-max-path-sum
+  title: Binary Tree Maximum Path Sum
+  difficulty: hard
+  pattern: tree
+  category: Trees & Graphs
+  lists: [neetcode150, blind75]
+  func_name: max_path_sum
+  shape: tree
+  arg_kinds: [node]
+  ret_kind: raw
+  prompt: |
+    Binary Tree Maximum Path Sum
+
+    A path is any sequence of nodes connected by edges; it need not pass through
+    the root. Return the maximum possible sum of node values along a path.
+
+    [-10,9,20,null,null,15,7] -> 42  (the path 15 -> 20 -> 7)
+  starter: |
+    # class TreeNode: val, left, right  (provided by the grader)
+
+    def max_path_sum(root):
+        pass  # write your solution; delete this line
+  solution: |
+    def max_path_sum(root):
+        best = [-10**9]
+        def gain(node):
+            if node is None:
+                return 0
+            l = max(gain(node.left), 0)
+            r = max(gain(node.right), 0)
+            best[0] = max(best[0], node.val + l + r)
+            return node.val + max(l, r)
+        gain(root)
+        return best[0]
+  tests:
+    - {name: case 1, input: [[1,2,3]], expected: 6}
+    - {name: case 2, input: [[-10,9,20,null,null,15,7]], expected: 42}
+    - {name: case 3, input: [[-3]], expected: -3}

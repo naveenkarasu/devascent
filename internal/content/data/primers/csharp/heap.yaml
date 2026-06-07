@@ -1,0 +1,115 @@
+- category: 'Heap / Priority Queue'
+  lang: csharp
+  title: 'Heap / Priority Queue — C# refresher'
+  summary: |
+    A heap is a complete binary tree that keeps the minimum (min-heap) or maximum
+    (max-heap) element at the top. Insert and remove-min are O(log n); peek is O(1).
+    Heaps power problems like "k largest elements," "k-th smallest," merge k sorted
+    lists, and Dijkstra's algorithm.
+
+    C# notes:
+      - PriorityQueue<TElement, TPriority> is in System.Collections.Generic (.NET 6+).
+        It is a MIN-heap on priority: Enqueue(element, priority), Dequeue() returns the
+        element with the SMALLEST priority value.
+      - For a max-heap, negate the priority: Enqueue(x, -x) or use a custom IComparer.
+      - Count checks size; TryDequeue(out var el, out var pri) for safe dequeue.
+      - There is no built-in "update priority" — remove-and-reinsert or use a lazy deletion map.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'min-heap (smallest priority dequeued first)'
+          code: 'var pq = new PriorityQueue<int, int>();'
+        - label: 'max-heap (negate priority for largest first)'
+          code: 'var pq = new PriorityQueue<int, int>();  // enqueue with -value'
+        - label: 'heap of pairs: (value, index)'
+          code: 'var pq = new PriorityQueue<(int val, int idx), int>();'
+        - label: 'heap with custom comparer (max-heap by value)'
+          code: 'var pq = new PriorityQueue<int, int>(Comparer<int>.Create((a, b) => b - a));'
+    - title: Basic operations
+      ops:
+        - label: 'enqueue (element, priority)'
+          code: 'pq.Enqueue(item, priority);'
+        - label: 'dequeue (removes and returns smallest-priority element)'
+          code: 'int item = pq.Dequeue();'
+        - label: 'peek (read min without removing)'
+          code: 'int top = pq.Peek();'
+        - label: 'check if empty'
+          code: 'bool empty = pq.Count == 0;'
+        - label: 'check size'
+          code: 'int size = pq.Count;'
+        - label: 'safe dequeue'
+          code: |
+            if (pq.TryDequeue(out var el, out var pri))
+            {
+                /* use el */
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'drain heap in priority order'
+          code: |
+            while (pq.Count > 0)
+            {
+                int v = pq.Dequeue();
+            }
+        - label: 'k largest using a min-heap of size k'
+          code: |
+            var pq = new PriorityQueue<int, int>();
+            foreach (int x in nums)
+            {
+                pq.Enqueue(x, x);
+                if (pq.Count > k) pq.Dequeue();  // drop the smallest
+            }
+            return pq.Peek();   // smallest of the top-k = k-th largest
+        - label: 'heap sort: enqueue all, dequeue in order'
+          code: |
+            foreach (int x in nums) pq.Enqueue(x, x);
+            var sorted = new List<int>();
+            while (pq.Count > 0) sorted.Add(pq.Dequeue());
+    - title: Special operations (heap / priority queue)
+      ops:
+        - label: 'merge k sorted arrays (use heap to track minimums)'
+          code: |
+            var pq = new PriorityQueue<(int val, int arr, int idx), int>();
+            for (int i = 0; i < lists.Length; i++)
+                if (lists[i].Length > 0) pq.Enqueue((lists[i][0], i, 0), lists[i][0]);
+            var result = new List<int>();
+            while (pq.Count > 0)
+            {
+                var (val, a, idx) = pq.Dequeue();
+                result.Add(val);
+                if (idx + 1 < lists[a].Length)
+                    pq.Enqueue((lists[a][idx+1], a, idx+1), lists[a][idx+1]);
+            }
+        - label: 'median of a stream (max-heap + min-heap)'
+          code: |
+            var lo = new PriorityQueue<int,int>(Comparer<int>.Create((a,b)=>b-a)); // max-heap
+            var hi = new PriorityQueue<int,int>(); // min-heap
+        - label: 'top-k frequent elements'
+          code: |
+            var freq = new Dictionary<int, int>();
+            foreach (int x in nums) freq[x] = freq.GetValueOrDefault(x, 0) + 1;
+            var pq = new PriorityQueue<int, int>();
+            foreach (var (v, f) in freq)
+            {
+                pq.Enqueue(v, f);
+                if (pq.Count > k) pq.Dequeue();
+            }
+  example: |
+    Worked example — find the k-th largest element using a min-heap of size k:
+
+      Keep a min-heap of the k largest elements seen so far. For each new number,
+      add it to the heap. If the heap exceeds size k, evict the smallest (the heap
+      minimum). After one pass the heap minimum IS the k-th largest overall.
+
+        int FindKthLargest(int[] nums, int k) {
+            var pq = new PriorityQueue<int, int>();
+            foreach (int x in nums) {
+                pq.Enqueue(x, x);        // priority = value (min-heap)
+                if (pq.Count > k)
+                    pq.Dequeue();         // drop the smallest to keep top-k
+            }
+            return pq.Peek();            // min of top-k = k-th largest
+        }
+
+    Takeaway: use a size-k min-heap to track the k largest elements. The heap minimum
+    is always the k-th largest. Insert and evict are O(log k), so total is O(n log k).

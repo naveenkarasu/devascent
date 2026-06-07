@@ -1,0 +1,72 @@
+lang: rust
+group: Ownership & Borrowing
+title: "Ownership & Borrowing — Rust's signature topic"
+tag: E
+summary: |
+  Ownership is Rust's most distinctive feature — and the reason it needs no garbage
+  collector. Every value has exactly one owner; when the owner goes out of scope the
+  value is dropped. Assigning a heap type (like String) is a MOVE, not a copy, so the
+  original binding becomes invalid. The borrow checker enforces two rules at compile
+  time: you may have either any number of shared refs (&T) OR exactly one mutable ref
+  (&mut T) — never both at once; and references must never outlive their data. These
+  rules eliminate use-after-free, double-free, and data races at zero runtime cost.
+
+  (Reference-only for now: Rust isn't graded yet, so you read, attempt, and reveal.
+  When the Rust toolchain is wired, these same exercises auto-grade — each carries the
+  exact compiler error it should produce.)
+exercises:
+  - prompt: |
+      This won't compile: `s` is moved into `greet`, then used again. Make it compile
+      in two ways — (a) by cloning, (b) by changing `greet` to borrow `&str`.
+    kind: fix-it
+    broken_code: |
+      fn greet(name: String) {
+          println!("Hello, {name}");
+      }
+
+      fn main() {
+          let s = String::from("Alice");
+          greet(s);
+          println!("Still have: {s}");   // s was moved into greet
+      }
+    fixed_code: |
+      fn greet(name: &str) {
+          println!("Hello, {name}");
+      }
+
+      fn main() {
+          let s = String::from("Alice");
+          greet(&s);                      // borrow instead of move
+          println!("Still have: {s}");
+      }
+    bug: |
+      Passing a String by value MOVES it — the original binding `s` is invalidated, so
+      using it afterward is an error. Borrow with `&str` (or `&String`) when the
+      function only needs to read; reserve by-value parameters for when it needs to own.
+    check: compile-error
+    signal: "E0382"
+  - prompt: |
+      Spot the bug: this tries to hold a shared borrow and mutate the same vector at
+      once. Which line does the borrow checker reject, and why?
+    kind: spot-the-bug
+    broken_code: |
+      fn main() {
+          let mut v = vec![1, 2, 3];
+          let first = &v[0];   // shared borrow of v
+          v.push(4);           // mutable borrow while the shared borrow is live
+          println!("{first}");
+      }
+    fixed_code: |
+      fn main() {
+          let mut v = vec![1, 2, 3];
+          let first = v[0];    // copy the value out, ending the borrow
+          v.push(4);
+          println!("{first}");
+      }
+    bug: |
+      `&v[0]` takes a shared borrow that stays live until its last use (`println!`).
+      `v.push(4)` needs a mutable borrow — you can't have both at once, so it's
+      rejected. Either copy the value out first (i32 is Copy) or move the push after
+      the last use of `first`.
+    check: compile-error
+    signal: "E0502"

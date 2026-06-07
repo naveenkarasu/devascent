@@ -1,0 +1,137 @@
+- category: 'Tries'
+  lang: csharp
+  title: 'Tries — C# refresher'
+  summary: |
+    A trie (prefix tree) stores strings character by character in a tree, sharing
+    common prefixes. Insert, search, and startsWith are all O(L) where L is the word
+    length — independent of how many words are stored.
+
+    Tries shine for problems involving: autocomplete / prefix matching, word search
+    with wildcards, longest word with all prefixes present, XOR maximization (binary
+    trie), and dictionary-backed word break.
+
+    C# notes:
+      - Implement as a class with a dictionary (or char[26] array) of children and an
+        isEnd flag: Dictionary<char, TrieNode> children is flexible.
+      - char[26] children is faster but assumes lowercase letters only.
+      - For word search with wildcards, DFS through all children on '.'.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'trie node class'
+          code: |
+            class TrieNode {
+                public Dictionary<char, TrieNode> children = new();
+                public bool isEnd = false;
+            }
+        - label: 'trie node with fixed 26-char array'
+          code: |
+            class TrieNode {
+                public TrieNode[] children = new TrieNode[26];
+                public bool isEnd = false;
+            }
+        - label: 'trie root'
+          code: 'TrieNode root = new TrieNode();'
+    - title: Basic operations
+      ops:
+        - label: 'get or create child node'
+          code: |
+            if (!node.children.ContainsKey(c))
+                node.children[c] = new TrieNode();
+            node = node.children[c];
+        - label: 'mark end of word'
+          code: 'node.isEnd = true;'
+        - label: 'check if child exists'
+          code: 'if (!node.children.ContainsKey(c)) return false;'
+    - title: Iteration & loops
+      ops:
+        - label: 'insert a word'
+          code: |
+            void Insert(string word) {
+                var node = root;
+                foreach (char c in word) {
+                    if (!node.children.ContainsKey(c))
+                        node.children[c] = new TrieNode();
+                    node = node.children[c];
+                }
+                node.isEnd = true;
+            }
+        - label: 'search for an exact word'
+          code: |
+            bool Search(string word) {
+                var node = root;
+                foreach (char c in word) {
+                    if (!node.children.ContainsKey(c)) return false;
+                    node = node.children[c];
+                }
+                return node.isEnd;
+            }
+        - label: 'check if any word starts with prefix'
+          code: |
+            bool StartsWith(string prefix) {
+                var node = root;
+                foreach (char c in prefix) {
+                    if (!node.children.ContainsKey(c)) return false;
+                    node = node.children[c];
+                }
+                return true;
+            }
+    - title: Special operations (tries)
+      ops:
+        - label: 'word search with wildcard (.) — DFS through all children'
+          code: |
+            bool DfsSearch(TrieNode node, string word, int i) {
+                if (i == word.Length) return node.isEnd;
+                char c = word[i];
+                if (c == '.') return node.children.Values.Any(child => DfsSearch(child, word, i + 1));
+                if (!node.children.ContainsKey(c)) return false;
+                return DfsSearch(node.children[c], word, i + 1);
+            }
+        - label: 'collect all words with a given prefix'
+          code: |
+            void Collect(TrieNode node, string prefix, List<string> results) {
+                if (node.isEnd) results.Add(prefix);
+                foreach (var (c, child) in node.children)
+                    Collect(child, prefix + c, results);
+            }
+        - label: 'count words with prefix'
+          code: |
+            // Store a count field in TrieNode and increment on each insert pass-through.
+            // node.count++ at every node during Insert.
+  example: |
+    Worked example — implement a trie that supports insert, search, and startsWith:
+
+      Each node holds a map of children and an end-of-word flag. Insert walks the
+      trie creating nodes as needed. Search and startsWith both walk the trie
+      following characters — Search also checks the final node's isEnd flag.
+
+        class Trie {
+            private TrieNode root = new TrieNode();
+            public void Insert(string word) {
+                var node = root;
+                foreach (char c in word) {
+                    if (!node.children.ContainsKey(c)) node.children[c] = new TrieNode();
+                    node = node.children[c];
+                }
+                node.isEnd = true;
+            }
+            public bool Search(string word) {
+                var node = root;
+                foreach (char c in word) {
+                    if (!node.children.ContainsKey(c)) return false;
+                    node = node.children[c];
+                }
+                return node.isEnd;
+            }
+            public bool StartsWith(string prefix) {
+                var node = root;
+                foreach (char c in prefix) {
+                    if (!node.children.ContainsKey(c)) return false;
+                    node = node.children[c];
+                }
+                return true;
+            }
+        }
+
+    Takeaway: insert and search share the same traversal loop; the only difference is
+    what you do at the last node. Build the node class first, then the operations fall out.

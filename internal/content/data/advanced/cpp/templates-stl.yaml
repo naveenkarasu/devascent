@@ -1,0 +1,198 @@
+lang: cpp
+group: Templates & STL
+title: "Templates & STL — Generic Programming, Concepts, Ranges"
+tag: E
+summary: |
+  Templates are C++'s mechanism for compile-time generic programming. A function or
+  class template is instantiated by the compiler for each concrete type used,
+  generating type-safe code with no runtime overhead. The STL (Standard Template
+  Library) is the canonical library of generic containers (vector, map, unordered_map,
+  deque, set…), algorithms (sort, find, transform, accumulate…), and iterators that
+  form the backbone of idiomatic C++.
+
+  C++20 added Concepts — named compile-time predicates that constrain template
+  parameters, replacing the cryptic substitution-failure errors of unconstrained
+  templates with readable diagnostics. C++20 Ranges extends the algorithm library with
+  composable pipeline syntax (views::filter | views::transform).
+
+  Template metaprogramming (TMP) — using templates to compute at compile time, encode
+  type lists, or build expression templates — is a [C] sub-topic: important context
+  for reading library code, but not directly exercised here.
+
+  Gotchas:
+    - Iterator invalidation: inserting/erasing from std::vector while iterating
+      invalidates all iterators past the insertion point.
+    - std::map::operator[] inserts a default-constructed value if the key is absent —
+      use .find() or .at() when absence should be an error.
+    - Template error messages from unconstrained templates can be hundreds of lines;
+      Concepts (C++20) solve this at the language level.
+    - ODR (One Definition Rule): a template defined in multiple translation units must
+      have identical definitions — violations are silent UB.
+exercises:
+  - prompt: |
+      Implement a Stack<T> class template backed by std::deque<T>. Expose push, pop,
+      top, and empty. Add a precondition check to top() and pop() so that calling them
+      on an empty stack throws std::out_of_range rather than triggering UB.
+    kind: fix-it
+    broken_code: |
+      template <typename T>
+      class Stack {
+      public:
+          void push(const T& val) { data_.push_back(val); }
+
+          void pop() { data_.pop_back(); }       // UB if empty
+
+          const T& top() const { return data_.back(); }  // UB if empty
+
+          bool empty() const { return data_.empty(); }
+
+      private:
+          std::deque<T> data_;
+      };
+    fixed_code: |
+      template <typename T>
+      class Stack {
+      public:
+          void push(const T& val) { data_.push_back(val); }
+
+          void pop() {
+              if (data_.empty())
+                  throw std::out_of_range("Stack::pop on empty stack");
+              data_.pop_back();
+          }
+
+          const T& top() const {
+              if (data_.empty())
+                  throw std::out_of_range("Stack::top on empty stack");
+              return data_.back();
+          }
+
+          bool empty() const { return data_.empty(); }
+
+      private:
+          std::deque<T> data_;
+      };
+    bug: |
+      Calling std::deque::back() or std::deque::pop_back() on an empty container is
+      undefined behaviour — the program may crash, silently corrupt memory, or produce
+      garbage output. The precondition check converts the UB into a catchable exception,
+      making the failure predictable and diagnosable in debug and release builds alike.
+    check: none
+    signal: ""
+
+  - prompt: |
+      The function below tries to duplicate every element in a vector that is greater
+      than a threshold by pushing a copy into the same vector while iterating over it.
+      This is classic iterator-invalidation UB. Identify the bug, then fix it by
+      collecting duplicates separately and appending after the loop.
+    kind: fix-it
+    broken_code: |
+      void duplicate_large(std::vector<int>& v, int threshold) {
+          for (auto it = v.begin(); it != v.end(); ++it) {
+              if (*it > threshold) {
+                  v.push_back(*it);   // UB: push_back may reallocate, invalidating it
+              }
+          }
+      }
+
+      // Example trigger:
+      // std::vector<int> v{1, 5, 2, 8, 3};
+      // duplicate_large(v, 4);
+      // ASan: heap-use-after-free (iterator into freed buffer)
+    fixed_code: |
+      void duplicate_large(std::vector<int>& v, int threshold) {
+          std::vector<int> extras;
+          std::copy_if(v.cbegin(), v.cend(),
+                       std::back_inserter(extras),
+                       [threshold](int x) { return x > threshold; });
+          v.insert(v.end(), extras.begin(), extras.end());
+      }
+    bug: |
+      std::vector::push_back on a full vector triggers a reallocation: it allocates a
+      new buffer, copies existing elements, frees the old buffer, and updates internal
+      pointers. Any iterator, pointer, or reference into the old buffer — including the
+      loop's it — is now dangling. Dereferencing the invalidated iterator is UB;
+      ASan reports heap-use-after-free. The fix: collect elements-to-add into a
+      separate vector (no reallocation risk), then append after the loop ends.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Write a sum() function template constrained with C++20 Concepts to only accept
+      arithmetic types (std::integral or std::floating_point). Without the constraint,
+      passing std::string compiles but produces a meaningless result or a confusing
+      100-line error deep in the template instantiation. With the constraint, the error
+      is clear and points to the call site.
+    kind: fix-it
+    broken_code: |
+      // Unconstrained: accepts anything with operator+, including std::string
+      template <typename T>
+      T sum(const std::vector<T>& v) {
+          T result{};
+          for (const auto& x : v) result += x;
+          return result;
+      }
+
+      // Calling sum(std::vector<std::string>{...}) compiles but is nonsensical.
+    fixed_code: |
+      // C++20: constrain with concept
+      template <typename T>
+          requires std::integral<T> || std::floating_point<T>
+      T sum(const std::vector<T>& v) {
+          T result{};
+          for (const auto& x : v) result += x;
+          return result;
+      }
+
+      // Alternative terse syntax:
+      // template <std::integral T>  T sum(const std::vector<T>& v) { ... }
+
+      // sum(std::vector<std::string>{...}) now fails at the call site:
+      // error: no matching function for call to 'sum' — constraints not satisfied.
+    bug: |
+      Unconstrained templates produce errors deep inside the instantiation, often
+      pointing at standard-library internals rather than the caller's code. C++20
+      Concepts let you express the required interface directly in the template head via
+      requires. The compiler checks the constraint before instantiation and reports the
+      violation at the call site with a human-readable message.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Implement a case-insensitive string map using std::map<std::string, int,
+      CaseInsensitiveLess>. The comparator must implement a strict weak ordering —
+      violating this causes UB (infinite loops in tree traversal, non-deterministic
+      iteration). Show the broken version that uses == (not a strict weak ordering) and
+      the correct version that uses a lexicographic less-than on lowercased strings.
+    kind: spot-the-bug
+    broken_code: |
+      struct CaseInsensitiveLess {
+          bool operator()(const std::string& a, const std::string& b) const {
+              // BUG: this is equality, not less-than — not a valid comparator
+              std::string la = a, lb = b;
+              std::transform(la.begin(), la.end(), la.begin(), ::tolower);
+              std::transform(lb.begin(), lb.end(), lb.begin(), ::tolower);
+              return la == lb;   // wrong: returns true for equal keys
+          }
+      };
+
+      std::map<std::string, int, CaseInsensitiveLess> m;
+    fixed_code: |
+      struct CaseInsensitiveLess {
+          bool operator()(const std::string& a, const std::string& b) const {
+              std::string la = a, lb = b;
+              std::transform(la.begin(), la.end(), la.begin(), ::tolower);
+              std::transform(lb.begin(), lb.end(), lb.begin(), ::tolower);
+              return la < lb;   // strict weak ordering: less-than on normalised strings
+          }
+      };
+
+      std::map<std::string, int, CaseInsensitiveLess> m;
+    bug: |
+      std::map's red-black tree requires that the comparator be a strict weak ordering:
+      irreflexive (comp(a,a) == false), asymmetric, and transitive. Returning true for
+      equal keys violates irreflexivity — the tree may loop infinitely or corrupt its
+      structure. The fix is to use < on the normalised (lowercased) strings, which is a
+      valid total order.
+    check: none
+    signal: ""

@@ -1,0 +1,164 @@
+- category: 'Strings'
+  lang: javascript
+  title: 'Strings — JavaScript refresher'
+  summary: |
+    Strings in JavaScript are immutable sequences of UTF-16 code units. Like Java,
+    every "change" (concatenation, replace) produces a new string. Building output
+    with += in a loop is O(n^2) — collect into an array and join at the end instead.
+
+    Many string problems reduce to counting characters (anagrams, frequency) or a
+    two-pointer / sliding-window scan (palindromes, substrings).
+
+    JavaScript notes:
+      - s[i] or s.charAt(i) reads a character; s.length gives the length.
+      - Strings compare with === (value equality — no reference trap like Java).
+      - IMPORTANT: 'c' - 'a' is NaN in JS. Use charCodeAt: s.charCodeAt(i) - 97
+        to map lowercase letters to 0..25 for an int[26]-style frequency array.
+      - String.fromCharCode(n) is the reverse: maps 97 back to 'a'.
+      - Template literals (`Hello ${name}`) are idiomatic for string building.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'string literal (double or single quotes — both work)'
+          code: 'const s = "hello";'
+        - label: 'empty string'
+          code: 'const s = "";'
+        - label: 'template literal (embed expressions)'
+          code: 'const msg = `Hello ${name}, you have ${n} items`;'
+        - label: 'from a char code'
+          code: 'const ch = String.fromCharCode(97);  // "a"'
+        - label: 'from an array of chars (efficient output builder)'
+          code: 'const s = parts.join("");'
+    - title: Basic operations
+      ops:
+        - label: 'length'
+          code: 'const n = s.length;'
+        - label: 'read a character by index'
+          code: 'const ch = s[i];   // or s.charAt(i)'
+        - label: 'char code at index (needed for arithmetic)'
+          code: 'const code = s.charCodeAt(i);   // "a" -> 97'
+        - label: 'substring [start, end)'
+          code: 'const mid = s.slice(1, 4);   // chars at 1,2,3'
+        - label: 'index of a char / substring (-1 if absent)'
+          code: 'const i = s.indexOf("x");'
+    - title: Most-used built-in methods
+      ops:
+        - label: 'equality (=== compares value, works correctly)'
+          code: |
+            if (a === b) {
+              /* same content */
+            }
+        - label: 'contains'
+          code: 's.includes("lo");'
+        - label: 'startsWith'
+          code: 's.startsWith("he");'
+        - label: 'endsWith'
+          code: 's.endsWith("lo");'
+        - label: 'lowercase'
+          code: 's.toLowerCase();'
+        - label: 'uppercase'
+          code: 's.toUpperCase();'
+        - label: 'trim surrounding whitespace'
+          code: 's.trim();'
+        - label: 'trimStart'
+          code: 's.trimStart();'
+        - label: 'trimEnd'
+          code: 's.trimEnd();'
+        - label: 'replace (first match)'
+          code: 's.replace("a", "o");'
+        - label: 'replaceAll'
+          code: 's.replaceAll("a", "o");'
+        - label: 'split on a delimiter'
+          code: 'const words = s.split(" ");'
+        - label: 'is it empty?'
+          code: |
+            if (s.length === 0) {
+              /* empty */
+            }
+    - title: Conversions to other types
+      ops:
+        - label: 'string -> array of chars'
+          code: 'const chars = s.split("");   // or [...s]'
+        - label: 'array of chars -> string'
+          code: 'const s = chars.join("");'
+        - label: 'string -> number'
+          code: 'const n = Number("42");'
+        - label: 'number -> string'
+          code: 'const s = String(42);'
+        - label: 'string -> integer (stops at non-digit)'
+          code: 'const n = parseInt("42px", 10);   // 42'
+        - label: 'lowercase letter -> 0..25 index'
+          code: 'const idx = s.charCodeAt(i) - 97;   // "c" -> 2'
+        - label: '0..25 index -> lowercase letter'
+          code: 'const ch = String.fromCharCode(idx + 97);   // 2 -> "c"'
+    - title: Iteration & loops
+      ops:
+        - label: 'for...of over characters'
+          code: |
+            for (const ch of s) {
+              /* ch is each character */
+            }
+        - label: 'indexed for loop'
+          code: |
+            for (let i = 0; i < s.length; i++) {
+              const ch = s[i];
+            }
+        - label: 'two-pointer while loop (ends inward)'
+          code: |
+            let lo = 0, hi = s.length - 1;
+            while (lo < hi) {
+              lo++;
+              hi--;
+            }
+    - title: Ordering & comparison
+      ops:
+        - label: 'sort the characters of a string'
+          code: 'const sorted = s.split("").sort().join("");'
+        - label: 'lexicographic compare (<0, 0, >0)'
+          code: 'const cmp = a.localeCompare(b);   // or a < b ? -1 : a > b ? 1 : 0'
+        - label: 'sort an array of strings'
+          code: 'words.sort();   // default is lexicographic — fine for strings'
+        - label: 'sort by length'
+          code: 'words.sort((x, y) => x.length - y.length);'
+    - title: Special operations (string patterns)
+      ops:
+        - label: 'frequency table for lowercase letters (must use charCodeAt)'
+          code: |
+            const freq = new Array(26).fill(0);
+            for (const ch of s) freq[ch.charCodeAt(0) - 97]++;
+        - label: 'reverse a string'
+          code: 'const rev = s.split("").reverse().join("");'
+        - label: 'build output efficiently (avoid += in a loop)'
+          code: |
+            const parts = [];
+            for (const x of items) parts.push(x);
+            return parts.join("");
+        - label: 'check for palindrome (two-pointer)'
+          code: |
+            let lo = 0, hi = s.length - 1;
+            while (lo < hi) {
+              if (s[lo] !== s[hi]) return false;
+              lo++;
+              hi--;
+            }
+            return true;
+  example: |
+    Worked example — are two strings anagrams (same letters, any order)?
+
+      Different lengths can never be anagrams. Otherwise count each letter of the
+      first string (+1) and subtract for the second (-1). If every count lands back
+      at zero, the letters matched exactly. One pass each, O(n), no sorting needed.
+      Use charCodeAt — never subtract characters directly ('c' - 'a' is NaN in JS).
+
+        function isAnagram(a, b) {
+            if (a.length !== b.length) return false;
+            const count = new Array(26).fill(0);
+            for (let i = 0; i < a.length; i++) {
+                count[a.charCodeAt(i) - 97]++;
+                count[b.charCodeAt(i) - 97]--;
+            }
+            return count.every(v => v === 0);
+        }
+
+    Takeaway: use charCodeAt(i) - 97 for lowercase-letter indexing (not char subtraction).
+    Collect output in an array and join("") at the end instead of string concatenation.

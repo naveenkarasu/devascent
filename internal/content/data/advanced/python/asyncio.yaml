@@ -1,0 +1,149 @@
+lang: python
+group: Concurrency
+title: "asyncio — event loop, async/await, gather, TaskGroup"
+tag: E
+summary: |
+  `asyncio` provides single-threaded cooperative concurrency via an event loop.
+  Coroutines (`async def`) are paused at `await` points, allowing other
+  coroutines to run while waiting for I/O. Best suited for I/O-bound workloads
+  with many concurrent operations (HTTP clients, DB queries, WebSockets).
+
+  Key primitives (3.11+):
+    - `asyncio.gather(*coros)` — run multiple coroutines concurrently; returns
+      when all finish. Results are in submission order.
+    - `asyncio.TaskGroup` (3.11+) — structured concurrency: all tasks in the group
+      are cancelled when one raises an exception; raises `ExceptionGroup`.
+    - `asyncio.timeout(seconds)` (3.11+) — context manager for per-operation
+      timeouts; raises `TimeoutError`. Preferred over `asyncio.wait_for`.
+    - `asyncio.create_task(coro)` — schedule a coroutine as a task; a bare
+      coroutine object does nothing until awaited or wrapped in a task.
+
+  `except*` (3.11+) — catch exceptions from an `ExceptionGroup` by type.
+
+  Blocking-in-async is the cardinal sin: calling `time.sleep()`, `requests.get()`,
+  or any synchronous blocking call inside `async def` FREEZES the event loop for
+  all concurrent coroutines. Use `await asyncio.sleep()`, `httpx`, `aiohttp`, or
+  `await loop.run_in_executor(None, blocking_fn)` instead.
+
+  Common mistakes:
+  - `time.sleep()` inside `async def` blocks the entire event loop.
+  - A bare coroutine object (`my_coro()`) does nothing until awaited or wrapped in
+    `asyncio.create_task()`.
+  - `async for` and `async with` require `__aiter__`/`__anext__` and
+    `__aenter__`/`__aexit__` respectively — regular iterables/CMs don't work.
+  - `asyncio` does NOT help with CPU-bound work; combine with `ProcessPoolExecutor`
+    via `run_in_executor` for that.
+exercises:
+  - prompt: |
+      The `handler` coroutine fetches data from a URL but uses the synchronous
+      `requests.get()` call, which blocks the entire event loop while waiting for
+      the network response.
+
+      The broken version uses `requests.get` (a blocking call). Fix it to use
+      `loop.run_in_executor(None, ...)` to run the blocking call in a thread pool
+      without freezing the event loop.
+    kind: fix-it
+    broken_code: |
+      import asyncio
+      import requests   # synchronous — blocks the event loop!
+
+      async def handler(url):
+          # Bug: requests.get blocks the event loop for ALL coroutines
+          data = requests.get(url).text
+          return data
+    fixed_code: |
+      import asyncio
+      import requests
+
+      async def handler(url):
+          loop = asyncio.get_running_loop()
+          data = await loop.run_in_executor(
+              None,
+              lambda: requests.get(url).text
+          )
+          return data
+    bug: |
+      `requests.get()` is a synchronous blocking call. Inside `async def`, it holds
+      the event loop thread until the HTTP response arrives, preventing all other
+      coroutines from running. `loop.run_in_executor(None, fn)` offloads the
+      blocking call to a thread-pool worker and `await`s the result, releasing the
+      event loop to process other coroutines while the network request is in flight.
+    check: none
+    signal: ""
+
+  - prompt: |
+      The `fetch_sequentially` coroutine awaits 5 simulated I/O calls one at a
+      time, taking ~0.5s total. The broken version is sequential — there is no
+      concurrency.
+
+      Fix it to use `asyncio.gather()` so all 5 calls run concurrently, completing
+      in ~0.1s total.
+    kind: fix-it
+    broken_code: |
+      import asyncio
+
+      async def fake_fetch(resource_id):
+          await asyncio.sleep(0.1)
+          return f"data:{resource_id}"
+
+      async def fetch_sequentially():
+          # Bug: awaits each call in turn — ~0.5s total
+          results = []
+          for i in range(5):
+              result = await fake_fetch(i)
+              results.append(result)
+          return results
+    fixed_code: |
+      import asyncio
+
+      async def fake_fetch(resource_id):
+          await asyncio.sleep(0.1)
+          return f"data:{resource_id}"
+
+      async def fetch_all_concurrent():
+          return await asyncio.gather(*(fake_fetch(i) for i in range(5)))
+    bug: |
+      Awaiting each coroutine in a loop runs them sequentially — each suspends until
+      complete before the next starts, so 5 × 0.1s = 0.5s. `asyncio.gather` starts
+      all coroutines as concurrent tasks; since all are waiting on `asyncio.sleep`
+      (not the CPU), the event loop runs all 5 in parallel — total time ≈ 0.1s.
+    check: none
+    signal: ""
+
+  - prompt: |
+      `run_with_timeout(coro, seconds)` should run a coroutine and cancel it with
+      a `TimeoutError` if it takes longer than `seconds`.
+
+      The broken version uses the older `asyncio.wait_for()` pattern correctly, but
+      we want the newer `asyncio.timeout()` (3.11+) context-manager style.
+
+      Rewrite it to use `async with asyncio.timeout(seconds):` and catch
+      `TimeoutError`.
+    kind: fix-it
+    broken_code: |
+      import asyncio
+
+      async def run_with_timeout(coro, seconds):
+          # Old style — works, but asyncio.timeout() is preferred in 3.11+
+          try:
+              return await asyncio.wait_for(coro, timeout=seconds)
+          except asyncio.TimeoutError:
+              return None
+    fixed_code: |
+      import asyncio
+
+      async def run_with_timeout(coro, seconds):
+          try:
+              async with asyncio.timeout(seconds):
+                  return await coro
+          except TimeoutError:
+              return None
+    bug: |
+      `asyncio.wait_for` is the pre-3.11 idiom. `asyncio.timeout()` (3.11+) is the
+      modern replacement: it is a context manager (`async with`) that wraps any
+      awaitable, and it raises the built-in `TimeoutError` (not
+      `asyncio.TimeoutError`, which still exists but is now an alias) when the
+      deadline is exceeded. The context-manager form composes better with other
+      `async with` blocks.
+    check: none
+    signal: ""

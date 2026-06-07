@@ -1,0 +1,100 @@
+- category: "Backtracking"
+  lang: python
+  title: "Backtracking — Python refresher"
+  summary: |
+    Backtracking is DFS through a decision tree: at each step choose an option,
+    recurse, then undo the choice. It generates all valid configurations (subsets,
+    permutations, combinations) and prunes branches that can't lead to a solution.
+    Reach for it when you need to enumerate all solutions and constraints let you
+    prune early.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'result collector'
+          code: 'results = []'
+        - label: 'current path'
+          code: 'path = []'
+        - label: 'visited set (grid DFS)'
+          code: 'seen = set()'
+        - label: 'used array (permutation)'
+          code: 'used = [False] * len(nums)'
+    - title: Basic operations
+      ops:
+        - label: 'snapshot current path (copy before appending to results)'
+          code: 'results.append(path[:])'
+        - label: 'choose: add to path'
+          code: 'path.append(c)'
+        - label: 'undo (backtrack): remove from path'
+          code: 'path.pop()'
+        - label: 'mark cell visited'
+          code: 'seen.add((r, c))'
+        - label: 'unmark cell'
+          code: 'seen.remove((r, c))'
+        - label: 'prune on constraint'
+          code: 'if total > target: return'
+    - title: Iteration & loops
+      ops:
+        - label: 'backtracking template (subsets / combinations)'
+          code: |
+            def bt(start, path):
+                results.append(path[:])
+                for i in range(start, len(nums)):
+                    path.append(nums[i])
+                    bt(i + 1, path)
+                    path.pop()
+        - label: 'permutations template'
+          code: |
+            def bt(path):
+                if len(path) == len(nums):
+                    results.append(path[:])
+                    return
+                for i, v in enumerate(nums):
+                    if not used[i]:
+                        used[i] = True
+                        path.append(v)
+                        bt(path)
+                        path.pop()
+                        used[i] = False
+        - label: 'skip duplicates in sorted input'
+          code: 'if i > start and nums[i] == nums[i-1]: continue'
+    - title: Special operations (backtracking)
+      ops:
+        - label: 'grid DFS with 4-directional moves'
+          code: |
+            dirs = [(0,1),(0,-1),(1,0),(-1,0)]
+            def dfs(r, c):
+                seen.add((r, c))
+                for dr, dc in dirs:
+                    nr, nc = r+dr, c+dc
+                    if (nr, nc) not in seen and in_bounds(nr, nc):
+                        dfs(nr, nc)
+                seen.remove((r, c))
+        - label: 'combination sum (allow reuse)'
+          code: |
+            def bt(start, path, total):
+                if total == target: results.append(path[:])
+                if total >= target: return
+                for i in range(start, len(candidates)):
+                    path.append(candidates[i])
+                    bt(i, path, total + candidates[i])
+                    path.pop()
+        - label: 'N-Queens column / diagonal constraint check'
+          code: 'if col in cols or r-c in neg_diag or r+c in pos_diag: continue'
+  example: |
+    Worked example — Subsets (all subsets of a list):
+      At each index, either include the element or skip it. The path at each leaf
+      is one valid subset.
+
+        def subsets(nums):
+            res = []
+            def bt(start, path):
+                res.append(path[:])
+                for i in range(start, len(nums)):
+                    path.append(nums[i])
+                    bt(i + 1, path)
+                    path.pop()
+            bt(0, [])
+            return res
+
+    Takeaway: choose-recurse-undo is the universal template; add a pruning
+    condition to avoid exploring invalid branches early.

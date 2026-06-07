@@ -1,0 +1,74 @@
+id: read-the-crash
+lang: csharp
+order: 9
+title: Read the Crash
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      Errors are clues, not failures. At runtime C# throws an Exception and prints
+      its type and a message. Common ones: IndexOutOfRangeException (an array
+      position that doesn't exist) and DivideByZeroException (dividing by 0).
+      Read the exception TYPE on the first line. (Many other mistakes — unknown
+      names, type mismatches — C# catches earlier, at compile time.)
+
+          long[] s = new long[]{};
+          _ = s[0];   // IndexOutOfRangeException: Index was outside the bounds of the array.
+
+      The fix: check the length before you index.
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: 'Returning items[0] throws IndexOutOfRangeException on an empty array. C# has no "None", so signal "empty" with -1 instead.'
+    task:
+      prompt: Return the first item, or -1 if the array is empty.
+      func_name: safe_first
+      starter: |
+        public class Solution {
+            public long safe_first(long[] items) {
+                // buggy: return items[0];  -- throws when empty
+                // hint: guard first — if (items.Length == 0) { return -1; }
+            }
+        }
+      solution: |
+        public class Solution {
+            public long safe_first(long[] items) {
+                if (items.Length == 0) {
+                    return -1;
+                }
+                return items[0];
+            }
+        }
+      tests:
+        - {name: 'safe_first([5,6])', input: [[5, 6]], expected: 5}
+        - {name: 'safe_first([])', input: [[]], expected: -1}
+        - {name: 'safe_first([7])', input: [[7]], expected: 7}
+  - kind: you_do
+    title: You do — solo
+    body: Dividing by array length throws DivideByZeroException on an empty array. Make empty → 0, otherwise the true average.
+    task:
+      prompt: Return the average of the array; empty array → 0.
+      func_name: average
+      starter: |
+        public class Solution {
+            public double average(long[] numbers) {
+                // <- guard the empty case, else  (double)sum / numbers.Length
+            }
+        }
+      solution: |
+        public class Solution {
+            public double average(long[] numbers) {
+                if (numbers.Length == 0) {
+                    return 0;
+                }
+                long s = 0;
+                foreach (var n in numbers) {
+                    s += n;
+                }
+                return (double)s / numbers.Length;
+            }
+        }
+      tests:
+        - {name: 'average([1,2])', input: [[1, 2]], expected: 1.5}
+        - {name: 'average([2,4])', input: [[2, 4]], expected: 3.0}
+        - {name: 'average([])', input: [[]], expected: 0.0}
+        - {name: 'average([10])', input: [[10]], expected: 10.0}

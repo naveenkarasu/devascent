@@ -1,0 +1,34 @@
+lang: javascript
+group: Node
+title: "Node.js — server-side JS"
+tag: P
+summary: |
+  Node.js brings JavaScript to the server by running the V8 engine outside the browser,
+  adding a standard library for I/O (`fs`, `http`, `path`, `stream`, `crypto`, `os`),
+  and npm — the largest package registry in the world. Its event-driven, non-blocking I/O
+  model (the same event loop as the browser) makes it efficient for I/O-bound workloads.
+
+  File I/O: `fs.promises` provides async `readFile`, `writeFile`, `readdir`, `stat`.
+  Use `await fs.promises.readFile(path, "utf8")` instead of callback-based `fs.readFile`.
+  `path.join`, `path.resolve`, and `path.extname` handle cross-platform path manipulation.
+
+  HTTP: `http.createServer((req, res) => { ... })` creates a raw HTTP server.
+  In practice, Express (`npm install express`) or Fastify provide routing, middleware, and
+  error handling on top. Express middleware signature: `(req, res, next) => void`.
+  Error-handling middleware: `(err, req, res, next) => void` — must have four parameters.
+
+  Environment & process: `process.env.NAME` reads environment variables (set in `.env`
+  files via `dotenv`, or injected by the host). `process.argv` is an array where `[2]`
+  is the first user argument. `process.exit(code)` terminates with the given code.
+
+  npm and package.json: `dependencies` are runtime; `devDependencies` are build/test
+  only. `scripts` in `package.json` define runnable tasks (`npm run build`, `npm test`).
+  `"type": "module"` switches the entire package to ESM.
+
+  Node 18+: ships native `fetch` (no import needed), top-level `await` in ESM modules,
+  and the `--watch` flag for development auto-restart.
+
+  Best exercised as a small Express REST API (CRUD endpoints, middleware, error
+  middleware) or a CLI tool. Standalone exercises can target `fs.promises` directory
+  scanning, `process.argv` parsing, or middleware composition.
+exercises: []

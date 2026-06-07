@@ -1,0 +1,155 @@
+- category: Strings
+  lang: java
+  title: Strings — Java refresher
+  summary: |
+    Strings are sequences of characters. The single most important Java fact: String
+    is IMMUTABLE — every "change" (concatenation, replace) creates a brand-new String.
+    So building a string in a loop with += is O(n^2) and slow. Use a StringBuilder,
+    which is a mutable buffer you append to, then call toString() once at the end.
+
+    Many string problems reduce to counting characters (anagrams, frequency) or to a
+    two-pointer / sliding-window scan (palindromes, substrings).
+
+    Java notes:
+      - char c = s.charAt(i);  and  s.length()  to read.
+      - Compare with .equals(); == compares references and will bite you.
+      - c - 'a' maps lowercase letters to 0..25 — perfect as an int[26] index.
+      - s.toCharArray() gives a char[] you can sort or scan.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'string literal'
+          code: 'String s = "hello";'
+        - label: 'empty string'
+          code: 'String s = "";'
+        - label: 'single character'
+          code: 'char c = ''a'';'
+        - label: 'mutable builder (for assembling output)'
+          code: 'StringBuilder sb = new StringBuilder();'
+        - label: 'from a char array'
+          code: |
+            char[] cs = {'a', 'b'};
+            String s = new String(cs);
+    - title: Basic operations
+      ops:
+        - label: 'length'
+          code: 'int n = s.length();'
+        - label: 'read a char by index'
+          code: 'char c = s.charAt(i);'
+        - label: 'substring [start, end)'
+          code: 'String mid = s.substring(1, 4);  // chars 1,2,3'
+        - label: 'concatenate (makes a NEW string)'
+          code: 'String t = s + "!";'
+        - label: 'index of a char (-1 if absent)'
+          code: 'int i = s.indexOf(''x'');'
+        - label: 'index of a substring (-1 if absent)'
+          code: 'int j = s.indexOf("ab");'
+    - title: Most-used built-in functions
+      ops:
+        - label: 'equals — compare CONTENT (never use ==)'
+          code: 'if (a.equals(b)) { ... }'
+        - label: 'equalsIgnoreCase'
+          code: 'if (a.equalsIgnoreCase(b)) { ... }'
+        - label: 'contains'
+          code: 's.contains("lo");'
+        - label: 'startsWith'
+          code: 's.startsWith("he");'
+        - label: 'endsWith'
+          code: 's.endsWith("lo");'
+        - label: 'toLowerCase'
+          code: 's.toLowerCase();'
+        - label: 'toUpperCase'
+          code: 's.toUpperCase();'
+        - label: 'trim surrounding whitespace'
+          code: 's.strip();   // or legacy s.trim()'
+        - label: 'replace all occurrences'
+          code: 's.replace(''a'', ''o'');'
+        - label: 'isEmpty'
+          code: 's.isEmpty();'
+        - label: 'isBlank (only whitespace?)'
+          code: 's.isBlank();'
+    - title: Conversions to other types
+      ops:
+        - label: 'string -> char array'
+          code: 'char[] cs = s.toCharArray();'
+        - label: 'char array -> string'
+          code: 'String s = new String(cs);'
+        - label: 'builder -> string'
+          code: 'String r = sb.toString();'
+        - label: 'string -> int'
+          code: 'int n = Integer.parseInt("42");'
+        - label: 'int -> string'
+          code: 'String s = Integer.toString(42);'
+        - label: 'single digit char -> int'
+          code: 'int d = c - ''0'';            // ''7'' -> 7'
+        - label: 'lowercase letter -> 0..25 index'
+          code: 'int idx = c - ''a'';           // ''c'' -> 2'
+    - title: Iteration & loops
+      ops:
+        - label: 'for-each over characters'
+          code: 'for (char c : s.toCharArray()) { ... }'
+        - label: 'indexed for loop'
+          code: |
+            for (int i = 0; i < s.length(); i++) {
+                char c = s.charAt(i);
+            }
+        - label: 'two-pointer while loop (ends inward)'
+          code: |
+            int lo = 0, hi = s.length() - 1;
+            while (lo < hi) {
+                ...;
+                lo++;
+                hi--;
+            }
+    - title: Ordering & comparison
+      ops:
+        - label: 'sort the characters of a string'
+          code: |
+            char[] cs = s.toCharArray();
+            Arrays.sort(cs);
+            String sorted = new String(cs);
+        - label: 'lexicographic compare (<0, 0, >0)'
+          code: 'int cmp = a.compareTo(b);'
+        - label: 'sort a list of strings'
+          code: |
+            List<String> words = ...;
+            Collections.sort(words);
+        - label: 'sort by length with a comparator'
+          code: 'words.sort((x, y) -> Integer.compare(x.length(), y.length()));'
+    - title: Special operations (string patterns)
+      ops:
+        - label: 'frequency table for lowercase letters'
+          code: |
+            int[] freq = new int[26];
+            for (char c : s.toCharArray()) freq[c - 'a']++;
+        - label: 'reverse a string'
+          code: 'String r = new StringBuilder(s).reverse().toString();'
+        - label: 'build output efficiently (avoid += in a loop)'
+          code: |
+            StringBuilder sb = new StringBuilder();
+            for (...) sb.append(part);
+            return sb.toString();
+        - label: 'split on a delimiter'
+          code: 'String[] parts = s.split(" ");'
+  example: |
+    Worked example — are two strings anagrams (same letters, any order)?
+
+      Different lengths can never be anagrams. Otherwise count each letter of the
+      first string (+1) and subtract for the second (-1). If every count lands back
+      at zero, the letters matched exactly. One pass each, O(n), no sorting needed.
+
+        boolean isAnagram(String a, String b) {
+            if (a.length() != b.length()) return false;
+            int[] count = new int[26];
+            for (int i = 0; i < a.length(); i++) {
+                count[a.charAt(i) - 'a']++;
+                count[b.charAt(i) - 'a']--;
+            }
+            for (int v : count) {
+                if (v != 0) return false;
+            }
+            return true;
+        }
+
+    Takeaway: an int[26] is a tiny, fast frequency map for lowercase letters. Reach
+    for StringBuilder whenever you assemble output, and never compare strings with ==.

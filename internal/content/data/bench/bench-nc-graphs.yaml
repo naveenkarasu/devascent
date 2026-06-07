@@ -1,0 +1,414 @@
+# NeetCode 150 graph problems — plain grid / adjacency-list I/O, no shape field.
+# Authored original; all test cases hand-traced.
+
+- id: nc-max-area-island
+  title: Max Area of Island
+  difficulty: medium
+  pattern: graph
+  category: Trees & Graphs
+  lists: [neetcode150]
+  func_name: max_area_of_island
+  prompt: |
+    Max Area of Island
+
+    Given a binary grid of 0s (water) and 1s (land), return the area of the
+    largest island. An island is a group of 1s connected horizontally or
+    vertically. Return 0 if there is no island.
+
+    Example:
+      [[0,0,1,0],
+       [0,1,1,0],
+       [0,0,0,0]]  -> 3
+
+      [[0,0],
+       [0,0]]      -> 0
+  starter: |
+    def max_area_of_island(grid):
+        pass  # write your solution; delete this line
+  solution: |
+    def max_area_of_island(grid):
+        if not grid:
+            return 0
+        m, n = len(grid), len(grid[0])
+        seen = set()
+
+        def dfs(i, j):
+            if i < 0 or j < 0 or i >= m or j >= n:
+                return 0
+            if grid[i][j] == 0 or (i, j) in seen:
+                return 0
+            seen.add((i, j))
+            return 1 + dfs(i+1,j) + dfs(i-1,j) + dfs(i,j+1) + dfs(i,j-1)
+
+        best = 0
+        for i in range(m):
+            for j in range(n):
+                if grid[i][j] == 1 and (i, j) not in seen:
+                    best = max(best, dfs(i, j))
+        return best
+  tests:
+    - name: case 1
+      input: [[[0,0,1,0],[0,1,1,0],[0,0,0,0]]]
+      expected: 3
+    - name: case 2
+      input: [[[0,0],[0,0]]]
+      expected: 0
+    - name: case 3
+      input: [[[1,1,0,0],[1,0,0,1]]]
+      expected: 3
+
+- id: nc-rotting-oranges
+  title: Rotting Oranges
+  difficulty: medium
+  pattern: graph
+  category: Trees & Graphs
+  lists: [neetcode150]
+  func_name: oranges_rotting
+  prompt: |
+    Rotting Oranges
+
+    You are given a grid where each cell is 0 (empty), 1 (fresh orange), or
+    2 (rotten orange). Every minute, any fresh orange 4-directionally adjacent
+    to a rotten orange becomes rotten. Return the minimum number of minutes
+    until no fresh orange remains, or -1 if it is impossible.
+
+    Example:
+      [[2,1,1],
+       [1,1,0],
+       [0,1,1]]  -> 4
+
+      [[2,1,1],
+       [0,1,1],
+       [1,0,1]]  -> -1
+
+      [[0,2]]    -> 0
+  starter: |
+    def oranges_rotting(grid):
+        pass  # write your solution; delete this line
+  solution: |
+    from collections import deque
+
+    def oranges_rotting(grid):
+        m, n = len(grid), len(grid[0])
+        queue = deque()
+        fresh = 0
+        for i in range(m):
+            for j in range(n):
+                if grid[i][j] == 2:
+                    queue.append((i, j, 0))
+                elif grid[i][j] == 1:
+                    fresh += 1
+        if fresh == 0:
+            return 0
+        minutes = 0
+        while queue:
+            i, j, t = queue.popleft()
+            for di, dj in [(1,0),(-1,0),(0,1),(0,-1)]:
+                ni, nj = i+di, j+dj
+                if 0 <= ni < m and 0 <= nj < n and grid[ni][nj] == 1:
+                    grid[ni][nj] = 2
+                    fresh -= 1
+                    minutes = t + 1
+                    queue.append((ni, nj, t+1))
+        return minutes if fresh == 0 else -1
+  tests:
+    - name: case 1
+      input: [[[2,1,1],[1,1,0],[0,1,1]]]
+      expected: 4
+    - name: case 2
+      input: [[[2,1,1],[0,1,1],[1,0,1]]]
+      expected: -1
+    - name: case 3
+      input: [[[0,2]]]
+      expected: 0
+
+- id: nc-pacific-atlantic
+  title: Pacific Atlantic Water Flow
+  difficulty: medium
+  pattern: graph
+  category: Trees & Graphs
+  lists: [neetcode150, blind75]
+  func_name: pacific_atlantic
+  prompt: |
+    Pacific Atlantic Water Flow
+
+    You are given an m x n grid of integers representing the heights of terrain.
+    Rain water can flow to a neighboring cell (up, down, left, right) if that
+    cell's height is less than or equal to the current cell's height.
+
+    The Pacific Ocean touches the top and left edges of the grid. The Atlantic
+    Ocean touches the bottom and right edges. Return the list of [row, col]
+    coordinates of cells from which water can flow to BOTH the Pacific and
+    Atlantic oceans. Return the list sorted in ascending order first by row,
+    then by column.
+
+    Example:
+      [[1,2,2,3,5],
+       [3,2,3,4,4],
+       [2,4,5,3,1],
+       [6,7,1,4,5],
+       [5,1,1,2,4]]
+      -> [[0,4],[1,3],[1,4],[2,2],[3,0],[3,1],[4,0]]
+  starter: |
+    def pacific_atlantic(heights):
+        pass  # write your solution; delete this line
+  solution: |
+    from collections import deque
+
+    def pacific_atlantic(heights):
+        if not heights:
+            return []
+        m, n = len(heights), len(heights[0])
+
+        def bfs(starts):
+            visited = set(starts)
+            queue = deque(starts)
+            while queue:
+                i, j = queue.popleft()
+                for di, dj in [(1,0),(-1,0),(0,1),(0,-1)]:
+                    ni, nj = i+di, j+dj
+                    if (0 <= ni < m and 0 <= nj < n
+                            and (ni, nj) not in visited
+                            and heights[ni][nj] >= heights[i][j]):
+                        visited.add((ni, nj))
+                        queue.append((ni, nj))
+            return visited
+
+        pac_starts = [(0, j) for j in range(n)] + [(i, 0) for i in range(1, m)]
+        atl_starts = [(m-1, j) for j in range(n)] + [(i, n-1) for i in range(m-1)]
+        pac = bfs(pac_starts)
+        atl = bfs(atl_starts)
+        result = [[r, c] for r, c in sorted(pac & atl)]
+        return result
+  tests:
+    - name: case 1
+      input: [[[1,2,2,3,5],[3,2,3,4,4],[2,4,5,3,1],[6,7,1,4,5],[5,1,1,2,4]]]
+      expected: [[0,4],[1,3],[1,4],[2,2],[3,0],[3,1],[4,0]]
+    - name: case 2
+      input: [[[1]]]
+      expected: [[0,0]]
+    - name: case 3
+      input: [[[1,1],[1,1]]]
+      expected: [[0,0],[0,1],[1,0],[1,1]]
+
+- id: nc-surrounded-regions
+  title: Surrounded Regions
+  difficulty: medium
+  pattern: graph
+  category: Trees & Graphs
+  lists: [neetcode150]
+  func_name: solve
+  prompt: |
+    Surrounded Regions
+
+    Given an m x n board of "X" and "O" characters, capture all regions that
+    are surrounded. A region is captured by flipping all "O"s in the region to
+    "X"s. A region is surrounded if none of its "O" cells touch the border of
+    the board. Return the modified board.
+
+    Example:
+      [["X","X","X","X"],
+       ["X","O","O","X"],
+       ["X","X","O","X"],
+       ["X","O","X","X"]]
+      ->
+      [["X","X","X","X"],
+       ["X","X","X","X"],
+       ["X","X","X","X"],
+       ["X","O","X","X"]]
+  starter: |
+    def solve(board):
+        pass  # write your solution; delete this line
+  solution: |
+    def solve(board):
+        if not board or not board[0]:
+            return board
+        m, n = len(board), len(board[0])
+        safe = set()
+
+        def dfs(i, j):
+            if i < 0 or j < 0 or i >= m or j >= n:
+                return
+            if board[i][j] != "O" or (i, j) in safe:
+                return
+            safe.add((i, j))
+            dfs(i+1,j); dfs(i-1,j); dfs(i,j+1); dfs(i,j-1)
+
+        for i in range(m):
+            dfs(i, 0); dfs(i, n-1)
+        for j in range(n):
+            dfs(0, j); dfs(m-1, j)
+
+        result = []
+        for i in range(m):
+            row = []
+            for j in range(n):
+                if board[i][j] == "O" and (i, j) not in safe:
+                    row.append("X")
+                else:
+                    row.append(board[i][j])
+            result.append(row)
+        return result
+  tests:
+    - name: case 1
+      input: [[["X","X","X","X"],["X","O","O","X"],["X","X","O","X"],["X","O","X","X"]]]
+      expected: [["X","X","X","X"],["X","X","X","X"],["X","X","X","X"],["X","O","X","X"]]
+    - name: case 2
+      input: [[["O","O"],["O","O"]]]
+      expected: [["O","O"],["O","O"]]
+    - name: case 3
+      input: [[["X","X","X"],["X","O","X"],["X","X","X"]]]
+      expected: [["X","X","X"],["X","X","X"],["X","X","X"]]
+
+- id: nc-graph-valid-tree
+  title: Graph Valid Tree
+  difficulty: medium
+  pattern: graph
+  category: Trees & Graphs
+  lists: [neetcode150, blind75]
+  func_name: valid_tree
+  prompt: |
+    Graph Valid Tree
+
+    Given n nodes labeled 0 through n-1 and a list of undirected edges, return
+    True if these edges form a valid tree, or False otherwise. A valid tree is
+    connected and has no cycles (exactly n-1 edges and all nodes reachable).
+
+    Example:
+      valid_tree(5, [[0,1],[0,2],[0,3],[1,4]]) -> True
+      valid_tree(5, [[0,1],[1,2],[2,3],[1,3],[1,4]]) -> False
+  starter: |
+    def valid_tree(n, edges):
+        pass  # write your solution; delete this line
+  solution: |
+    def valid_tree(n, edges):
+        if len(edges) != n - 1:
+            return False
+        adj = [[] for _ in range(n)]
+        for u, v in edges:
+            adj[u].append(v)
+            adj[v].append(u)
+        visited = set()
+
+        def dfs(node):
+            visited.add(node)
+            for nb in adj[node]:
+                if nb not in visited:
+                    dfs(nb)
+
+        dfs(0)
+        return len(visited) == n
+  tests:
+    - name: case 1
+      input: [5, [[0,1],[0,2],[0,3],[1,4]]]
+      expected: true
+    - name: case 2
+      input: [5, [[0,1],[1,2],[2,3],[1,3],[1,4]]]
+      expected: false
+    - name: case 3
+      input: [4, [[0,1],[2,3]]]
+      expected: false
+
+- id: nc-num-connected-components
+  title: Number of Connected Components in an Undirected Graph
+  difficulty: medium
+  pattern: graph
+  category: Trees & Graphs
+  lists: [neetcode150, blind75]
+  func_name: count_components
+  prompt: |
+    Number of Connected Components in an Undirected Graph
+
+    Given n nodes labeled 0 through n-1 and a list of undirected edges, return
+    the number of connected components in the graph.
+
+    Example:
+      count_components(5, [[0,1],[1,2],[3,4]]) -> 2
+      count_components(5, [[0,1],[1,2],[2,3],[3,4]]) -> 1
+  starter: |
+    def count_components(n, edges):
+        pass  # write your solution; delete this line
+  solution: |
+    def count_components(n, edges):
+        parent = list(range(n))
+
+        def find(x):
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        def union(a, b):
+            pa, pb = find(a), find(b)
+            if pa == pb:
+                return 0
+            parent[pa] = pb
+            return 1
+
+        return n - sum(union(u, v) for u, v in edges)
+  tests:
+    - name: case 1
+      input: [5, [[0,1],[1,2],[3,4]]]
+      expected: 2
+    - name: case 2
+      input: [5, [[0,1],[1,2],[2,3],[3,4]]]
+      expected: 1
+    - name: case 3
+      input: [4, []]
+      expected: 4
+
+- id: nc-word-ladder
+  title: Word Ladder
+  difficulty: hard
+  pattern: graph
+  category: Trees & Graphs
+  lists: [neetcode150]
+  func_name: ladder_length
+  prompt: |
+    Word Ladder
+
+    Given a begin_word, an end_word, and a word_list, return the length of the
+    shortest transformation sequence from begin_word to end_word, or 0 if no
+    such sequence exists. Each step may change exactly one letter, and every
+    intermediate word must be in word_list. The returned length counts all
+    words in the sequence including begin_word and end_word.
+
+    Example:
+      ladder_length("hit","cog",["hot","dot","dog","lot","log","cog"]) -> 5
+        (hit -> hot -> dot -> dog -> cog)
+
+      ladder_length("hit","cog",["hot","dot","dog","lot","log"]) -> 0
+        ("cog" not in list)
+  starter: |
+    def ladder_length(begin_word, end_word, word_list):
+        pass  # write your solution; delete this line
+  solution: |
+    from collections import deque
+
+    def ladder_length(begin_word, end_word, word_list):
+        word_set = set(word_list)
+        if end_word not in word_set:
+            return 0
+        queue = deque([(begin_word, 1)])
+        visited = {begin_word}
+        while queue:
+            word, length = queue.popleft()
+            for i in range(len(word)):
+                for c in "abcdefghijklmnopqrstuvwxyz":
+                    candidate = word[:i] + c + word[i+1:]
+                    if candidate == end_word:
+                        return length + 1
+                    if candidate in word_set and candidate not in visited:
+                        visited.add(candidate)
+                        queue.append((candidate, length + 1))
+        return 0
+  tests:
+    - name: case 1
+      input: ["hit", "cog", ["hot","dot","dog","lot","log","cog"]]
+      expected: 5
+    - name: case 2
+      input: ["hit", "cog", ["hot","dot","dog","lot","log"]]
+      expected: 0
+    - name: case 3
+      input: ["hot", "dog", ["hot","dot","dog"]]
+      expected: 3

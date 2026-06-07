@@ -1,0 +1,22 @@
+lang: java
+label: Java
+notes: You need a full JDK (which includes the javac compiler), NOT just a JRE. Eclipse Temurin is a free, well-supported build.
+os:
+  windows:
+    link: https://adoptium.net/temurin/releases/
+    steps:
+      - Download the latest Temurin JDK .msi for Windows from adoptium.net.
+      - Run the installer and enable "Add to PATH" / "Set JAVA_HOME".
+      - Restart DevAscent.
+    verify: javac -version
+  macos:
+    link: https://adoptium.net/temurin/releases/
+    steps:
+      - Install the Temurin JDK .pkg from adoptium.net, or "brew install --cask temurin".
+      - Restart your terminal.
+    verify: javac -version
+  linux:
+    link: https://adoptium.net/installation/
+    steps:
+      - Install a JDK via your package manager, e.g. "sudo apt install default-jdk" (Debian/Ubuntu), or use the Adoptium APT/YUM repo.
+    verify: javac -version

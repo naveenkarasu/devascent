@@ -1,0 +1,20 @@
+lang: typescript
+group: Positioning & Domains
+title: "TypeScript — Positioning & Domains"
+tag: C
+summary: |
+  TypeScript is a statically-typed superset of JavaScript that compiles to plain JS.
+  All types are erased at runtime — there is no TypeScript VM; the emitted JavaScript
+  is what executes. This erasure is the single most important mental model to carry:
+  TypeScript's type system is a purely compile-time layer that adds safety, tooling,
+  and documentation with zero runtime cost — and zero runtime guarantees.
+
+  Key domains: large-scale frontend (React, Angular, Vue), Node.js backends,
+  design-system libraries, monorepos. Adoption is driven by IDE integration
+  (autocomplete, refactoring), catching whole classes of JS bugs (undefined property
+  access, wrong argument types), and enabling confident large-team refactors.
+
+  Common misconceptions: believing a TypeScript type is a runtime value or check (it
+  is not); thinking TS makes JS safer at runtime (it doesn't — validation libraries
+  like Zod are needed for runtime guarantees).
+exercises: []

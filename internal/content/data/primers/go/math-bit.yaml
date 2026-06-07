@@ -1,0 +1,102 @@
+- category: 'Math & Bit'
+  lang: go
+  title: 'Math & Bit — Go refresher'
+  summary: |
+    Bit manipulation operates directly on integer bits and is often O(1) with
+    no extra space. Math tricks (modular arithmetic, GCD, prime checks) let you
+    solve number-theory problems cleanly.
+
+    Key Go facts for this pattern:
+      - Bitwise operators: & (AND), | (OR), ^ (XOR), << (left shift), >> (right shift).
+      - ^ also serves as unary bitwise NOT: ^x flips all bits.
+      - math.Abs requires float64; for int use a conditional or write your own.
+      - Go's % can return negative results for negative operands — use ((n%m)+m)%m
+        for always-positive modulo.
+      - math/bits package has PopCount, Len, LeadingZeros, etc. for bit tricks.
+      - Integer literals can be written in binary: 0b1010, hex: 0xFF, octal: 0o17.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'bitmask variable'
+          code: 'mask := 0'
+        - label: 'power of two'
+          code: 'p := 1 << k  // 2^k'
+        - label: 'binary literal (Go 1.13+)'
+          code: 'b := 0b1010  // decimal 10'
+        - label: 'max/min int helpers'
+          code: 'const MaxInt = int(^uint(0) >> 1)'
+    - title: Basic operations
+      ops:
+        - label: 'check k-th bit (0-indexed from right)'
+          code: 'isSet := (n >> k) & 1 == 1'
+        - label: 'set k-th bit'
+          code: 'n |= 1 << k'
+        - label: 'clear k-th bit'
+          code: 'n &^= 1 << k  // &^ is bit-clear (AND NOT)'
+        - label: 'toggle k-th bit'
+          code: 'n ^= 1 << k'
+        - label: 'isolate lowest set bit'
+          code: 'low := n & (-n)'
+        - label: 'remove lowest set bit'
+          code: 'n &= n - 1'
+    - title: Iteration & loops
+      ops:
+        - label: 'iterate over all set bits'
+          code: |
+            for tmp := n; tmp != 0; tmp &= tmp - 1 {
+                bit := tmp & (-tmp)
+                _ = bit
+            }
+        - label: 'iterate over all subsets of a bitmask'
+          code: 'for sub := mask; sub > 0; sub = (sub - 1) & mask { ... }'
+        - label: 'count set bits (population count)'
+          code: 'count := bits.OnesCount(uint(n))'
+    - title: Special operations (Math & Bit)
+      ops:
+        - label: 'XOR trick: single number (all others appear twice)'
+          code: |
+            res := 0
+            for _, v := range nums {
+                res ^= v
+            }
+            return res
+        - label: 'is power of two?'
+          code: 'isPow2 := n > 0 && (n&(n-1)) == 0'
+        - label: 'GCD (Euclidean)'
+          code: |
+            func gcd(a, b int) int {
+                for b != 0 {
+                    a, b = b, a%b
+                }
+                return a
+            }
+        - label: 'always-positive modulo'
+          code: 'mod := ((n % m) + m) % m'
+        - label: 'integer square root (floor)'
+          code: 'r := int(math.Sqrt(float64(n)))'
+        - label: 'absolute value of int'
+          code: |
+            func abs(x int) int {
+                if x < 0 {
+                    return -x
+                }
+                return x
+            }
+  example: |
+    Worked example — count the number of 1-bits in a non-negative integer.
+
+      Each iteration n & (n-1) clears the lowest set bit. Count how many times
+      you can do this before n reaches zero. Time is O(k) where k is the number
+      of set bits, not the total bit length — faster on sparse integers.
+
+        func hammingWeight(n int) int {
+            count := 0
+            for n != 0 {
+                n &= n - 1 // clears the lowest set bit
+                count++
+            }
+            return count
+        }
+
+    Takeaway: n & (n-1) is the canonical "strip lowest set bit" trick. Memorise
+    it alongside n & (-n) (isolate lowest bit) and n ^ n == 0 (XOR self-cancels).

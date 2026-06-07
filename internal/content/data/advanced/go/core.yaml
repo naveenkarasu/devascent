@@ -1,0 +1,205 @@
+lang: go
+group: Core
+title: "Core — Structs, Methods & Pointers"
+tag: E
+summary: |
+  Go has no classes. Behaviour is attached to any named type via methods, using a
+  receiver parameter that appears between the func keyword and the method name:
+
+    type Counter struct{ n int }
+
+    func (c *Counter) Inc()       { c.n++ }       // pointer receiver — modifies c
+    func (c  Counter) Value() int { return c.n }  // value receiver — reads only
+
+  The critical rule: a value receiver operates on a copy of the struct; a pointer
+  receiver operates on the original. Calling a pointer method on an addressable
+  value is fine — Go auto-inserts & for you — but the reverse does not hold: you
+  cannot call a pointer method through a non-addressable interface value.
+
+  Pointers work like C without arithmetic. new(T) allocates a zeroed T and returns
+  *T; make(T, ...) initialises slices, maps, and channels (types that need an
+  internal data structure, not just zeroed memory). Passing new([]int) gives you a
+  *[]int pointing at a nil slice — it will not panic immediately, but appending to
+  the dereferenced nil slice will not grow anything. The right call is make([]int, 0).
+
+  Composition via embedding — Go's substitute for inheritance. Embedding a type
+  promotes its methods onto the outer struct. The receiver of a promoted method
+  remains the inner type, so the outer type satisfies any interface the inner type
+  does. However, if the embedded field is a pointer and it is nil, calling a promoted
+  method panics. Copying a struct that contains a sync.Mutex copies the lock state —
+  broken mutual exclusion; always pass such structs by pointer or embed *sync.Mutex.
+exercises:
+  - prompt: |
+      The Scale method below is supposed to double a Rectangle's dimensions in-place.
+      But after calling r.Scale(2), r.Area() still returns the original value.
+      Identify why and fix it.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import "fmt"
+
+      type Rectangle struct {
+          Width  float64
+          Height float64
+      }
+
+      func (r Rectangle) Scale(factor float64) {
+          r.Width *= factor
+          r.Height *= factor
+      }
+
+      func (r Rectangle) Area() float64 {
+          return r.Width * r.Height
+      }
+
+      func main() {
+          r := Rectangle{Width: 3, Height: 4}
+          r.Scale(2)
+          fmt.Println(r.Area()) // want 48, prints 12
+      }
+    fixed_code: |
+      package main
+
+      import "fmt"
+
+      type Rectangle struct {
+          Width  float64
+          Height float64
+      }
+
+      func (r *Rectangle) Scale(factor float64) {
+          r.Width *= factor
+          r.Height *= factor
+      }
+
+      func (r Rectangle) Area() float64 {
+          return r.Width * r.Height
+      }
+
+      func main() {
+          r := Rectangle{Width: 3, Height: 4}
+          r.Scale(2)
+          fmt.Println(r.Area()) // 48
+      }
+    bug: |
+      Scale has a value receiver (r Rectangle), so it operates on a copy of the struct.
+      The mutations to r.Width and r.Height are discarded when Scale returns; the
+      original r in main is unchanged. Changing the receiver to *Rectangle makes Scale
+      operate on the original value.
+    check: stdout
+    signal: "48"
+
+  - prompt: |
+      The code below calls new to create a map and a slice, then tries to use them.
+      It compiles but panics at runtime. Identify both problems and fix them.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import "fmt"
+
+      func main() {
+          mp := new(map[string]int)
+          (*mp)["key"] = 1 // panic: assignment to entry in nil map
+
+          sl := new([]int)
+          *sl = append(*sl, 42)
+          fmt.Println((*sl)[0])
+      }
+    fixed_code: |
+      package main
+
+      import "fmt"
+
+      func main() {
+          mp := make(map[string]int)
+          mp["key"] = 1
+
+          sl := make([]int, 0)
+          sl = append(sl, 42)
+          fmt.Println(sl[0])
+      }
+    bug: |
+      new(T) allocates a zeroed T and returns a pointer to it. For a map, the zero
+      value is nil — a nil map panics on any write. For a slice, new([]int) returns
+      *[]int pointing at a nil slice; append works on a nil slice (it allocates), but
+      the indirection through a pointer is clumsy and error-prone. make initialises the
+      internal hash-table (for maps) and the backing array (for slices) properly. Use
+      make for slices, maps, and channels; use new only when you explicitly need a
+      zeroed pointer.
+    check: stdout
+    signal: "42"
+
+  - prompt: |
+      LoggedWriter embeds bytes.Buffer to satisfy io.Writer. But the compiler rejects
+      the var _ io.Writer = (*LoggedWriter)(nil) guard at the bottom. Fix the struct so
+      the guard compiles and BytesWritten tracks the cumulative bytes written.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import (
+          "bytes"
+          "fmt"
+      )
+
+      type LoggedWriter struct {
+          bytes.Buffer
+          written int
+      }
+
+      // Missing: Write is not overridden, so BytesWritten can't track it.
+
+      func (lw *LoggedWriter) BytesWritten() int {
+          return lw.written
+      }
+
+      var _ interface{ Write([]byte) (int, error) } = (*LoggedWriter)(nil)
+
+      func main() {
+          lw := &LoggedWriter{}
+          lw.Write([]byte("hello"))
+          lw.Write([]byte(" world"))
+          fmt.Println(lw.BytesWritten()) // want 11
+      }
+    fixed_code: |
+      package main
+
+      import (
+          "bytes"
+          "fmt"
+      )
+
+      type LoggedWriter struct {
+          bytes.Buffer
+          written int
+      }
+
+      func (lw *LoggedWriter) Write(p []byte) (int, error) {
+          n, err := lw.Buffer.Write(p)
+          lw.written += n
+          return n, err
+      }
+
+      func (lw *LoggedWriter) BytesWritten() int {
+          return lw.written
+      }
+
+      var _ interface{ Write([]byte) (int, error) } = (*LoggedWriter)(nil)
+
+      func main() {
+          lw := &LoggedWriter{}
+          lw.Write([]byte("hello"))
+          lw.Write([]byte(" world"))
+          fmt.Println(lw.BytesWritten()) // 11
+      }
+    bug: |
+      The promoted Write from bytes.Buffer satisfies the interface, but calling it
+      directly bypasses the written counter. To count bytes, LoggedWriter must shadow
+      the promoted Write with its own method that delegates to lw.Buffer.Write and
+      accumulates the byte count. The compile-time guard var _ io.Writer = ... is the
+      standard Go idiom for catching missing method implementations at compile time
+      rather than at runtime.
+    check: stdout
+    signal: "11"

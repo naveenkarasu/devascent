@@ -1,0 +1,52 @@
+id: boot-sequence
+lang: rust
+order: 1
+title: Boot Sequence
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A program runs instructions top to bottom. Two things you'll do constantly:
+      *show* a value and *hand back* a value.
+
+          fn boot() -> String {
+              "ready".to_string()
+          }
+
+      println!("{}", x) displays x; return x hands x back to whoever called the
+      function. In DevAscent we grade by what you RETURN, not what you print.
+      A Rust function declares its result type after -> — here, String. String
+      literals are written in double quotes, but must be converted with .to_string()
+      because the return type is the owned String, not a string slice (&str).
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: A function header is written for you. Make it hand back the exact text Hello, world!
+    task:
+      prompt: Make greet() return the exact text "Hello, world!"
+      func_name: greet
+      starter: |
+        fn greet() -> String {
+            // hint: text goes in double quotes. Use  "Hello, world!".to_string()  (exact punctuation)
+        }
+      solution: |
+        fn greet() -> String {
+            "Hello, world!".to_string()
+        }
+      tests:
+        - {name: 'greet()', input: [], expected: "Hello, world!"}
+  - kind: you_do
+    title: You do — solo
+    body: Now on your own.
+    task:
+      prompt: Make announce() return the exact text "DevAscent online"
+      func_name: announce
+      starter: |
+        fn announce() -> String {
+            // <- delete this line and write your code
+        }
+      solution: |
+        fn announce() -> String {
+            "DevAscent online".to_string()
+        }
+      tests:
+        - {name: 'announce()', input: [], expected: "DevAscent online"}

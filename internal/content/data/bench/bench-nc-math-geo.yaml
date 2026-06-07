@@ -1,0 +1,230 @@
+# Canonical NeetCode 150 — Math & Geometry (original prompts, own solutions).
+# Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
+- id: nc-happy-number
+  title: Happy Number
+  difficulty: easy
+  pattern: math
+  category: Math & Bit
+  lists: [neetcode150]
+  func_name: is_happy
+  prompt: |
+    Happy Number
+
+    Starting from a positive integer n, repeatedly replace n with the sum of the
+    squares of its digits. Return True if the process eventually reaches 1, or
+    False if it falls into an endless cycle that never does.
+
+    Examples:
+      is_happy(19) -> True   # 19 -> 82 -> 68 -> 100 -> 1
+      is_happy(2)  -> False  # 2 -> 4 -> 16 -> 37 -> ... (cycle)
+  starter: |
+    def is_happy(n):
+        pass  # write your solution; delete this line
+  solution: |
+    def is_happy(n):
+        seen = set()
+        while n != 1:
+            if n in seen:
+                return False
+            seen.add(n)
+            total = 0
+            while n:
+                n, digit = divmod(n, 10)
+                total += digit * digit
+            n = total
+        return True
+  tests:
+    - {name: case 1, input: [19], expected: true}
+    - {name: case 2, input: [2], expected: false}
+    - {name: case 3, input: [7], expected: true}
+
+- id: nc-plus-one
+  title: Plus One
+  difficulty: easy
+  pattern: math
+  category: Math & Bit
+  lists: [neetcode150]
+  func_name: plus_one
+  prompt: |
+    Plus One
+
+    A large integer is stored as an array of its decimal digits (most-significant
+    first). Add one to the integer and return the resulting digit array.
+
+    Examples:
+      plus_one([1,2,3]) -> [1,2,4]
+      plus_one([9,9])   -> [1,0,0]
+  starter: |
+    def plus_one(digits):
+        pass  # write your solution; delete this line
+  solution: |
+    def plus_one(digits):
+        for i in range(len(digits) - 1, -1, -1):
+            if digits[i] < 9:
+                digits[i] += 1
+                return digits
+            digits[i] = 0
+        return [1] + digits
+  tests:
+    - {name: case 1, input: [[1,2,3]], expected: [1,2,4]}
+    - {name: case 2, input: [[4,3,2,1]], expected: [4,3,2,2]}
+    - {name: case 3, input: [[9,9]], expected: [1,0,0]}
+
+- id: nc-spiral-matrix
+  title: Spiral Matrix
+  difficulty: medium
+  pattern: math
+  category: Math & Bit
+  lists: [neetcode150, blind75]
+  func_name: spiral_order
+  prompt: |
+    Spiral Matrix
+
+    Given an m x n integer matrix, return all elements in spiral order: traverse
+    the outermost ring left-to-right, top-to-bottom, right-to-left, bottom-to-top,
+    then move inward and repeat.
+
+    Examples:
+      spiral_order([[1,2,3],[4,5,6],[7,8,9]]) -> [1,2,3,6,9,8,7,4,5]
+      spiral_order([[1,2],[3,4]])              -> [1,2,4,3]
+  starter: |
+    def spiral_order(matrix):
+        pass  # write your solution; delete this line
+  solution: |
+    def spiral_order(matrix):
+        result = []
+        top, bottom = 0, len(matrix) - 1
+        left, right = 0, len(matrix[0]) - 1
+        while top <= bottom and left <= right:
+            for col in range(left, right + 1):
+                result.append(matrix[top][col])
+            top += 1
+            for row in range(top, bottom + 1):
+                result.append(matrix[row][right])
+            right -= 1
+            if top <= bottom:
+                for col in range(right, left - 1, -1):
+                    result.append(matrix[bottom][col])
+                bottom -= 1
+            if left <= right:
+                for row in range(bottom, top - 1, -1):
+                    result.append(matrix[row][left])
+                left += 1
+        return result
+  tests:
+    - {name: case 1, input: [[[1,2,3],[4,5,6],[7,8,9]]], expected: [1,2,3,6,9,8,7,4,5]}
+    - {name: case 2, input: [[[1,2],[3,4]]], expected: [1,2,4,3]}
+    - {name: case 3, input: [[[1,2,3],[4,5,6]]], expected: [1,2,3,6,5,4]}
+
+- id: nc-rotate-image
+  title: Rotate Image
+  difficulty: medium
+  pattern: math
+  category: Math & Bit
+  lists: [neetcode150, blind75]
+  func_name: rotate
+  prompt: |
+    Rotate Image
+
+    Given an n x n integer matrix, rotate it 90 degrees clockwise in-place and
+    return the rotated matrix. You may not allocate a separate n x n matrix.
+
+    Examples:
+      rotate([[1,2,3],[4,5,6],[7,8,9]])     -> [[7,4,1],[8,5,2],[9,6,3]]
+      rotate([[1,2],[3,4]])                  -> [[3,1],[4,2]]
+  starter: |
+    def rotate(matrix):
+        pass  # write your solution; delete this line
+  solution: |
+    def rotate(matrix):
+        n = len(matrix)
+        # Transpose
+        for i in range(n):
+            for j in range(i + 1, n):
+                matrix[i][j], matrix[j][i] = matrix[j][i], matrix[i][j]
+        # Reverse each row
+        for row in matrix:
+            row.reverse()
+        return matrix
+  tests:
+    - {name: case 1, input: [[[1,2,3],[4,5,6],[7,8,9]]], expected: [[7,4,1],[8,5,2],[9,6,3]]}
+    - {name: case 2, input: [[[1,2],[3,4]]], expected: [[3,1],[4,2]]}
+    - {name: case 3, input: [[[5,1,9,11],[2,4,8,10],[13,3,6,7],[15,14,12,16]]], expected: [[15,13,2,5],[14,3,4,1],[12,6,8,9],[16,7,10,11]]}
+
+- id: nc-set-matrix-zeroes
+  title: Set Matrix Zeroes
+  difficulty: medium
+  pattern: math
+  category: Math & Bit
+  lists: [neetcode150, blind75]
+  func_name: set_zeroes
+  prompt: |
+    Set Matrix Zeroes
+
+    Given an m x n integer matrix, for every cell that contains 0 set its entire
+    row and its entire column to 0. Modify the matrix in-place and return it.
+
+    Examples:
+      set_zeroes([[1,1,1],[1,0,1],[1,1,1]]) -> [[1,0,1],[0,0,0],[1,0,1]]
+      set_zeroes([[0,1,2,0],[3,4,5,2],[1,3,1,5]]) -> [[0,0,0,0],[0,4,5,0],[0,3,1,0]]
+  starter: |
+    def set_zeroes(matrix):
+        pass  # write your solution; delete this line
+  solution: |
+    def set_zeroes(matrix):
+        zero_rows = set()
+        zero_cols = set()
+        for r in range(len(matrix)):
+            for c in range(len(matrix[0])):
+                if matrix[r][c] == 0:
+                    zero_rows.add(r)
+                    zero_cols.add(c)
+        for r in range(len(matrix)):
+            for c in range(len(matrix[0])):
+                if r in zero_rows or c in zero_cols:
+                    matrix[r][c] = 0
+        return matrix
+  tests:
+    - {name: case 1, input: [[[1,1,1],[1,0,1],[1,1,1]]], expected: [[1,0,1],[0,0,0],[1,0,1]]}
+    - {name: case 2, input: [[[0,1,2,0],[3,4,5,2],[1,3,1,5]]], expected: [[0,0,0,0],[0,4,5,0],[0,3,1,0]]}
+    - {name: case 3, input: [[[1,2,3],[4,0,6]]], expected: [[1,0,3],[0,0,0]]}
+
+- id: nc-multiply-strings
+  title: Multiply Strings
+  difficulty: medium
+  pattern: math
+  category: Math & Bit
+  lists: [neetcode150]
+  func_name: multiply
+  prompt: |
+    Multiply Strings
+
+    Given two non-negative integers represented as strings num1 and num2, return
+    their product as a string. You may not convert the entire string to an integer
+    at once — implement grade-school digit multiplication.
+
+    Examples:
+      multiply("2", "3")     -> "6"
+      multiply("123", "456") -> "56088"
+  starter: |
+    def multiply(num1, num2):
+        pass  # write your solution; delete this line
+  solution: |
+    def multiply(num1, num2):
+        if num1 == "0" or num2 == "0":
+            return "0"
+        m, n = len(num1), len(num2)
+        buf = [0] * (m + n)
+        for i in range(m - 1, -1, -1):
+            for j in range(n - 1, -1, -1):
+                mul = (ord(num1[i]) - ord('0')) * (ord(num2[j]) - ord('0'))
+                p1, p2 = i + j, i + j + 1
+                total = mul + buf[p2]
+                buf[p2] = total % 10
+                buf[p1] += total // 10
+        result = ''.join(str(d) for d in buf).lstrip('0')
+        return result if result else "0"
+  tests:
+    - {name: case 1, input: ["2", "3"], expected: "6"}
+    - {name: case 2, input: ["123", "456"], expected: "56088"}
+    - {name: case 3, input: ["0", "52"], expected: "0"}

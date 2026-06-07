@@ -1,0 +1,252 @@
+# Blind 75 completion — set C (tree round-trip / construct + trie design).
+- id: nc-serialize-tree
+  title: Serialize and Deserialize Binary Tree
+  difficulty: hard
+  pattern: tree
+  category: Trees & Graphs
+  lists: [neetcode150, blind75]
+  func_name: codec_roundtrip
+  shape: tree
+  arg_kinds: [node]
+  ret_kind: node
+  prompt: |
+    Serialize and Deserialize Binary Tree
+
+    Design serialize(root) -> string and deserialize(string) -> root so a tree
+    round-trips exactly. The harness calls deserialize(serialize(root)) and
+    checks the rebuilt tree matches the original. You receive a real TreeNode.
+  starter: |
+    # class TreeNode: val, left, right  (provided by the grader)
+
+    def serialize(root):
+        pass  # encode the tree as a string
+
+    def deserialize(data):
+        pass  # rebuild the tree from the string
+
+    # built for you — do not change:
+    def codec_roundtrip(root):
+        data = serialize(root)
+        assert isinstance(data, str), "serialize must return a string"
+        return deserialize(data)
+  solution: |
+    def serialize(root):
+        out = []
+        def dfs(node):
+            if node is None:
+                out.append("#")
+                return
+            out.append(str(node.val))
+            dfs(node.left)
+            dfs(node.right)
+        dfs(root)
+        return ",".join(out)
+
+    def deserialize(data):
+        vals = iter(data.split(","))
+        def build():
+            v = next(vals)
+            if v == "#":
+                return None
+            node = TreeNode(int(v))
+            node.left = build()
+            node.right = build()
+            return node
+        return build()
+
+    def codec_roundtrip(root):
+        data = serialize(root)
+        assert isinstance(data, str), "serialize must return a string"
+        return deserialize(data)
+  tests:
+    - {name: case 1, input: [[1,2,3,null,null,4,5]], expected: [1,2,3,null,null,4,5]}
+    - {name: case 2, input: [[]], expected: []}
+    - {name: case 3, input: [[1]], expected: [1]}
+
+- id: nc-construct-tree
+  title: Construct Binary Tree from Preorder and Inorder Traversal
+  difficulty: medium
+  pattern: tree
+  category: Trees & Graphs
+  lists: [neetcode150, blind75]
+  func_name: build_tree
+  shape: tree
+  arg_kinds: [raw, raw]
+  ret_kind: node
+  prompt: |
+    Construct Binary Tree from Preorder and Inorder Traversal
+
+    Given preorder and inorder traversals (lists of distinct values), rebuild the
+    binary tree and return its root. preorder and inorder are plain lists; you
+    return a TreeNode (the grader compares the tree's level-order form).
+
+    Example: preorder [3,9,20,15,7], inorder [9,3,15,20,7] -> [3,9,20,null,null,15,7]
+  starter: |
+    # class TreeNode: val, left, right  (provided by the grader)
+
+    def build_tree(preorder, inorder):
+        pass  # write your solution; delete this line
+  solution: |
+    def build_tree(preorder, inorder):
+        idx = {v: i for i, v in enumerate(inorder)}
+        pre = [0]
+        def build(lo, hi):
+            if lo > hi:
+                return None
+            val = preorder[pre[0]]
+            pre[0] += 1
+            node = TreeNode(val)
+            mid = idx[val]
+            node.left = build(lo, mid - 1)
+            node.right = build(mid + 1, hi)
+            return node
+        return build(0, len(inorder) - 1)
+  tests:
+    - {name: case 1, input: [[3,9,20,15,7], [9,3,15,20,7]], expected: [3,9,20,null,null,15,7]}
+    - {name: case 2, input: [[1], [1]], expected: [1]}
+    - {name: case 3, input: [[1,2], [2,1]], expected: [1,2]}
+
+- id: nc-add-search-word
+  title: Design Add and Search Words Data Structure
+  difficulty: medium
+  pattern: trie
+  category: Tries
+  lists: [neetcode150, blind75]
+  func_name: word_dictionary_ops
+  prompt: |
+    Add and Search Words
+
+    Build a dictionary supporting addWord(word) and search(word), where '.' in a
+    search matches any single letter. Fill in the WordDictionary methods — the
+    dispatch loop over operations is written for you.
+
+    operations like [["addWord","bad"],["search","pad"],["search",".ad"],["search","b.."]]
+    return one result per op (addWord -> null; search -> true/false):
+      [null, false, true, true]   (after also adding "dad","mad" etc.)
+  starter: |
+    class WordDictionary:
+        def __init__(self):
+            pass  # set up your structure
+
+        def add_word(self, word):
+            pass  # add a word
+
+        def search(self, word):
+            pass  # '.' matches any single letter; return True/False
+
+    # built for you — do not change:
+    def word_dictionary_ops(operations):
+        wd = WordDictionary()
+        out = []
+        for op, arg in operations:
+            if op == "addWord":
+                out.append(wd.add_word(arg))
+            else:
+                out.append(wd.search(arg))
+        return out
+  solution: |
+    class WordDictionary:
+        def __init__(self):
+            self.root = {}
+
+        def add_word(self, word):
+            node = self.root
+            for c in word:
+                node = node.setdefault(c, {})
+            node["$"] = True
+
+        def search(self, word):
+            def dfs(node, i):
+                if i == len(word):
+                    return "$" in node
+                c = word[i]
+                if c == ".":
+                    for k, child in node.items():
+                        if k != "$" and dfs(child, i + 1):
+                            return True
+                    return False
+                if c not in node:
+                    return False
+                return dfs(node[c], i + 1)
+            return dfs(self.root, 0)
+
+    def word_dictionary_ops(operations):
+        wd = WordDictionary()
+        out = []
+        for op, arg in operations:
+            if op == "addWord":
+                out.append(wd.add_word(arg))
+            else:
+                out.append(wd.search(arg))
+        return out
+  tests:
+    - name: case 1
+      input: [[["addWord","bad"],["addWord","dad"],["addWord","mad"],["search","pad"],["search","bad"],["search",".ad"],["search","b.."]]]
+      expected: [null, null, null, false, true, true, true]
+    - name: case 2
+      input: [[["search","a"],["addWord","a"],["search","a"],["search","."]]]
+      expected: [false, null, true, true]
+    - name: case 3
+      input: [[["addWord","run"],["addWord","sun"],["search",".un"],["search","r.n"],["search","..n"],["search","r.."],["search","c.t"],["search","ru"]]]
+      expected: [null, null, true, true, true, true, false, false]
+
+- id: nc-word-search-ii
+  title: Word Search II
+  difficulty: hard
+  pattern: trie
+  category: Tries
+  lists: [neetcode150, blind75]
+  func_name: find_words
+  prompt: |
+    Word Search II
+
+    Given a board of letters and a list of words, return all words that can be
+    formed from sequentially adjacent cells (no cell reused within a word).
+    Return the found words SORTED (deterministic).
+
+    Example board [[o,a,a,n],[e,t,a,e],[i,h,k,r],[i,f,l,v]], words [oath,pea,eat,rain]
+      -> ["eat","oath"]
+  starter: |
+    def find_words(board, words):
+        pass  # write your solution; delete this line
+  solution: |
+    def find_words(board, words):
+        trie = {}
+        for w in words:
+            node = trie
+            for c in w:
+                node = node.setdefault(c, {})
+            node["$"] = w
+        if not board or not board[0]:
+            return []
+        rows, cols = len(board), len(board[0])
+        found = set()
+
+        def dfs(r, c, node):
+            ch = board[r][c]
+            if ch not in node:
+                return
+            nxt = node[ch]
+            if "$" in nxt:
+                found.add(nxt["$"])
+            board[r][c] = "#"
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols and board[nr][nc] != "#":
+                    dfs(nr, nc, nxt)
+            board[r][c] = ch
+
+        for r in range(rows):
+            for c in range(cols):
+                dfs(r, c, trie)
+        return sorted(found)
+  tests:
+    - name: case 1
+      input: [[["o","a","a","n"],["e","t","a","e"],["i","h","k","r"],["i","f","l","v"]], ["oath","pea","eat","rain"]]
+      expected: ["eat","oath"]
+    - name: case 2
+      input: [[["a","b"],["c","d"]], ["abcd","abdc","acdb"]]
+      expected: ["abdc","acdb"]
+    - name: case 3
+      input: [[["a"]], ["b"]]
+      expected: []

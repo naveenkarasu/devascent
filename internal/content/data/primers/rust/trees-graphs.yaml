@@ -1,0 +1,156 @@
+- category: 'Trees & Graphs'
+  lang: rust
+  title: 'Trees & Graphs — Rust refresher'
+  summary: |
+    Trees and graphs are traversed with DFS (recursion or an explicit stack) or
+    BFS (a VecDeque). For interview problems graphs are usually given as an
+    adjacency list: Vec<Vec<usize>> where adj[u] lists neighbors of u.
+
+    Binary trees in interview problems use the shared node pattern:
+        type Link = Option<Rc<RefCell<TreeNode>>>
+    but for owned singly-linked trees (simpler) you can use Option<Box<Node>>.
+
+    Key patterns:
+      - BFS: VecDeque, push_back to enqueue, pop_front to dequeue.
+      - DFS: recursion with a visited Vec<bool>, or explicit Vec stack.
+      - Topological sort: Kahn's algorithm (BFS with in-degree counts).
+      - Cycle detection: DFS with three-color visited (0=unseen,1=in-stack,2=done).
+
+    Rust notes:
+      - Rc<RefCell<T>> for shared-ownership tree nodes; borrow() / borrow_mut()
+        to access the inner value.
+      - VecDeque has O(1) push_back and pop_front, unlike Vec.
+      - Prefer iterative BFS over recursive DFS for very deep graphs to avoid
+        Rust stack overflow.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'binary tree node (shared ownership)'
+          code: |
+            use std::rc::Rc;
+            use std::cell::RefCell;
+            struct TreeNode {
+                val: i32,
+                left: Option<Rc<RefCell<TreeNode>>>,
+                right: Option<Rc<RefCell<TreeNode>>>,
+            }
+        - label: 'adjacency list graph'
+          code: 'let mut adj: Vec<Vec<usize>> = vec![Vec::new(); n];'
+        - label: 'BFS queue'
+          code: 'let mut queue: VecDeque<usize> = VecDeque::new();'
+        - label: 'visited array'
+          code: 'let mut visited = vec![false; n];'
+    - title: Basic operations
+      ops:
+        - label: 'add an undirected edge'
+          code: |
+            adj[u].push(v);
+            adj[v].push(u);
+        - label: 'enqueue and dequeue (BFS)'
+          code: |
+            queue.push_back(node);
+            let u = queue.pop_front().unwrap();
+        - label: 'access a tree node value via Rc<RefCell>'
+          code: 'let val = node.borrow().val;'
+        - label: 'get a child reference for BFS'
+          code: |
+            if let Some(child) = node.borrow().left.clone() {
+                queue.push_back(child);
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'BFS level-order traversal'
+          code: |
+            let mut queue: VecDeque<Rc<RefCell<TreeNode>>> = VecDeque::new();
+            if let Some(root) = root { queue.push_back(root); }
+            while let Some(node) = queue.pop_front() {
+                let n = node.borrow();
+                if let Some(l) = n.left.clone()  { queue.push_back(l); }
+                if let Some(r) = n.right.clone() { queue.push_back(r); }
+            }
+        - label: 'DFS on a graph with visited array'
+          code: |
+            fn dfs(u: usize, adj: &Vec<Vec<usize>>, visited: &mut Vec<bool>) {
+                visited[u] = true;
+                for &v in &adj[u] {
+                    if !visited[v] { dfs(v, adj, visited); }
+                }
+            }
+        - label: 'iterative DFS using an explicit stack'
+          code: |
+            let mut stack = vec![start];
+            while let Some(u) = stack.pop() {
+                if visited[u] { continue; }
+                visited[u] = true;
+                for &v in &adj[u] { stack.push(v); }
+            }
+    - title: Special operations (trees & graphs)
+      ops:
+        - label: 'count connected components'
+          code: |
+            let mut components = 0;
+            let mut visited = vec![false; n];
+            for i in 0..n {
+                if !visited[i] { dfs(i, &adj, &mut visited); components += 1; }
+            }
+        - label: 'topological sort (Kahn BFS)'
+          code: |
+            let mut in_deg = vec![0usize; n];
+            for u in 0..n {
+                for &v in &adj[u] { in_deg[v] += 1; }
+            }
+            let mut q: VecDeque<usize> = (0..n).filter(|&i| in_deg[i] == 0).collect();
+            let mut order = Vec::new();
+            while let Some(u) = q.pop_front() {
+                order.push(u);
+                for &v in &adj[u] { in_deg[v] -= 1; if in_deg[v] == 0 { q.push_back(v); } }
+            }
+        - label: 'maximum depth of binary tree (recursive)'
+          code: |
+            fn max_depth(root: Option<Rc<RefCell<TreeNode>>>) -> i32 {
+                match root {
+                    None => 0,
+                    Some(n) => {
+                        1 + max_depth(n.borrow().left.clone())
+                            .max(max_depth(n.borrow().right.clone()))
+                    }
+                }
+            }
+        - label: 'number of islands (grid DFS)'
+          code: |
+            fn dfs_grid(grid: &mut Vec<Vec<char>>, r: usize, c: usize) {
+                if r >= grid.len() || c >= grid[0].len() || grid[r][c] != '1' { return; }
+                grid[r][c] = '0';
+                if r > 0 { dfs_grid(grid, r - 1, c); }
+                dfs_grid(grid, r + 1, c);
+                if c > 0 { dfs_grid(grid, r, c - 1); }
+                dfs_grid(grid, r, c + 1);
+            }
+  example: |
+    Worked example — BFS level-order traversal of a binary tree:
+
+      Use a VecDeque as the queue. Seed it with the root. Each iteration pops the
+      front node, records its value, and enqueues its non-null children. The order
+      in which nodes are processed is level by level, left to right.
+
+        fn level_order(root: Option<Rc<RefCell<TreeNode>>>) -> Vec<Vec<i32>> {
+            let mut result: Vec<Vec<i32>> = Vec::new();
+            let mut queue: VecDeque<Rc<RefCell<TreeNode>>> = VecDeque::new();
+            if let Some(r) = root { queue.push_back(r); }
+            while !queue.is_empty() {
+                let level_size = queue.len();
+                let mut level = Vec::new();
+                for _ in 0..level_size {
+                    let node = queue.pop_front().unwrap();
+                    let n = node.borrow();
+                    level.push(n.val);
+                    if let Some(l) = n.left.clone()  { queue.push_back(l); }
+                    if let Some(r) = n.right.clone() { queue.push_back(r); }
+                }
+                result.push(level);
+            }
+            result
+        }
+
+    Takeaway: snapshot queue.len() at the start of each level to know how many
+    nodes belong to that level before you start enqueuing the next one.

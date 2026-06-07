@@ -1,0 +1,103 @@
+- category: 'Math & Bit'
+  lang: cpp
+  title: Math & Bit — C++ refresher
+  summary: |
+    Bit manipulation operates directly on the binary representation of integers,
+    yielding very fast O(1) or O(log n) solutions to problems that look mathematical.
+
+    Common patterns: check/set/clear individual bits, XOR to find a unique element,
+    count set bits (__builtin_popcount), test power-of-two, iterate over subsets.
+
+    Math patterns: GCD/LCM (__gcd, std::lcm), modular arithmetic, integer square
+    root, digit extraction (% 10, / 10).
+
+    C++ notes:
+      - Use unsigned int or long long to avoid undefined behaviour on left-shift of
+        signed integers beyond the sign bit.
+      - __builtin_popcount(x) counts set bits (GCC/Clang; also in <bit> as
+        std::popcount in C++20).
+      - Negative numbers and right-shift: >> on a signed int is implementation-
+        defined for negatives — prefer unsigned when bit-twiddling.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'integer with explicit bit width'
+          code: 'int x = 0b1010;   // binary literal C++14+'
+        - label: 'use long long to avoid 32-bit overflow'
+          code: 'long long x = 1LL << 40;'
+        - label: 'bitmask for the lowest k bits'
+          code: 'int mask = (1 << k) - 1;'
+    - title: Basic operations
+      ops:
+        - label: 'test bit i'
+          code: 'bool set = (x >> i) & 1;'
+        - label: 'set bit i'
+          code: 'x |= (1 << i);'
+        - label: 'clear bit i'
+          code: 'x &= ~(1 << i);'
+        - label: 'toggle bit i'
+          code: 'x ^= (1 << i);'
+        - label: 'lowest set bit (isolate)'
+          code: 'int lsb = x & (-x);'
+        - label: 'clear lowest set bit'
+          code: 'x &= x - 1;'
+    - title: Iteration & loops
+      ops:
+        - label: 'count set bits manually'
+          code: |
+            int cnt = 0;
+            while (x) {
+                x &= x - 1;
+                cnt++;
+            }
+        - label: 'iterate over all subsets of a bitmask'
+          code: |
+            for (int sub = mask; sub > 0; sub = (sub - 1) & mask) {
+                // process sub
+            }
+        - label: 'digit-by-digit extraction'
+          code: |
+            while (n > 0) {
+                int digit = n % 10;
+                n /= 10;
+            }
+    - title: Special operations (math & bit)
+      ops:
+        - label: 'XOR trick: single number (all others appear twice)'
+          code: |
+            int res = 0;
+            for (int x : nums) res ^= x;
+            // res holds the unique element
+        - label: 'test power of two'
+          code: 'bool isPow2 = (x > 0) && (x & (x - 1)) == 0;'
+        - label: 'GCD and LCM'
+          code: |
+            int g = __gcd(a, b);
+            long long l = (long long)a / g * b;
+        - label: 'count set bits (builtin)'
+          code: 'int cnt = __builtin_popcount(x);   // __builtin_popcountll for long long'
+        - label: 'integer square root'
+          code: |
+            int r = (int)sqrt((double)n);
+            while ((long long)r*r > n) r--;
+            while ((long long)(r+1)*(r+1) <= n) r++;
+        - label: 'modular arithmetic to avoid overflow'
+          code: |
+            const int MOD = 1e9 + 7;
+            res = (res + x) % MOD;
+  example: |
+    Worked example — find the single number in an array where every other number
+    appears exactly twice:
+
+      XOR of a number with itself is 0; XOR with 0 returns the number unchanged.
+      XOR all elements together — paired duplicates cancel out, leaving only the
+      unique element. One pass, O(n) time, O(1) space.
+
+        int singleNumber(vector<int>& nums) {
+            int res = 0;
+            for (int x : nums) res ^= x;
+            return res;
+        }
+
+    Takeaway: XOR is the go-to trick when elements cancel in pairs. For bit
+    problems, __builtin_popcount and x & (x-1) are handy one-liners.

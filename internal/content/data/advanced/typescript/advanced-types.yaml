@@ -1,0 +1,179 @@
+lang: typescript
+group: Advanced Types
+title: "Advanced Types — Utility Types, Conditional & Mapped Types, Template Literals"
+tag: E
+summary: |
+  The type-level programming layer of TS. These features let you derive new types from
+  existing ones rather than writing them by hand — the difference between maintaining
+  one source of truth and keeping N copies in sync.
+
+  Built-in utility types: Partial<T>, Required<T>, Readonly<T>, Record<K,V>,
+  Pick<T,K>, Omit<T,K>, Exclude<U,E>, Extract<U,E>, NonNullable<T>, ReturnType<F>,
+  Parameters<F>, Awaited<T> (4.5+), NoInfer<T> (5.4+).
+
+  `keyof` — extracts all keys of a type as a union: `keyof { a: 1; b: 2 }` → "a"|"b".
+
+  `typeof` (type position) — extracts the type of a runtime value. Powerful when used
+  with `as const` to derive literal union types from arrays/objects.
+
+  Conditional types: `T extends U ? X : Y`. Distribute over unions by default (each
+  member evaluated separately). Suppress distribution with `[T] extends [U]` tuple
+  wrapping. The `infer` keyword extracts a type from the matched position.
+
+  Mapped types — iterate over keys: `{ [K in keyof T]: NewType }`. Key remapping with
+  `as` clause allows renaming or filtering keys. Modifiers +readonly/-readonly, +?/-?
+  add/remove modifiers.
+
+  Template literal types — `type EventName = \`on${Capitalize<string & K>}\`` —
+  combine string literal types. Distribute over unions automatically.
+
+  Common mistakes: Readonly<T> is compile-time only; Omit works on object types while
+  Exclude works on unions; Parameters<F> and ReturnType<F> use the last overload
+  signature; conditional types are lazily evaluated for unresolved type variables;
+  infer captures the most general union when multiple candidates exist; keyof on arrays
+  returns method names and numeric index type, not just indices.
+exercises:
+  - prompt: |
+      Implement `DeepReadonly<T>` — a recursive mapped type that makes all nested
+      object properties `readonly`. Test it with a two-level nested type.
+    kind: fix-it
+    broken_code: |
+      type DeepReadonly<T> = Readonly<T>;
+
+      type Config = {
+        server: { host: string; port: number };
+        retries: number;
+      };
+
+      const cfg: DeepReadonly<Config> = {
+        server: { host: "localhost", port: 3000 },
+        retries: 3,
+      };
+
+      cfg.server.port = 4000; // should this error?
+    fixed_code: |
+      type DeepReadonly<T> = {
+        readonly [K in keyof T]: T[K] extends object ? DeepReadonly<T[K]> : T[K];
+      };
+
+      type Config = {
+        server: { host: string; port: number };
+        retries: number;
+      };
+
+      const cfg: DeepReadonly<Config> = {
+        server: { host: "localhost", port: 3000 },
+        retries: 3,
+      };
+
+      // cfg.server.port = 4000; // error: cannot assign to 'port' — it is a read-only property
+    bug: |
+      `Readonly<T>` only applies readonly to the top-level properties — nested objects
+      remain mutable. The recursive mapped type checks whether each value type is an
+      object (using `T[K] extends object`) and, if so, recursively applies
+      DeepReadonly; primitive values are left as-is.
+    check: compiles
+    signal: ""
+  - prompt: |
+      Implement `UnwrapPromise<T>` without using the built-in `Awaited`. Use `infer`
+      to handle `Promise<Promise<T>>` recursively.
+    kind: fix-it
+    broken_code: |
+      type UnwrapPromise<T> = T extends Promise<infer U> ? U : T;
+
+      type A = UnwrapPromise<Promise<string>>;           // string — OK
+      type B = UnwrapPromise<Promise<Promise<number>>>;  // Promise<number> — not fully unwrapped
+    fixed_code: |
+      type UnwrapPromise<T> = T extends Promise<infer U>
+        ? UnwrapPromise<U>
+        : T;
+
+      type A = UnwrapPromise<Promise<string>>;           // string
+      type B = UnwrapPromise<Promise<Promise<number>>>;  // number
+      type C = UnwrapPromise<boolean>;                   // boolean — non-Promise passthrough
+    bug: |
+      The non-recursive version extracts one level of Promise wrapping but leaves
+      `Promise<number>` intact for doubly-nested promises. Making the conditional type
+      recursive — applying UnwrapPromise to the inferred inner type U — keeps
+      unwrapping until it reaches a non-Promise value.
+    check: compiles
+    signal: ""
+  - prompt: |
+      Write `OnlyStringValues<T>` — a mapped type that keeps only the keys of an
+      object whose value type extends `string`. Drop non-string-valued keys using
+      `as` key remapping with `never`.
+    kind: fix-it
+    broken_code: |
+      type OnlyStringValues<T> = {
+        [K in keyof T]: T[K] extends string ? T[K] : never;
+      };
+
+      type Mixed = { name: string; age: number; city: string };
+      type Strings = OnlyStringValues<Mixed>;
+      // Expected: { name: string; city: string }
+      // Actual:   { name: string; age: never; city: string }
+    fixed_code: |
+      type OnlyStringValues<T> = {
+        [K in keyof T as T[K] extends string ? K : never]: T[K];
+      };
+
+      type Mixed = { name: string; age: number; city: string };
+      type Strings = OnlyStringValues<Mixed>; // { name: string; city: string }
+    bug: |
+      Mapping value types to `never` keeps the keys present with an impossible value
+      type — the properties still exist in the resulting object type. To truly drop
+      keys, the filtering must happen in the key remapping position (`as` clause): if
+      the value does not extend string, remapping the key to `never` removes it from
+      the resulting type entirely.
+    check: compiles
+    signal: ""
+  - prompt: |
+      Write `Getters<T>` that maps `{ name: string; age: number }` to
+      `{ getName: () => string; getAge: () => number }` using a mapped type with
+      template literal key remapping.
+    kind: fix-it
+    broken_code: |
+      type Getters<T> = {
+        [K in keyof T]: () => T[K];
+      };
+
+      type Person = { name: string; age: number };
+      type PersonGetters = Getters<Person>;
+      // Expected: { getName: () => string; getAge: () => number }
+      // Actual:   { name: () => string; age: () => number }
+    fixed_code: |
+      type Getters<T> = {
+        [K in keyof T & string as `get${Capitalize<K>}`]: () => T[K];
+      };
+
+      type Person = { name: string; age: number };
+      type PersonGetters = Getters<Person>;
+      // { getName: () => string; getAge: () => number }
+    bug: |
+      Without `as` key remapping the mapped type preserves the original key names.
+      The `as \`get${Capitalize<K>}\`` clause renames each key by prepending "get" and
+      capitalising the first letter. Intersecting with `string` (`keyof T & string`)
+      is required because `Capitalize` only accepts string types, and keyof can
+      include symbol or number.
+    check: compiles
+    signal: ""
+  - prompt: |
+      `Wrap<T>` is supposed to turn `string | number` into `(string | number)[]`, but
+      instead it produces `string[] | number[]`. Fix it by suppressing distributivity.
+    kind: fix-it
+    broken_code: |
+      type Wrap<T> = T extends any ? T[] : never;
+
+      type W = Wrap<string | number>; // string[] | number[] — not what we want
+    fixed_code: |
+      type Wrap<T> = [T] extends [any] ? T[] : never;
+
+      type W = Wrap<string | number>; // (string | number)[]
+    bug: |
+      Conditional types distribute over union members by default: `Wrap<string | number>`
+      expands to `Wrap<string> | Wrap<number>` = `string[] | number[]`. Wrapping both
+      sides of `extends` in a single-element tuple (`[T] extends [any]`) disables
+      distributivity — T is now treated as a single type, so the result is
+      `(string | number)[]`.
+    check: compiles
+    signal: ""

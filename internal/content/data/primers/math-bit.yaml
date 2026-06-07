@@ -1,0 +1,110 @@
+- category: "Math & Bit"
+  lang: python
+  title: "Math & Bit — Python refresher"
+  summary: |
+    Math problems often hinge on modular arithmetic, GCD/LCM, prime sieves, or
+    integer properties. Bit manipulation lets you operate directly on binary
+    representations in O(1) — useful for XOR tricks, power-of-two checks, and
+    subset enumeration. Reach for bit ops when you see "missing number", "single
+    element", "count bits", or space-constrained set operations.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'modular arithmetic constant'
+          code: 'MOD = 10**9 + 7'
+        - label: 'infinity constant'
+          code: 'INF = float("inf")'
+        - label: 'GCD/LCM import'
+          code: 'from math import gcd, lcm'
+        - label: 'import math'
+          code: 'import math'
+        - label: 'square root'
+          code: 'math.sqrt(n)'
+        - label: 'floor'
+          code: 'math.floor(x)'
+        - label: 'ceiling'
+          code: 'math.ceil(x)'
+        - label: 'prime sieve (Sieve of Eratosthenes)'
+          code: |
+            sieve = [True] * (n + 1)
+            sieve[0] = sieve[1] = False
+            for i in range(2, int(n**0.5) + 1):
+                if sieve[i]:
+                    for j in range(i*i, n+1, i):
+                        sieve[j] = False
+    - title: Basic operations
+      ops:
+        - label: 'GCD'
+          code: 'g = gcd(a, b)'
+        - label: 'LCM'
+          code: 'l = a * b // gcd(a, b)'
+        - label: 'modular arithmetic'
+          code: 'result = (a + b) % MOD'
+        - label: 'integer division (floor)'
+          code: 'q = a // b'
+        - label: 'power with modulo'
+          code: 'x = pow(base, exp, MOD)'
+        - label: 'absolute value'
+          code: 'x = abs(a - b)'
+    - title: Most-used built-in methods
+      ops:
+        - label: 'count set bits'
+          code: 'cnt = bin(n).count(''1'')  # or n.bit_count() (Python 3.10+)'
+        - label: 'bit length'
+          code: 'bits = n.bit_length()'
+        - label: 'integer square root (exact)'
+          code: |
+            from math import isqrt
+            r = isqrt(n)
+        - label: 'number of digits'
+          code: 'digits = len(str(n))'
+    - title: Iteration & loops
+      ops:
+        - label: 'iterate over set bits (enumerate subsets of mask)'
+          code: |
+            mask = 0b1011
+            i = 0
+            while mask:
+                if mask & 1: print(i)
+                mask >>= 1
+                i += 1
+        - label: 'enumerate all subsets of n elements'
+          code: 'for subset in range(1 << n): ...'
+        - label: 'iterate over set bits of a mask (fast)'
+          code: |
+            sub = mask
+            while sub:
+                process(sub)
+                sub = (sub - 1) & mask
+    - title: Special operations (math & bit)
+      ops:
+        - label: 'test odd / even'
+          code: 'if x & 1: ...  # odd'
+        - label: 'test power of two'
+          code: 'is_pow2 = n > 0 and (n & (n - 1)) == 0'
+        - label: 'right shift (halve integer)'
+          code: 'x >>= 1'
+        - label: 'left shift (double integer)'
+          code: 'x <<= 1'
+        - label: 'XOR to find unique element'
+          code: |
+            res = 0
+            for n in nums:
+                res ^= n
+        - label: 'turn off lowest set bit'
+          code: 'x = n & (n - 1)'
+        - label: 'isolate lowest set bit'
+          code: 'lowest = n & (-n)'
+  example: |
+    Worked example — Single Number (every element appears twice except one):
+      XOR is its own inverse: a ^ a == 0, and a ^ 0 == a. XOR all numbers together
+      — the paired values cancel, leaving the unique element.
+
+        def single_number(nums):
+            res = 0
+            for n in nums:
+                res ^= n
+            return res
+
+    Takeaway: when pairs must cancel, XOR is the O(n) time, O(1) space answer.
+    For divisibility / cycle problems, reach for modular arithmetic first.

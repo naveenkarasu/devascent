@@ -1,0 +1,115 @@
+- category: 'Binary Search'
+  lang: go
+  title: 'Binary Search — Go refresher'
+  summary: |
+    Binary search finds a target in a SORTED slice in O(log n) by halving the
+    search space each step. Look at the middle element: if it equals the target
+    you are done; if less, discard the left half; if greater, discard the right.
+
+    The pattern generalises: any time the answer space is monotonic — "every value
+    >= X satisfies the condition, everything below fails" — you can binary-search
+    for the smallest X that works. That is the real interview superpower.
+
+    Go notes:
+      - Compute mid as lo + (hi-lo)/2, never (lo+hi)/2, to avoid integer overflow.
+      - sort.SearchInts(s, x) returns the first index where s[i] >= x (lower bound).
+      - sort.Search(n, f) is a general lower-bound binary search over [0, n).
+      - There is no sort.BinarySearch that returns -1; write your own for exact match.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'inclusive bounds on a slice'
+          code: 'lo, hi := 0, len(a)-1'
+        - label: 'answer-space search'
+          code: 'lo, hi := minPossible, maxPossible'
+        - label: 'overflow-safe midpoint'
+          code: 'mid := lo + (hi-lo)/2'
+    - title: Basic operations
+      ops:
+        - label: 'loop condition (inclusive both ends)'
+          code: 'for lo <= hi { ... }'
+        - label: 'discard left half'
+          code: 'lo = mid + 1'
+        - label: 'discard right half'
+          code: 'hi = mid - 1'
+        - label: 'stdlib lower-bound (first index >= x)'
+          code: 'i := sort.SearchInts(a, x)'
+        - label: 'stdlib general lower-bound'
+          code: 'i := sort.Search(n, func(i int) bool { return a[i] >= x })'
+    - title: Iteration & loops
+      ops:
+        - label: 'standard exact-match binary search'
+          code: |
+            for lo <= hi {
+                mid := lo + (hi-lo)/2
+                if a[mid] == target {
+                    return mid
+                }
+                if a[mid] < target {
+                    lo = mid + 1
+                } else {
+                    hi = mid - 1
+                }
+            }
+        - label: 'left-boundary (first index where cond is true)'
+          code: |
+            for lo < hi {
+                mid := lo + (hi-lo)/2
+                if cond(mid) {
+                    hi = mid
+                } else {
+                    lo = mid + 1
+                }
+            }
+        - label: 'answer-space: record best valid and shrink'
+          code: |
+            if feasible(mid) {
+                best = mid
+                hi = mid - 1
+            } else {
+                lo = mid + 1
+            }
+    - title: Special operations (binary search)
+      ops:
+        - label: 'rotated array: determine which half is sorted'
+          code: |
+            if a[lo] <= a[mid] {
+                // left half sorted
+            } else {
+                // right half sorted
+            }
+        - label: 'search 2-D matrix (flatten to 1-D index)'
+          code: |
+            mid := lo + (hi-lo)/2
+            val := matrix[mid/cols][mid%cols]
+        - label: 'find insertion position'
+          code: 'pos := sort.SearchInts(a, x)  // insert before pos to keep sorted'
+        - label: 'count occurrences of x in sorted slice'
+          code: |
+            lo := sort.SearchInts(a, x)
+            hi := sort.SearchInts(a, x+1)
+            count := hi - lo
+  example: |
+    Worked example — exact search: return index of target, or -1 if absent.
+
+      Maintain an inclusive range [lo..hi]. Each iteration halve the range by
+      comparing a[mid] to the target. A million-element slice needs at most 20
+      comparisons. Use lo + (hi-lo)/2 to keep mid in-range and overflow-safe.
+
+        func search(a []int, target int) int {
+            lo, hi := 0, len(a)-1
+            for lo <= hi {
+                mid := lo + (hi-lo)/2 // overflow-safe
+                if a[mid] == target {
+                    return mid
+                } else if a[mid] < target {
+                    lo = mid + 1 // answer is to the right
+                } else {
+                    hi = mid - 1 // answer is to the left
+                }
+            }
+            return -1
+        }
+
+    Takeaway: the invariant is "if target exists it lies in [lo..hi]." When the
+    range collapses (lo > hi) the target is absent. Never use (lo+hi)/2.

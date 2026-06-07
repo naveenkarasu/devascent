@@ -1,0 +1,143 @@
+- category: Trees & Graphs
+  lang: java
+  title: Trees & Graphs — Java refresher
+  summary: |
+    A tree is a graph with no cycles and one root; a binary tree node has a value,
+    a left child, and a right child. Most tree problems are solved by RECURSION:
+    do something with the node, then recurse into left and right. The base case is
+    almost always "if the node is null, return."
+
+    Two ways to traverse:
+      - DFS (depth-first): go as deep as possible first. Natural with recursion (the
+        call stack IS your stack). Orders: pre-order (node, left, right), in-order
+        (left, node, right — gives sorted order in a BST), post-order (left, right, node).
+      - BFS (breadth-first): visit level by level using a QUEUE. Use it for shortest
+        path in an unweighted graph, or "level order" output.
+
+    Graph note: graphs CAN have cycles, so you must track VISITED nodes or you loop
+    forever. Trees do not need a visited set (no cycles).
+
+    Java notes:
+      - Recursion uses the call stack; BFS uses an explicit Queue (ArrayDeque).
+      - Represent a graph as Map<Integer, List<Integer>> (adjacency list).
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'binary tree node'
+          code: |
+            class TreeNode {
+                int val;
+                TreeNode left, right;
+            }
+        - label: 'BFS queue'
+          code: 'Queue<TreeNode> q = new ArrayDeque<>();'
+        - label: 'adjacency list (graph)'
+          code: 'Map<Integer, List<Integer>> g = new HashMap<>();'
+        - label: 'visited set (graph, to detect cycles)'
+          code: 'Set<Integer> visited = new HashSet<>();'
+        - label: 'DFS stack (iterative)'
+          code: 'Deque<TreeNode> stack = new ArrayDeque<>();'
+    - title: Basic operations
+      ops:
+        - label: 'null check base case'
+          code: 'if (node == null) return 0;'
+        - label: 'recurse both children'
+          code: 'int left = solve(node.left), right = solve(node.right);'
+        - label: 'enqueue root and process BFS'
+          code: |
+            q.offer(root);
+            while (!q.isEmpty()) {
+                TreeNode n = q.poll();
+                ...
+            }
+        - label: 'process one BFS level (level-order)'
+          code: |
+            int sz = q.size();
+            for (int i = 0; i < sz; i++) {
+                TreeNode n = q.poll();
+                if (n.left != null) q.offer(n.left);
+                if (n.right != null) q.offer(n.right);
+            }
+        - label: 'visited guard (add returns false if already present)'
+          code: 'if (!visited.add(node)) continue;'
+    - title: Most-used built-in functions
+      ops:
+        - label: 'combine left and right results'
+          code: 'return 1 + Math.max(left, right);'
+        - label: 'add unvisited neighbors to queue'
+          code: |
+            for (int nb : g.getOrDefault(cur, Collections.emptyList())) {
+                if (visited.add(nb)) q.offer(nb);
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'pre-order DFS (recursive)'
+          code: |
+            void dfs(TreeNode n) {
+                if (n == null) return;
+                visit(n);
+                dfs(n.left);
+                dfs(n.right);
+            }
+        - label: 'in-order DFS (left, node, right — BST gives sorted order)'
+          code: |
+            void inOrder(TreeNode n) {
+                if (n == null) return;
+                inOrder(n.left);
+                visit(n);
+                inOrder(n.right);
+            }
+        - label: 'iterative DFS with explicit stack'
+          code: |
+            stack.push(root);
+            while (!stack.isEmpty()) {
+                TreeNode n = stack.pop();
+                if (n.right != null) stack.push(n.right);
+                if (n.left != null) stack.push(n.left);
+            }
+        - label: 'BFS multi-source (start with all sources enqueued)'
+          code: |
+            for (int src : sources) q.offer(src);
+            int dist = 0;
+            while (!q.isEmpty()) {
+                int sz = q.size();
+                for (int i = 0; i < sz; i++) {
+                    /* expand */
+                }
+                dist++;
+            }
+    - title: Special operations (trees & graphs)
+      ops:
+        - label: 'lowest common ancestor: recurse both sides'
+          code: |
+            if (root == null || root == p || root == q) return root;
+            TreeNode l = lca(root.left, p, q), r = lca(root.right, p, q);
+            return (l != null && r != null) ? root : (l != null ? l : r);
+        - label: 'BST insert'
+          code: 'if (val < node.val) node.left = insert(node.left, val); else node.right = insert(node.right, val);'
+        - label: 'detect cycle in directed graph (DFS color)'
+          code: 'if (state[v] == 1) return true;   // gray = in current path -> cycle'
+        - label: 'build adjacency list from edge list'
+          code: |
+            for (int[] e : edges) {
+                g.computeIfAbsent(e[0], k -> new ArrayList<>()).add(e[1]);
+            }
+  example: |
+    Worked example — maximum depth of a binary tree:
+
+      The depth of a tree is 1 (for the current node) plus the depth of its deeper
+      subtree. An empty tree has depth 0. That single sentence IS the recursion —
+      base case plus a combine step.
+
+        int maxDepth(TreeNode root) {
+            if (root == null) {
+                return 0;                       // empty subtree
+            }
+            int left = maxDepth(root.left);
+            int right = maxDepth(root.right);
+            return 1 + Math.max(left, right);   // this node + the deeper side
+        }
+
+    Takeaway: for trees, ask "what does this node contribute, given the answers from
+    its children?" — then trust the recursion. For graphs, add a visited set so
+    cycles do not trap you, and reach for a Queue (BFS) when you need shortest paths.

@@ -1,0 +1,142 @@
+- category: "Strings"
+  lang: python
+  title: "Strings — Python refresher"
+  summary: |
+    Python strings are immutable sequences of characters. Most string problems
+    reduce to character counting, sliding window, or careful index manipulation.
+    Build results in a list and join at the end — repeated concatenation is O(n^2).
+    Reach for strings problems when the input is text and you need to find a
+    pattern, compare rotations/anagrams, or validate a format.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'string literal'
+          code: 's = "hello"'
+        - label: 'empty string'
+          code: 's = ""'
+        - label: 'repeat a string'
+          code: 's = "ab" * 3        # "ababab"'
+        - label: 'f-string (interpolation)'
+          code: |
+            name = "Sam"
+            s = f"hi {name}"
+        - label: 'list as a mutable buffer (strings are immutable)'
+          code: 'parts = []'
+    - title: Basic operations
+      ops:
+        - label: 'length'
+          code: 'n = len(s)'
+        - label: 'read a char by index'
+          code: 'c = s[i]'
+        - label: 'last char (negative index)'
+          code: 'last = s[-1]'
+        - label: 'slice a substring [i, j)'
+          code: 'sub = s[i:j]'
+        - label: 'concatenate (makes a NEW string)'
+          code: 't = s + "!"'
+        - label: 'find index of a substring (-1 if absent)'
+          code: 'i = s.find("ab")'
+    - title: Most-used built-in methods
+      ops:
+        - label: 'to lowercase'
+          code: 's.lower()'
+        - label: 'to uppercase'
+          code: 's.upper()'
+        - label: 'strip surrounding whitespace'
+          code: 's.strip()'
+        - label: 'membership test'
+          code: '"lo" in s'
+        - label: 'prefix check'
+          code: 's.startswith("he")'
+        - label: 'suffix check'
+          code: 's.endswith("lo")'
+        - label: 'count occurrences'
+          code: 's.count("a")'
+        - label: 'replace all occurrences'
+          code: 's.replace("a", "o")'
+        - label: 'check all digits'
+          code: 's.isdigit()'
+        - label: 'check all alpha'
+          code: 's.isalpha()'
+        - label: 'check all alphanumeric'
+          code: 's.isalnum()'
+    - title: Conversions to other types
+      ops:
+        - label: 'string -> int'
+          code: 'n = int("42")'
+        - label: 'int -> string'
+          code: 's = str(42)'
+        - label: 'string -> list of chars (mutable)'
+          code: 'chars = list(s)'
+        - label: 'char -> code point'
+          code: 'code = ord("a")'
+        - label: 'code point -> char'
+          code: 'ch = chr(97)'
+        - label: 'single digit char -> int'
+          code: 'd = int("7")            # or ord(c) - ord(''0'')'
+        - label: 'lowercase letter -> 0..25 index'
+          code: 'idx = ord(c) - ord(''a'')'
+    - title: Iteration & loops
+      ops:
+        - label: 'for-each over characters'
+          code: 'for c in s: ...'
+        - label: 'with index'
+          code: 'for i, c in enumerate(s): ...'
+        - label: 'iterate in reverse'
+          code: 'for c in reversed(s): ...'
+        - label: 'two-pointer while loop (ends inward)'
+          code: |
+            lo, hi = 0, len(s) - 1
+            while lo < hi:
+                ...
+                lo += 1
+                hi -= 1
+    - title: Ordering & comparison
+      ops:
+        - label: 'compare content (== is value equality in Python)'
+          code: 'if a == b: ...'
+        - label: 'lexicographic order'
+          code: 'if a < b: ...'
+        - label: 'sort the characters of a string'
+          code: 'sorted_s = "".join(sorted(s))'
+        - label: 'sort a list of words by length'
+          code: 'words.sort(key=len)'
+        - label: 'sort by a custom key (length, then alphabetical)'
+          code: 'words.sort(key=lambda w: (len(w), w))'
+    - title: Special operations (string patterns)
+      ops:
+        - label: 'frequency map (Counter)'
+          code: |
+            from collections import Counter
+            cnt = Counter(s)
+        - label: 'frequency array for lowercase letters'
+          code: |
+            cnt = [0] * 26
+            cnt[ord(c) - ord('a')] += 1
+        - label: 'reverse a string'
+          code: 'r = s[::-1]'
+        - label: 'build output efficiently (avoid += in a loop)'
+          code: |
+            res = []
+            res.append(ch)
+            return "".join(res)
+        - label: 'palindrome check'
+          code: 'is_pal = s == s[::-1]'
+  example: |
+    Worked example — Valid Anagram:
+      Two strings are anagrams if they contain the same characters with the same
+      frequencies. Counting characters in both and comparing is O(n), no sorting
+      needed.
+
+        def is_anagram(s, t):
+            if len(s) != len(t):
+                return False
+            count = [0] * 26
+            for c in s:
+                count[ord(c) - ord('a')] += 1
+            for c in t:
+                count[ord(c) - ord('a')] -= 1
+            return all(x == 0 for x in count)
+
+    Takeaway: character-count arrays (size 26) are the O(n) alternative to sorting
+    whenever the alphabet is fixed.

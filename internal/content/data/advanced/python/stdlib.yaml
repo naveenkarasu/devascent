@@ -1,0 +1,58 @@
+lang: python
+group: Stdlib & Ecosystem
+title: "Stdlib & Ecosystem — batteries included, key modules"
+tag: C
+summary: |
+  Python's standard library covers most common tasks without third-party
+  dependencies. Key modules every working developer should know:
+
+  `collections`:
+    - `Counter(iterable)` — counts hashable elements; `.most_common(n)` returns
+      the n most frequent.
+    - `defaultdict(factory)` — like dict but creates a default value on missing key
+      access; eliminates `if key not in d` boilerplate.
+    - `deque(iterable, maxlen=N)` — O(1) appends and pops from both ends; `maxlen`
+      creates a circular buffer.
+    - `namedtuple("Point", ["x", "y"])` — tuple subclass with named fields.
+    - `ChainMap(d1, d2)` — views multiple dicts as one without copying.
+
+  `functools`:
+    - `lru_cache(maxsize=128)` / `cache` — memoisation decorator; `cache` is
+      `lru_cache(maxsize=None)` (3.9+).
+    - `partial(fn, *args, **kwargs)` — pre-fill arguments to create a new callable.
+    - `reduce(fn, iterable, initial)` — left fold.
+    - `wraps(wrapped)` — copy `__name__`, `__doc__`, etc. to a decorator wrapper.
+    - `total_ordering` — define `__eq__` + one comparison and get the rest.
+
+  `itertools`:
+    - `chain(*iterables)`, `cycle(iterable)`, `repeat(x, n)`
+    - `islice(it, stop)` / `islice(it, start, stop, step)` — lazy slicing
+    - `filterfalse(pred, it)` — complement of `filter`
+    - `groupby(it, key)` — consecutive-equal-key grouping (sort first!)
+    - `combinations(it, r)`, `permutations(it, r)`, `product(*its)`
+    - `pairwise(it)` — (3.10+) consecutive overlapping pairs: `(a,b)`, `(b,c)`, …
+    - `batched(it, n)` — (3.12+) non-overlapping batches of size n
+
+  `pathlib`:
+    - `Path` objects for filesystem operations.
+    - `Path("dir") / "file.txt"` — path construction via `/` operator.
+    - `.read_text()`, `.write_text()`, `.glob("*.py")`, `.stat()`, `.mkdir(parents=True)`.
+    - Preferred over `os.path` for all new code.
+
+  `json`:
+    - `json.loads(s)` — parse JSON string to Python objects.
+    - `json.dumps(obj, indent=2)` — serialise to JSON string.
+    - `json.load(fp)` / `json.dump(obj, fp)` — file-based equivalents.
+
+  `re`:
+    - `re.compile(pattern)` — compile for repeated use.
+    - `re.search`, `re.match`, `re.findall`, `re.sub`.
+    - Raw strings (`r"pattern"`) avoid backslash confusion.
+
+  Packaging:
+    - `pip install <package>` — install from PyPI.
+    - `python -m venv .venv` — create a virtual environment.
+    - `poetry` / `uv` — modern dependency management with lock files.
+    - `pyproject.toml` — the standard project metadata file (PEP 517/518/621).
+
+  No exercise — reading material only.

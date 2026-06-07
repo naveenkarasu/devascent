@@ -1,0 +1,1073 @@
+# DevAscent dev-literacy command bank — 70 tasks
+# Grading: PASSES if first token is in `commands` AND every token in `flags`
+# appears in the typed line — OR the whole line equals one of `accept`.
+# All strings compared lowercased + space-collapsed.
+
+# ── navigation (9) ────────────────────────────────────────────────────────────
+
+- id: nav_list_files
+  order: 1
+  category: navigation
+  difficulty: 1
+  title: See what's here
+  prompt: |
+    You just opened a terminal in a project folder and want to see which
+    files and directories are present before doing anything else.
+    Type the command that lists the contents of the current directory.
+  commands: ["ls", "dir"]
+  flags: []
+  accept: ["ls", "dir", "ls -l", "ls -a", "ls -la"]
+  hint: "On macOS/Linux use `ls`; on Windows use `dir`."
+  success: "`ls` (or `dir`) shows every file and folder in the current directory."
+
+- id: nav_print_working_dir
+  order: 2
+  category: navigation
+  difficulty: 1
+  title: Where am I?
+  prompt: |
+    You're deep inside a project and you've lost track of which directory
+    you're currently in.
+    Type the command that prints the full path of your current directory.
+  commands: ["pwd", "cd"]
+  flags: []
+  accept: ["pwd", "cd"]
+  hint: "On macOS/Linux: `pwd` (print working directory). On Windows: `cd` with no arguments."
+  success: "`pwd` (or bare `cd` on Windows) prints your current location in the filesystem."
+
+- id: nav_change_dir
+  order: 3
+  category: navigation
+  difficulty: 1
+  title: Move into a folder
+  prompt: |
+    You can see a folder called `src` listed in the current directory.
+    You want to navigate into it.
+    Type the command that changes your current directory to `src`.
+  commands: ["cd"]
+  flags: ["src"]
+  accept: ["cd src", "cd ./src"]
+  hint: "`cd <folder>` changes directory. The folder name goes right after the command."
+  success: "`cd src` moves you into the `src` folder. Use `cd` to navigate the whole filesystem."
+
+- id: nav_go_up
+  order: 4
+  category: navigation
+  difficulty: 1
+  title: Go up one level
+  prompt: |
+    You're inside a sub-folder and you need to go back up to the parent
+    directory — one level up.
+    Type the command that moves you up one directory.
+  commands: ["cd"]
+  flags: [".."]
+  accept: ["cd .."]
+  hint: "`..` always refers to the parent directory."
+  success: "`cd ..` climbs one level up in the directory tree — a fundamental navigation move."
+
+- id: nav_list_all_hidden
+  order: 5
+  category: navigation
+  difficulty: 2
+  title: Show hidden files too
+  prompt: |
+    You suspect there's a `.env` file in the current folder but plain `ls`
+    doesn't show it. Hidden files start with a dot.
+    Type the command that lists ALL files, including hidden ones.
+  commands: ["ls", "dir"]
+  flags: ["-a"]
+  accept: ["ls -a", "ls -la", "ls -al", "ls -a .", "dir /a"]
+  hint: "The `-a` flag tells `ls` to show files whose names start with `.`."
+  success: "`ls -a` reveals hidden dot-files like `.env`, `.gitignore`, and `.bashrc`."
+
+- id: nav_list_long
+  order: 6
+  category: navigation
+  difficulty: 1
+  title: See file details
+  prompt: |
+    You want to see the files in the current directory along with their
+    sizes, permissions, and modification dates — a long-format listing.
+    Type the command that shows a detailed (long) listing.
+  commands: ["ls", "dir"]
+  flags: ["-l"]
+  accept: ["ls -l", "ls -la", "ls -al", "dir /q"]
+  hint: "The `-l` flag gives the long (detailed) format."
+  success: "`ls -l` shows permissions, owner, size, and timestamp for every entry."
+
+- id: nav_list_path
+  order: 7
+  category: navigation
+  difficulty: 2
+  title: List another folder
+  prompt: |
+    Without changing directory, you want to see what's inside the `tests`
+    folder that sits alongside your current location.
+    Type the command that lists the contents of `tests`.
+  commands: ["ls", "dir"]
+  flags: ["tests"]
+  accept: ["ls tests", "ls ./tests", "dir tests"]
+  hint: "You can pass any path to `ls` as an argument — you don't have to `cd` first."
+  success: "`ls tests` lists the contents of `tests` without changing your current directory."
+
+- id: nav_make_dir
+  order: 8
+  category: navigation
+  difficulty: 1
+  title: Create a new folder
+  prompt: |
+    You need a new folder called `output` to store results.
+    Type the command that creates a directory named `output`.
+  commands: ["mkdir"]
+  flags: ["output"]
+  accept: ["mkdir output", "mkdir ./output"]
+  hint: "`mkdir <name>` creates a new directory with that name."
+  success: "`mkdir output` creates a new empty directory called `output`."
+
+- id: nav_make_nested_dirs
+  order: 9
+  category: navigation
+  difficulty: 2
+  title: Create nested folders
+  prompt: |
+    You need to create the path `src/utils` but `src` doesn't exist yet.
+    Creating each folder one at a time would be slow.
+    Type the command that creates `src/utils` and any missing parent folders
+    in a single command.
+  commands: ["mkdir"]
+  flags: ["-p", "src/utils"]
+  accept: ["mkdir -p src/utils"]
+  hint: "The `-p` flag tells `mkdir` to create parent directories as needed."
+  success: "`mkdir -p src/utils` creates both `src` and `src/utils` in one shot."
+
+# ── files (9) ─────────────────────────────────────────────────────────────────
+
+- id: files_create_empty
+  order: 10
+  category: files
+  difficulty: 1
+  title: Create an empty file
+  prompt: |
+    You need a placeholder file called `notes.txt` to exist in the current
+    directory, even if it's empty.
+    Type the command that creates an empty file named `notes.txt`.
+  commands: ["touch"]
+  flags: ["notes.txt"]
+  accept: ["touch notes.txt", "touch ./notes.txt"]
+  hint: "`touch <filename>` creates an empty file or updates its timestamp."
+  success: "`touch notes.txt` creates an empty file instantly — handy for placeholders."
+
+- id: files_copy_file
+  order: 11
+  category: files
+  difficulty: 1
+  title: Copy a file
+  prompt: |
+    You want to make a backup of `config.yaml` called `config.yaml.bak`
+    before editing it, so you can restore it if something goes wrong.
+    Type the command that copies `config.yaml` to `config.yaml.bak`.
+  commands: ["cp", "copy"]
+  flags: ["config.yaml", "config.yaml.bak"]
+  accept: ["cp config.yaml config.yaml.bak", "copy config.yaml config.yaml.bak"]
+  hint: "`cp <source> <dest>` copies a file. On Windows it's `copy`."
+  success: "`cp config.yaml config.yaml.bak` makes a safe backup copy."
+
+- id: files_move_file
+  order: 12
+  category: files
+  difficulty: 1
+  title: Move a file
+  prompt: |
+    You have a file `report.txt` in the current directory but it belongs
+    in the `docs` folder.
+    Type the command that moves `report.txt` into the `docs` folder.
+  commands: ["mv", "move"]
+  flags: ["report.txt", "docs"]
+  accept: ["mv report.txt docs", "mv report.txt docs/", "move report.txt docs"]
+  hint: "`mv <source> <dest>` moves (or renames) a file. On Windows it's `move`."
+  success: "`mv report.txt docs` moves the file into the `docs` directory."
+
+- id: files_rename_file
+  order: 13
+  category: files
+  difficulty: 1
+  title: Rename a file
+  prompt: |
+    You have a file called `old-name.txt` and you want to rename it to
+    `new-name.txt` without changing its contents.
+    Type the command that renames `old-name.txt` to `new-name.txt`.
+  commands: ["mv", "move", "ren"]
+  flags: ["old-name.txt", "new-name.txt"]
+  accept: ["mv old-name.txt new-name.txt", "move old-name.txt new-name.txt", "ren old-name.txt new-name.txt"]
+  hint: "`mv` does double duty — it moves AND renames. On Windows: `move` or `ren`."
+  success: "`mv old-name.txt new-name.txt` renames the file in place."
+
+- id: files_copy_dir_recursive
+  order: 14
+  category: files
+  difficulty: 2
+  title: Copy a whole folder
+  prompt: |
+    You need to duplicate an entire folder called `templates` — including
+    all its sub-folders and files — to a new folder named `templates-backup`.
+    Type the command that recursively copies `templates` to `templates-backup`.
+  commands: ["cp"]
+  flags: ["-r", "templates", "templates-backup"]
+  accept: ["cp -r templates templates-backup", "cp -r templates/ templates-backup", "cp -r templates templates-backup/"]
+  hint: "Copying a folder requires the `-r` (recursive) flag."
+  success: "`cp -r templates templates-backup` copies the whole directory tree recursively."
+
+- id: files_move_dir
+  order: 15
+  category: files
+  difficulty: 2
+  title: Move a whole folder
+  prompt: |
+    You want to move the entire `old-src` folder into a folder called
+    `archive`. The `archive` folder already exists.
+    Type the command that moves `old-src` into `archive`.
+  commands: ["mv", "move"]
+  flags: ["old-src", "archive"]
+  accept: ["mv old-src archive", "mv old-src archive/", "move old-src archive"]
+  hint: "`mv` on a directory moves the whole folder — no `-r` needed."
+  success: "`mv old-src archive` moves the entire `old-src` folder inside `archive`."
+
+- id: files_touch_multiple
+  order: 16
+  category: files
+  difficulty: 2
+  title: Create several files
+  prompt: |
+    You want to create three empty files at once: `a.txt`, `b.txt`, and
+    `c.txt`. You'd rather do it in one command.
+    Type the command that creates all three empty files.
+  commands: ["touch"]
+  flags: ["a.txt", "b.txt", "c.txt"]
+  accept: ["touch a.txt b.txt c.txt"]
+  hint: "`touch` accepts multiple filenames separated by spaces."
+  success: "`touch a.txt b.txt c.txt` creates all three files in one go."
+
+- id: files_copy_into_dir
+  order: 17
+  category: files
+  difficulty: 2
+  title: Copy file into folder
+  prompt: |
+    You want to copy `logo.png` from the current directory into a folder
+    called `assets`.
+    Type the command that copies `logo.png` into the `assets` folder.
+  commands: ["cp", "copy"]
+  flags: ["logo.png", "assets"]
+  accept: ["cp logo.png assets", "cp logo.png assets/", "copy logo.png assets"]
+  hint: "When the destination is a folder, `cp` places the file inside it."
+  success: "`cp logo.png assets` copies `logo.png` into the `assets` folder."
+
+- id: files_write_output
+  order: 18
+  category: files
+  difficulty: 2
+  title: Save output to a file
+  prompt: |
+    You want to write the text `Hello, world!` into a file called
+    `greeting.txt`, creating the file if it doesn't exist.
+    Type the command that does this using `echo`.
+  commands: ["echo"]
+  flags: []
+  accept: ["echo hello, world! > greeting.txt", "echo \"hello, world!\" > greeting.txt", "echo 'hello, world!' > greeting.txt"]
+  hint: "`echo <text> > <file>` writes the text into a file (the `>` redirects output)."
+  success: "`echo ... > greeting.txt` writes text to a file via output redirection."
+
+# ── inspect (9) ───────────────────────────────────────────────────────────────
+
+- id: inspect_cat_file
+  order: 19
+  category: inspect
+  difficulty: 1
+  title: Print file contents
+  prompt: |
+    You want to read a file called `README.md` without opening any editor
+    — just dump its text to the terminal screen.
+    Type the command that prints the full contents of `README.md`.
+  commands: ["cat", "type"]
+  flags: ["readme.md"]
+  accept: ["cat readme.md", "cat ./readme.md", "type readme.md"]
+  hint: "`cat <file>` prints the file to the terminal. Windows alternative: `type <file>`."
+  success: "`cat README.md` streams the file's content to your terminal — fast and simple."
+
+- id: inspect_head
+  order: 20
+  category: inspect
+  difficulty: 1
+  title: Peek at the top
+  prompt: |
+    A log file called `app.log` is huge. You only want to see the first 10
+    lines to check whether logging started correctly.
+    Type the command that prints the first 10 lines of `app.log`.
+  commands: ["head"]
+  flags: ["app.log"]
+  accept: ["head app.log", "head -10 app.log", "head -n 10 app.log"]
+  hint: "`head <file>` shows the first 10 lines by default."
+  success: "`head app.log` shows the first 10 lines — perfect for a quick sanity-check."
+
+- id: inspect_tail
+  order: 21
+  category: inspect
+  difficulty: 1
+  title: See the latest lines
+  prompt: |
+    A server writes new entries to `server.log`. You want to see the most
+    recent 10 lines to check for fresh errors.
+    Type the command that prints the last 10 lines of `server.log`.
+  commands: ["tail"]
+  flags: ["server.log"]
+  accept: ["tail server.log", "tail -10 server.log", "tail -n 10 server.log"]
+  hint: "`tail <file>` shows the last 10 lines by default — the opposite of `head`."
+  success: "`tail server.log` shows the latest entries — a go-to move when debugging servers."
+
+- id: inspect_wc_lines
+  order: 22
+  category: inspect
+  difficulty: 2
+  title: Count lines in a file
+  prompt: |
+    You want to know how many lines are in a file called `data.csv`
+    to verify it has the right number of records.
+    Type the command that prints the number of lines in `data.csv`.
+  commands: ["wc"]
+  flags: ["-l", "data.csv"]
+  accept: ["wc -l data.csv"]
+  hint: "`wc -l <file>` counts lines (`wc` = word count; `-l` = lines only)."
+  success: "`wc -l data.csv` prints the line count — useful for validating data files."
+
+- id: inspect_file_type
+  order: 23
+  category: inspect
+  difficulty: 2
+  title: Identify a file's type
+  prompt: |
+    You found a file called `mystery` with no extension. You want to know
+    what kind of file it actually is — text, binary, image, etc.
+    Type the command that reports the file type of `mystery`.
+  commands: ["file"]
+  flags: ["mystery"]
+  accept: ["file mystery", "file ./mystery"]
+  hint: "`file <name>` inspects the file's content and reports its actual type."
+  success: "`file mystery` reads the file's magic bytes and tells you exactly what it is."
+
+- id: inspect_stat
+  order: 24
+  category: inspect
+  difficulty: 2
+  title: Full file metadata
+  prompt: |
+    You need to see detailed metadata about `config.json` — including its
+    size, permissions, and timestamps.
+    Type the command that displays full metadata for `config.json`.
+  commands: ["stat"]
+  flags: ["config.json"]
+  accept: ["stat config.json", "stat ./config.json"]
+  hint: "`stat <file>` shows inode info, byte size, access and modification times."
+  success: "`stat config.json` gives you every piece of metadata the OS knows about the file."
+
+- id: inspect_du_folder
+  order: 25
+  category: inspect
+  difficulty: 2
+  title: Check folder size
+  prompt: |
+    Your `node_modules` folder might be huge. You want to see how much
+    disk space it and its contents are using, in a human-readable format.
+    Type the command that shows the disk usage of `node_modules` in
+    human-readable form.
+  commands: ["du"]
+  flags: ["-h", "node_modules"]
+  accept: ["du -h node_modules", "du -sh node_modules", "du -h node_modules/"]
+  hint: "`du -h <path>` shows disk usage with human-readable units (KB, MB, GB)."
+  success: "`du -h node_modules` reports each directory's size — handy for spotting bloat."
+
+- id: inspect_df_disk
+  order: 26
+  category: inspect
+  difficulty: 2
+  title: Check disk space
+  prompt: |
+    Before running a large build, you want to verify how much free disk
+    space is available on your drives.
+    Type the command that reports disk space usage in human-readable form.
+  commands: ["df"]
+  flags: ["-h"]
+  accept: ["df -h", "df -h ."]
+  hint: "`df -h` shows free and used space on all mounted filesystems."
+  success: "`df -h` gives a per-filesystem summary of free space — run it before large downloads."
+
+- id: inspect_tail_lines
+  order: 27
+  category: inspect
+  difficulty: 2
+  title: Show last 20 lines
+  prompt: |
+    The default `tail` shows 10 lines, but you need to see the last 20
+    lines of `events.log` to catch enough context around a recent error.
+    Type the command that prints the last 20 lines of `events.log`.
+  commands: ["tail"]
+  flags: ["-n", "20", "events.log"]
+  accept: ["tail -n 20 events.log", "tail -20 events.log"]
+  hint: "`tail -n <number>` lets you choose exactly how many lines to show."
+  success: "`tail -n 20 events.log` prints the last 20 lines — adjust the number to your needs."
+
+# ── text (9) ──────────────────────────────────────────────────────────────────
+
+- id: text_grep_pattern
+  order: 28
+  category: text
+  difficulty: 1
+  title: Search text in a file
+  prompt: |
+    You want to find every line in `app.log` that contains the word
+    `ERROR` so you can focus on failures.
+    Type the command that searches for `ERROR` in `app.log`.
+  commands: ["grep", "findstr"]
+  flags: ["error", "app.log"]
+  accept: ["grep error app.log", "grep -i error app.log", "findstr error app.log", "grep \"error\" app.log"]
+  hint: "`grep <pattern> <file>` prints every line matching the pattern."
+  success: "`grep ERROR app.log` filters the log to show only lines containing `ERROR`."
+
+- id: text_grep_recursive
+  order: 29
+  category: text
+  difficulty: 2
+  title: Search across all files
+  prompt: |
+    You need to find which file in the `src` folder (and any sub-folders)
+    contains the function name `parseDate`.
+    Type the command that searches for `parseDate` recursively in `src`.
+  commands: ["grep", "findstr"]
+  flags: ["-r", "parsedate", "src"]
+  accept: ["grep -r parsedate src", "grep -ri parsedate src", "grep -r \"parsedate\" src", "findstr /s parsedate src"]
+  hint: "`grep -r <pattern> <dir>` searches every file in the directory tree."
+  success: "`grep -r parseDate src` scans the entire `src` tree for the function name."
+
+- id: text_sort_file
+  order: 30
+  category: text
+  difficulty: 1
+  title: Sort lines alphabetically
+  prompt: |
+    You have a file `names.txt` with one name per line in random order.
+    You want to see them sorted alphabetically.
+    Type the command that prints `names.txt` sorted.
+  commands: ["sort"]
+  flags: ["names.txt"]
+  accept: ["sort names.txt"]
+  hint: "`sort <file>` outputs the lines in alphabetical order."
+  success: "`sort names.txt` streams the file with lines in sorted order."
+
+- id: text_uniq_filter
+  order: 31
+  category: text
+  difficulty: 2
+  title: Remove duplicate lines
+  prompt: |
+    A file `words.txt` has many repeated lines. After sorting it, you
+    want to pipe through a filter that removes consecutive duplicates.
+    Type the command that reads `words.txt` and removes duplicate lines
+    (pipe `sort` into the dedup tool).
+  commands: ["sort"]
+  flags: []
+  accept: ["sort words.txt | uniq", "sort words.txt | uniq -u"]
+  hint: "`sort <file> | uniq` — `uniq` drops consecutive duplicate lines after sorting."
+  success: "`sort words.txt | uniq` gives you one occurrence of each unique line."
+
+- id: text_cut_field
+  order: 32
+  category: text
+  difficulty: 2
+  title: Extract a CSV column
+  prompt: |
+    A file `data.csv` uses commas as delimiters. You want to extract only
+    the second column (field 2) from every row.
+    Type the command that cuts field 2 using `,` as the delimiter from `data.csv`.
+  commands: ["cut"]
+  flags: ["-d", "-f", "data.csv"]
+  accept: ["cut -d, -f2 data.csv", "cut -d , -f 2 data.csv", "cut -d',' -f2 data.csv"]
+  hint: "`cut -d<delim> -f<num> <file>` extracts a column by its field number."
+  success: "`cut -d, -f2 data.csv` pulls just the second field from each CSV row."
+
+- id: text_echo_string
+  order: 33
+  category: text
+  difficulty: 1
+  title: Print a message
+  prompt: |
+    You want to print the message `Build complete` to the terminal — useful
+    in scripts to let the user know a step finished.
+    Type the command that prints `Build complete` to the screen.
+  commands: ["echo"]
+  flags: []
+  accept: ["echo build complete", "echo \"build complete\"", "echo 'build complete'"]
+  hint: "`echo <text>` prints the text to standard output."
+  success: "`echo Build complete` prints the message — a staple of shell scripts."
+
+- id: text_wc_words
+  order: 34
+  category: text
+  difficulty: 2
+  title: Count words in a file
+  prompt: |
+    You wrote a draft in `essay.txt` and want to know the total word count
+    without opening a text editor.
+    Type the command that counts the words in `essay.txt`.
+  commands: ["wc"]
+  flags: ["-w", "essay.txt"]
+  accept: ["wc -w essay.txt"]
+  hint: "`wc -w <file>` counts words; `-l` counts lines; `-c` counts bytes."
+  success: "`wc -w essay.txt` prints the word count — handy for length checks."
+
+- id: text_grep_line_numbers
+  order: 35
+  category: text
+  difficulty: 2
+  title: Show matching line numbers
+  prompt: |
+    You're searching for `TODO` comments in `main.py` and want each
+    matching line's line-number printed alongside it.
+    Type the command that finds `TODO` in `main.py` and shows line numbers.
+  commands: ["grep"]
+  flags: ["-n", "todo", "main.py"]
+  accept: ["grep -n todo main.py", "grep -ni todo main.py", "grep -n \"todo\" main.py"]
+  hint: "Add `-n` to `grep` to prefix each match with its line number."
+  success: "`grep -n TODO main.py` shows each matching line with its number — easy to jump to."
+
+- id: text_tr_squeeze
+  order: 36
+  category: text
+  difficulty: 3
+  title: Collapse repeated spaces
+  prompt: |
+    A text file `messy.txt` has runs of multiple spaces between words.
+    You want to squeeze every sequence of spaces down to a single space
+    using the `tr` translate command with its squeeze flag.
+    Type the command that squeezes repeated spaces in `messy.txt`.
+  commands: ["tr"]
+  flags: ["-s"]
+  accept: ["tr -s ' ' < messy.txt", "tr -s \" \" < messy.txt", "cat messy.txt | tr -s ' '", "tr -s ' ' messy.txt"]
+  hint: "`tr -s '<char>'` squeezes repeated occurrences of that character down to one."
+  success: "`tr -s ' ' < messy.txt` collapses any run of spaces into a single space."
+
+# ── git (10) ──────────────────────────────────────────────────────────────────
+
+- id: git_init
+  order: 37
+  category: git
+  difficulty: 1
+  title: Start a git repo
+  prompt: |
+    You've started a new project in an empty folder and you want to put it
+    under version control with git.
+    Type the command that initialises a new git repository here.
+  commands: ["git"]
+  flags: ["init"]
+  accept: ["git init"]
+  hint: "Every git repo starts the same way — `git ____`."
+  success: "`git init` creates a `.git` folder and starts tracking changes in this directory."
+
+- id: git_status
+  order: 38
+  category: git
+  difficulty: 1
+  title: Check repo status
+  prompt: |
+    You've edited a few files in your git repo. Before committing, you want
+    to see which files are modified, staged, or untracked.
+    Type the command that shows the current working-tree status.
+  commands: ["git"]
+  flags: ["status"]
+  accept: ["git status", "git status -s"]
+  hint: "`git ____` — the command you run before every commit to see what changed."
+  success: "`git status` shows modified, staged, and untracked files — your git compass."
+
+- id: git_add_file
+  order: 39
+  category: git
+  difficulty: 1
+  title: Stage a file
+  prompt: |
+    You edited `index.html` and want to stage it for the next commit.
+    Type the command that stages `index.html`.
+  commands: ["git"]
+  flags: ["add", "index.html"]
+  accept: ["git add index.html", "git add ./index.html"]
+  hint: "`git add <file>` moves changes into the staging area (index)."
+  success: "`git add index.html` stages the file — it's now ready to be included in the next commit."
+
+- id: git_add_all
+  order: 40
+  category: git
+  difficulty: 1
+  title: Stage all changes
+  prompt: |
+    You've modified several files and want to stage all of them at once
+    for the next commit.
+    Type the command that stages every changed (and new) file.
+  commands: ["git"]
+  flags: ["add", "."]
+  accept: ["git add .", "git add -a", "git add --all"]
+  hint: "`git add .` stages every change in the current directory tree."
+  success: "`git add .` is the fast path when you want to commit every current change."
+
+- id: git_commit
+  order: 41
+  category: git
+  difficulty: 1
+  title: Commit with a message
+  prompt: |
+    Your changes are staged. You want to save them as a commit with the
+    message `fix login bug`.
+    Type the commit command including the message flag and the message.
+  commands: ["git"]
+  flags: ["commit", "-m"]
+  accept: ["git commit -m \"fix login bug\"", "git commit -m 'fix login bug'", "git commit -m fix login bug"]
+  hint: "`git commit -m \"<message>\"` saves staged changes as a named snapshot."
+  success: "`git commit -m \"fix login bug\"` records the staged snapshot with your message."
+
+- id: git_log
+  order: 42
+  category: git
+  difficulty: 1
+  title: View commit history
+  prompt: |
+    You want to scroll through the recent commit history of this repo —
+    who committed what and when.
+    Type the command that shows the commit log.
+  commands: ["git"]
+  flags: ["log"]
+  accept: ["git log", "git log --oneline", "git log -10"]
+  hint: "`git log` lists commits newest-first with author, date, and message."
+  success: "`git log` shows the full commit history — add `--oneline` for a compact view."
+
+- id: git_diff
+  order: 43
+  category: git
+  difficulty: 2
+  title: See unstaged changes
+  prompt: |
+    You've edited `server.py` but haven't staged it yet. You want to see
+    exactly what changed — line by line.
+    Type the command that shows unstaged differences.
+  commands: ["git"]
+  flags: ["diff"]
+  accept: ["git diff", "git diff server.py"]
+  hint: "`git diff` without arguments compares your working copy to the last staged state."
+  success: "`git diff` shows what changed but hasn't been staged yet — green lines added, red removed."
+
+- id: git_branch
+  order: 44
+  category: git
+  difficulty: 2
+  title: List branches
+  prompt: |
+    You want to see which branches exist in this repo and which one you're
+    currently on.
+    Type the command that lists all local branches.
+  commands: ["git"]
+  flags: ["branch"]
+  accept: ["git branch", "git branch -a"]
+  hint: "`git branch` lists branches; an asterisk marks the current one."
+  success: "`git branch` shows all local branches — the current one is marked with `*`."
+
+- id: git_checkout_branch
+  order: 45
+  category: git
+  difficulty: 2
+  title: Switch to a branch
+  prompt: |
+    A branch called `feature/login` already exists. You want to switch to
+    it so you can work on that feature.
+    Type the command that checks out `feature/login`.
+  commands: ["git"]
+  flags: ["checkout", "feature/login"]
+  accept: ["git checkout feature/login", "git switch feature/login"]
+  hint: "`git checkout <branch>` switches branches. Modern git also accepts `git switch`."
+  success: "`git checkout feature/login` moves your working tree to that branch."
+
+- id: git_clone
+  order: 46
+  category: git
+  difficulty: 2
+  title: Clone a repository
+  prompt: |
+    You found an open-source project at `https://github.com/example/app`
+    and want to download a full local copy.
+    Type the command that clones that repository.
+  commands: ["git"]
+  flags: ["clone", "https://github.com/example/app"]
+  accept: ["git clone https://github.com/example/app"]
+  hint: "`git clone <url>` downloads a full copy of the remote repository."
+  success: "`git clone` downloads the repo plus its full history into a local folder."
+
+# ── archive (8) ───────────────────────────────────────────────────────────────
+
+- id: archive_tar_create
+  order: 47
+  category: archive
+  difficulty: 2
+  title: Pack a folder with tar
+  prompt: |
+    You want to compress the entire `project` folder into a single archive
+    file called `project.tar.gz` using tar with gzip compression.
+    Type the command that creates `project.tar.gz` from `project`.
+  commands: ["tar"]
+  flags: ["-czf", "project.tar.gz", "project"]
+  accept: ["tar -czf project.tar.gz project", "tar -czf project.tar.gz project/"]
+  hint: "`tar -czf <archive.tar.gz> <folder>` — c=create, z=gzip, f=filename."
+  success: "`tar -czf project.tar.gz project` packs and compresses the whole folder."
+
+- id: archive_tar_extract
+  order: 48
+  category: archive
+  difficulty: 2
+  title: Unpack a tar archive
+  prompt: |
+    Someone sent you `release.tar.gz`. You want to extract its contents
+    into the current directory.
+    Type the command that extracts `release.tar.gz`.
+  commands: ["tar"]
+  flags: ["-xzf", "release.tar.gz"]
+  accept: ["tar -xzf release.tar.gz", "tar xzf release.tar.gz"]
+  hint: "`tar -xzf <archive>` — x=extract, z=gzip, f=filename."
+  success: "`tar -xzf release.tar.gz` decompresses and extracts all files from the archive."
+
+- id: archive_tar_list
+  order: 49
+  category: archive
+  difficulty: 2
+  title: List tar contents
+  prompt: |
+    You received `backup.tar.gz` but want to see what's inside before
+    extracting anything.
+    Type the command that lists the contents of `backup.tar.gz` without
+    extracting.
+  commands: ["tar"]
+  flags: ["-tzf", "backup.tar.gz"]
+  accept: ["tar -tzf backup.tar.gz", "tar tzf backup.tar.gz", "tar -tf backup.tar.gz"]
+  hint: "`tar -tzf <archive>` lists files without extracting — t=list, z=gzip, f=file."
+  success: "`tar -tzf backup.tar.gz` prints the file manifest without touching disk."
+
+- id: archive_zip_create
+  order: 50
+  category: archive
+  difficulty: 2
+  title: Zip a folder
+  prompt: |
+    You need to share the `dist` folder as a zip file called `dist.zip`.
+    Type the command that zips the `dist` folder recursively into `dist.zip`.
+  commands: ["zip"]
+  flags: ["-r", "dist.zip", "dist"]
+  accept: ["zip -r dist.zip dist", "zip -r dist.zip dist/"]
+  hint: "`zip -r <archive.zip> <folder>` zips a whole folder recursively."
+  success: "`zip -r dist.zip dist` creates a zip archive of the entire `dist` folder."
+
+- id: archive_unzip
+  order: 51
+  category: archive
+  difficulty: 1
+  title: Extract a zip file
+  prompt: |
+    You downloaded `assets.zip` and want to unzip it into the current
+    directory.
+    Type the command that extracts `assets.zip`.
+  commands: ["unzip"]
+  flags: ["assets.zip"]
+  accept: ["unzip assets.zip"]
+  hint: "`unzip <file.zip>` extracts the archive's contents here."
+  success: "`unzip assets.zip` unpacks all files into the current directory."
+
+- id: archive_gzip_file
+  order: 52
+  category: archive
+  difficulty: 2
+  title: Compress a file with gzip
+  prompt: |
+    You want to compress a log file `access.log` using gzip to save disk
+    space. This will produce `access.log.gz`.
+    Type the command that compresses `access.log` with gzip.
+  commands: ["gzip"]
+  flags: ["access.log"]
+  accept: ["gzip access.log"]
+  hint: "`gzip <file>` compresses the file in-place, replacing it with `<file>.gz`."
+  success: "`gzip access.log` compresses the file to `access.log.gz`, reducing its size."
+
+- id: archive_gunzip_file
+  order: 53
+  category: archive
+  difficulty: 2
+  title: Decompress a gzip file
+  prompt: |
+    You have a file `data.json.gz` and want to decompress it back to
+    `data.json`.
+    Type the command that decompresses `data.json.gz`.
+  commands: ["gunzip", "gzip"]
+  flags: ["data.json.gz"]
+  accept: ["gunzip data.json.gz", "gzip -d data.json.gz"]
+  hint: "`gunzip <file.gz>` decompresses it; or use `gzip -d`."
+  success: "`gunzip data.json.gz` decompresses the file back to its original form."
+
+- id: archive_zip_list
+  order: 54
+  category: archive
+  difficulty: 2
+  title: Inspect a zip archive
+  prompt: |
+    You received `package.zip` and want to see what files are inside
+    before extracting.
+    Type the command that lists the contents of `package.zip`.
+  commands: ["unzip"]
+  flags: ["-l", "package.zip"]
+  accept: ["unzip -l package.zip"]
+  hint: "`unzip -l <file.zip>` lists the archive contents without extracting."
+  success: "`unzip -l package.zip` shows the file manifest — inspect before you extract."
+
+# ── system (8) ────────────────────────────────────────────────────────────────
+
+- id: system_whoami
+  order: 55
+  category: system
+  difficulty: 1
+  title: Who am I logged in as?
+  prompt: |
+    You're on a shared server and need to confirm which user account
+    you're currently running as.
+    Type the command that prints your current username.
+  commands: ["whoami"]
+  flags: []
+  accept: ["whoami"]
+  hint: "`whoami` prints the username of the current user — no arguments needed."
+  success: "`whoami` tells you exactly which account owns this shell session."
+
+- id: system_date
+  order: 56
+  category: system
+  difficulty: 1
+  title: Check the current date
+  prompt: |
+    You want to verify the current date and time on the server — perhaps
+    to understand a log timestamp.
+    Type the command that prints the current date and time.
+  commands: ["date"]
+  flags: []
+  accept: ["date"]
+  hint: "`date` prints the current system date and time."
+  success: "`date` outputs the system clock — useful when diagnosing time-sensitive bugs."
+
+- id: system_echo_path
+  order: 57
+  category: system
+  difficulty: 1
+  title: Print the PATH variable
+  prompt: |
+    You want to see which directories are on your executable search PATH
+    to understand why a command isn't being found.
+    Type the command that prints the value of the PATH environment variable.
+  commands: ["echo"]
+  flags: []
+  accept: ["echo $path", "echo $env:path"]
+  hint: "`echo $PATH` on macOS/Linux; `echo $env:PATH` in PowerShell."
+  success: "`echo $PATH` shows where the shell looks for executables — useful for diagnosing missing commands."
+
+- id: system_env
+  order: 58
+  category: system
+  difficulty: 2
+  title: List all environment variables
+  prompt: |
+    You want to see every environment variable that's set in your current
+    shell session — useful for debugging missing config values.
+    Type the command that prints all environment variables.
+  commands: ["env", "printenv", "set"]
+  flags: []
+  accept: ["env", "printenv", "set"]
+  hint: "`env` (Linux/macOS) or `set` (Windows CMD) lists all environment variables."
+  success: "`env` dumps every environment variable — search the output for a specific one you need."
+
+- id: system_which
+  order: 59
+  category: system
+  difficulty: 2
+  title: Locate a command
+  prompt: |
+    You want to know exactly which file on disk is executed when you type
+    `python` — there might be multiple versions installed.
+    Type the command that prints the path of the `python` executable.
+  commands: ["which", "where"]
+  flags: ["python"]
+  accept: ["which python", "where python"]
+  hint: "`which <command>` on macOS/Linux; `where <command>` on Windows."
+  success: "`which python` shows the full path used when you type `python` — disambiguates multiple installs."
+
+- id: system_uname
+  order: 60
+  category: system
+  difficulty: 2
+  title: Show OS information
+  prompt: |
+    You want to confirm which operating system and kernel version this
+    machine is running.
+    Type the command that prints OS and kernel information.
+  commands: ["uname"]
+  flags: ["-a"]
+  accept: ["uname -a"]
+  hint: "`uname -a` prints all system information — kernel name, version, and architecture."
+  success: "`uname -a` shows the full OS identifier — handy when writing install docs."
+
+- id: system_ps_list
+  order: 61
+  category: system
+  difficulty: 2
+  title: List running processes
+  prompt: |
+    You want to see which processes are currently running on this system
+    without an interactive display — just a snapshot list.
+    Type the command that shows a snapshot of running processes.
+  commands: ["ps"]
+  flags: []
+  accept: ["ps aux", "ps -aux", "ps -ef", "ps ax", "ps -e"]
+  hint: "`ps aux` gives a one-shot listing of every running process."
+  success: "`ps aux` prints all processes with PID, CPU, memory, and command — non-interactive."
+
+- id: system_clear
+  order: 62
+  category: system
+  difficulty: 1
+  title: Clear the terminal screen
+  prompt: |
+    Your terminal is cluttered with old output. You want to clear the
+    screen so you can see new output cleanly.
+    Type the command that clears the terminal display.
+  commands: ["clear", "cls"]
+  flags: []
+  accept: ["clear", "cls"]
+  hint: "`clear` on macOS/Linux; `cls` on Windows — both erase the terminal output."
+  success: "`clear` (or `cls`) wipes the terminal screen — your working area becomes clean again."
+
+# ── network (8) ───────────────────────────────────────────────────────────────
+
+- id: network_ping
+  order: 63
+  category: network
+  difficulty: 1
+  title: Test host reachability
+  prompt: |
+    You want to check whether the server at `example.com` is reachable
+    from your machine — a basic connectivity test.
+    Type the command that pings `example.com`.
+  commands: ["ping"]
+  flags: ["example.com"]
+  accept: ["ping example.com"]
+  hint: "`ping <host>` sends ICMP echo packets and reports round-trip time."
+  success: "`ping example.com` tells you if the host responds and how long packets take."
+
+- id: network_curl_get
+  order: 64
+  category: network
+  difficulty: 1
+  title: Fetch a URL
+  prompt: |
+    You want to fetch the raw HTML content of `https://example.com` from
+    the command line to inspect the response.
+    Type the command that downloads and prints that URL's content.
+  commands: ["curl"]
+  flags: ["https://example.com"]
+  accept: ["curl https://example.com", "curl -L https://example.com"]
+  hint: "`curl <url>` sends an HTTP GET and prints the response body."
+  success: "`curl https://example.com` fetches the page and streams it to your terminal."
+
+- id: network_curl_save
+  order: 65
+  category: network
+  difficulty: 2
+  title: Download a file with curl
+  prompt: |
+    You want to download a file from `https://example.com/data.json` and
+    save it locally as `data.json`.
+    Type the command that downloads that URL and saves it to `data.json`.
+  commands: ["curl"]
+  flags: ["-o", "data.json", "https://example.com/data.json"]
+  accept: ["curl -o data.json https://example.com/data.json"]
+  hint: "`curl -o <filename> <url>` saves the downloaded content to a local file."
+  success: "`curl -o data.json <url>` downloads the file and writes it to `data.json`."
+
+- id: network_wget_download
+  order: 66
+  category: network
+  difficulty: 2
+  title: Download with wget
+  prompt: |
+    On a Linux server, you need to download a file from
+    `https://releases.example.com/app-v2.tar.gz` into the current
+    directory.
+    Type the wget command that downloads that file.
+  commands: ["wget"]
+  flags: ["https://releases.example.com/app-v2.tar.gz"]
+  accept: ["wget https://releases.example.com/app-v2.tar.gz"]
+  hint: "`wget <url>` downloads the file to the current directory automatically."
+  success: "`wget <url>` fetches the file and saves it locally — simpler than curl for plain downloads."
+
+- id: network_curl_headers
+  order: 67
+  category: network
+  difficulty: 2
+  title: Inspect HTTP headers
+  prompt: |
+    You want to see the HTTP response headers from `https://api.example.com`
+    alongside the body, to check status codes and content-type at once.
+    Type the curl command that includes response headers in the output.
+  commands: ["curl"]
+  flags: ["https://api.example.com"]
+  accept: ["curl -i https://api.example.com", "curl --include https://api.example.com", "curl -v https://api.example.com"]
+  hint: "`curl -i <url>` includes response headers in the output before the body."
+  success: "`curl -i https://api.example.com` prints the HTTP status line and headers, then the body."
+
+- id: network_nslookup
+  order: 68
+  category: network
+  difficulty: 2
+  title: Look up a domain's IP
+  prompt: |
+    You want to find out which IP address the domain `github.com` resolves
+    to via DNS.
+    Type the command that performs a DNS lookup for `github.com`.
+  commands: ["nslookup"]
+  flags: ["github.com"]
+  accept: ["nslookup github.com"]
+  hint: "`nslookup <domain>` queries DNS and shows the resolved IP address."
+  success: "`nslookup github.com` shows the DNS A record — the IP the domain points to."
+
+- id: network_dig
+  order: 69
+  category: network
+  difficulty: 3
+  title: Detailed DNS query
+  prompt: |
+    You need a detailed DNS lookup for `example.com` — more information
+    than `nslookup` provides, including TTL and query time.
+    Type the command that runs a full DNS query for `example.com`.
+  commands: ["dig"]
+  flags: ["example.com"]
+  accept: ["dig example.com", "dig example.com a", "dig +short example.com"]
+  hint: "`dig <domain>` performs a detailed DNS query showing TTL, authority, and timing."
+  success: "`dig example.com` gives the full DNS answer section — the tool DNS engineers reach for first."
+
+- id: network_curl_post
+  order: 70
+  category: network
+  difficulty: 3
+  title: Send an HTTP POST
+  prompt: |
+    You want to send a JSON POST request to `https://api.example.com/data`
+    with the body `{"key":"value"}` from the command line.
+    Type the curl command that sends this POST with JSON content.
+  commands: ["curl"]
+  flags: ["-x", "post", "https://api.example.com/data"]
+  accept: ["curl -x post https://api.example.com/data", "curl -x post -h \"content-type: application/json\" -d '{\"key\":\"value\"}' https://api.example.com/data"]
+  hint: "`curl -X POST <url> -H 'Content-Type: application/json' -d '<body>'` sends a JSON POST."
+  success: "`curl -X POST` with `-H` and `-d` lets you hit REST APIs directly from the terminal."

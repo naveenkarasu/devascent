@@ -1,0 +1,381 @@
+# Canonical NeetCode 150 — 1-D Dynamic Programming (original prompts, own solutions).
+# Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
+- id: nc-min-cost-climbing
+  title: Min Cost Climbing Stairs
+  difficulty: easy
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150]
+  func_name: min_cost_climbing_stairs
+  prompt: |
+    Min Cost Climbing Stairs
+
+    You are given an integer array cost where cost[i] is the cost of the i-th step.
+    Once you pay the cost you can climb one or two steps. You can start from index 0
+    or index 1. Return the minimum cost to reach the top of the floor (beyond the
+    last index).
+
+    Examples:
+      min_cost_climbing_stairs([10,15,20]) -> 15
+      min_cost_climbing_stairs([1,100,1,1,1,100,1,1,100,1]) -> 6
+  starter: |
+    def min_cost_climbing_stairs(cost):
+        pass  # write your solution; delete this line
+  solution: |
+    def min_cost_climbing_stairs(cost):
+        n = len(cost)
+        for i in range(2, n):
+            cost[i] += min(cost[i - 1], cost[i - 2])
+        return min(cost[-1], cost[-2])
+  tests:
+    - {name: case 1, input: [[10,15,20]], expected: 15}
+    - {name: case 2, input: [[1,100,1,1,1,100,1,1,100,1]], expected: 6}
+    - {name: case 3, input: [[0,0,0,0]], expected: 0}
+
+- id: nc-house-robber
+  title: House Robber
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150, blind75]
+  func_name: rob
+  prompt: |
+    House Robber
+
+    You are a robber planning to rob houses along a street. Adjacent houses have
+    security systems connected — you cannot rob two adjacent houses on the same night.
+    Given an integer array nums representing the amount of money at each house, return
+    the maximum amount you can rob without alerting the police.
+
+    Examples:
+      rob([1,2,3,1]) -> 4
+      rob([2,7,9,3,1]) -> 12
+  starter: |
+    def rob(nums):
+        pass  # write your solution; delete this line
+  solution: |
+    def rob(nums):
+        if not nums:
+            return 0
+        if len(nums) == 1:
+            return nums[0]
+        prev2, prev1 = nums[0], max(nums[0], nums[1])
+        for i in range(2, len(nums)):
+            curr = max(prev1, prev2 + nums[i])
+            prev2, prev1 = prev1, curr
+        return prev1
+  tests:
+    - {name: case 1, input: [[1,2,3,1]], expected: 4}
+    - {name: case 2, input: [[2,7,9,3,1]], expected: 12}
+    - {name: case 3, input: [[1]], expected: 1}
+
+- id: nc-house-robber-ii
+  title: House Robber II
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150, blind75]
+  func_name: rob_circular
+  prompt: |
+    House Robber II
+
+    All houses are arranged in a circle, meaning the first and last houses are
+    adjacent. You cannot rob two adjacent houses. Given an integer array nums
+    representing the money at each house, return the maximum amount you can rob.
+
+    Examples:
+      rob_circular([2,3,2]) -> 3
+      rob_circular([1,2,3,1]) -> 4
+      rob_circular([1]) -> 1
+  starter: |
+    def rob_circular(nums):
+        pass  # write your solution; delete this line
+  solution: |
+    def rob_circular(nums):
+        if len(nums) == 1:
+            return nums[0]
+
+        def rob_linear(houses):
+            if not houses:
+                return 0
+            if len(houses) == 1:
+                return houses[0]
+            prev2, prev1 = houses[0], max(houses[0], houses[1])
+            for i in range(2, len(houses)):
+                curr = max(prev1, prev2 + houses[i])
+                prev2, prev1 = prev1, curr
+            return prev1
+
+        return max(rob_linear(nums[:-1]), rob_linear(nums[1:]))
+  tests:
+    - {name: case 1, input: [[2,3,2]], expected: 3}
+    - {name: case 2, input: [[1,2,3,1]], expected: 4}
+    - {name: case 3, input: [[1]], expected: 1}
+
+- id: nc-longest-palindrome-substr
+  title: Longest Palindromic Substring
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150, blind75]
+  func_name: longest_palindrome
+  prompt: |
+    Longest Palindromic Substring
+
+    Given a string s, return the longest palindromic substring. A palindrome reads
+    the same forwards and backwards. If there are multiple palindromic substrings of
+    the same maximum length, return the first one found when scanning left-to-right
+    using expand-around-center starting at each index (ties resolve to the
+    first-found longest).
+
+    Examples:
+      longest_palindrome("babad") -> "bab"
+      longest_palindrome("cbbd") -> "bb"
+      longest_palindrome("a") -> "a"
+  starter: |
+    def longest_palindrome(s):
+        pass  # write your solution; delete this line
+  solution: |
+    def longest_palindrome(s):
+        res_start, res_len = 0, 1
+
+        def expand(left, right):
+            nonlocal res_start, res_len
+            while left >= 0 and right < len(s) and s[left] == s[right]:
+                length = right - left + 1
+                if length > res_len:
+                    res_start, res_len = left, length
+                left -= 1
+                right += 1
+
+        for i in range(len(s)):
+            expand(i, i)      # odd-length
+            expand(i, i + 1)  # even-length
+
+        return s[res_start:res_start + res_len]
+  tests:
+    - {name: case 1, input: ["babad"], expected: "bab"}
+    - {name: case 2, input: ["cbbd"], expected: "bb"}
+    - {name: case 3, input: ["a"], expected: "a"}
+
+- id: nc-palindromic-substrings
+  title: Palindromic Substrings
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150, blind75]
+  func_name: count_substrings
+  prompt: |
+    Palindromic Substrings
+
+    Given a string s, return the number of palindromic substrings in it. A substring
+    is a contiguous sequence of characters. Single characters are always palindromes.
+
+    Examples:
+      count_substrings("abc") -> 3
+      count_substrings("aaa") -> 6
+  starter: |
+    def count_substrings(s):
+        pass  # write your solution; delete this line
+  solution: |
+    def count_substrings(s):
+        count = 0
+
+        def expand(left, right):
+            nonlocal count
+            while left >= 0 and right < len(s) and s[left] == s[right]:
+                count += 1
+                left -= 1
+                right += 1
+
+        for i in range(len(s)):
+            expand(i, i)      # odd-length
+            expand(i, i + 1)  # even-length
+
+        return count
+  tests:
+    - {name: case 1, input: ["abc"], expected: 3}
+    - {name: case 2, input: ["aaa"], expected: 6}
+    - {name: case 3, input: ["a"], expected: 1}
+
+- id: nc-decode-ways
+  title: Decode Ways
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150, blind75]
+  func_name: num_decodings
+  prompt: |
+    Decode Ways
+
+    A string of digits can be decoded where 'A' -> '1', 'B' -> '2', ..., 'Z' -> '26'.
+    Given a string s of digits, return the number of ways to decode it. If no valid
+    decoding exists, return 0.
+
+    Examples:
+      num_decodings("12") -> 2
+      num_decodings("226") -> 3
+      num_decodings("06") -> 0
+  starter: |
+    def num_decodings(s):
+        pass  # write your solution; delete this line
+  solution: |
+    def num_decodings(s):
+        n = len(s)
+        dp = [0] * (n + 1)
+        dp[0] = 1
+        dp[1] = 0 if s[0] == '0' else 1
+        for i in range(2, n + 1):
+            one = int(s[i - 1])
+            two = int(s[i - 2:i])
+            if one != 0:
+                dp[i] += dp[i - 1]
+            if 10 <= two <= 26:
+                dp[i] += dp[i - 2]
+        return dp[n]
+  tests:
+    - {name: case 1, input: ["12"], expected: 2}
+    - {name: case 2, input: ["226"], expected: 3}
+    - {name: case 3, input: ["06"], expected: 0}
+
+- id: nc-coin-change-2-not
+  title: Maximum Product Subarray
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150, blind75]
+  func_name: max_product
+  prompt: |
+    Maximum Product Subarray
+
+    Given an integer array nums, find the contiguous subarray (containing at least
+    one number) that has the largest product, and return that product.
+
+    Examples:
+      max_product([2,3,-2,4]) -> 6
+      max_product([-2,0,-1]) -> 0
+      max_product([-2,3,-4]) -> 24
+  starter: |
+    def max_product(nums):
+        pass  # write your solution; delete this line
+  solution: |
+    def max_product(nums):
+        max_prod = min_prod = res = nums[0]
+        for n in nums[1:]:
+            candidates = (n, max_prod * n, min_prod * n)
+            max_prod = max(candidates)
+            min_prod = min(candidates)
+            res = max(res, max_prod)
+        return res
+  tests:
+    - {name: case 1, input: [[2,3,-2,4]], expected: 6}
+    - {name: case 2, input: [[-2,0,-1]], expected: 0}
+    - {name: case 3, input: [[-2,3,-4]], expected: 24}
+
+- id: nc-word-break
+  title: Word Break
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150, blind75]
+  func_name: word_break
+  prompt: |
+    Word Break
+
+    Given a string s and a list of strings word_dict, return True if s can be
+    segmented into a space-separated sequence of one or more words from word_dict.
+    Words in word_dict may be reused.
+
+    Examples:
+      word_break("leetcode", ["leet","code"]) -> True
+      word_break("applepenapple", ["apple","pen"]) -> True
+      word_break("catsandog", ["cats","dog","sand","and","cat"]) -> False
+  starter: |
+    def word_break(s, word_dict):
+        pass  # write your solution; delete this line
+  solution: |
+    def word_break(s, word_dict):
+        word_set = set(word_dict)
+        n = len(s)
+        dp = [False] * (n + 1)
+        dp[0] = True
+        for i in range(1, n + 1):
+            for j in range(i):
+                if dp[j] and s[j:i] in word_set:
+                    dp[i] = True
+                    break
+        return dp[n]
+  tests:
+    - {name: case 1, input: ["leetcode", ["leet","code"]], expected: true}
+    - {name: case 2, input: ["applepenapple", ["apple","pen"]], expected: true}
+    - {name: case 3, input: ["catsandog", ["cats","dog","sand","and","cat"]], expected: false}
+
+- id: nc-lis
+  title: Longest Increasing Subsequence
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150, blind75]
+  func_name: length_of_lis
+  prompt: |
+    Longest Increasing Subsequence
+
+    Given an integer array nums, return the length of the longest strictly increasing
+    subsequence.
+
+    Examples:
+      length_of_lis([10,9,2,5,3,7,101,18]) -> 4
+      length_of_lis([0,1,0,3,2,3]) -> 4
+      length_of_lis([7,7,7,7]) -> 1
+  starter: |
+    def length_of_lis(nums):
+        pass  # write your solution; delete this line
+  solution: |
+    def length_of_lis(nums):
+        dp = [1] * len(nums)
+        for i in range(1, len(nums)):
+            for j in range(i):
+                if nums[j] < nums[i]:
+                    dp[i] = max(dp[i], dp[j] + 1)
+        return max(dp)
+  tests:
+    - {name: case 1, input: [[10,9,2,5,3,7,101,18]], expected: 4}
+    - {name: case 2, input: [[0,1,0,3,2,3]], expected: 4}
+    - {name: case 3, input: [[7,7,7,7]], expected: 1}
+
+- id: nc-partition-equal-subset
+  title: Partition Equal Subset Sum
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150]
+  func_name: can_partition
+  prompt: |
+    Partition Equal Subset Sum
+
+    Given a non-empty integer array nums, return True if you can partition the array
+    into two subsets such that the sum of elements in both subsets is equal.
+
+    Examples:
+      can_partition([1,5,11,5]) -> True
+      can_partition([1,2,3,5]) -> False
+      can_partition([1,1]) -> True
+  starter: |
+    def can_partition(nums):
+        pass  # write your solution; delete this line
+  solution: |
+    def can_partition(nums):
+        total = sum(nums)
+        if total % 2 != 0:
+            return False
+        target = total // 2
+        dp = {0}
+        for n in nums:
+            dp = {s + n for s in dp} | dp
+            if target in dp:
+                return True
+        return False
+  tests:
+    - {name: case 1, input: [[1,5,11,5]], expected: true}
+    - {name: case 2, input: [[1,2,3,5]], expected: false}
+    - {name: case 3, input: [[1,1]], expected: true}

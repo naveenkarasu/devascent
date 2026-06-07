@@ -1,0 +1,65 @@
+# GoReleaser config — cross-platform binaries + checksums published to GitHub
+# Releases on a version tag. Validate locally with `goreleaser check`.
+# Cut a release with: git tag v0.1.0 && git push origin v0.1.0
+version: 2
+
+project_name: devascent
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: devascent
+    main: ./cmd/devascent
+    binary: devascent
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .Commit }}
+      - -X main.date={{ .CommitDate }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: default
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+      - INSTALL.md
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+
+release:
+  github:
+    owner: naveenkarasu
+    name: devascent
+  draft: false
+  prerelease: auto
+  name_template: "DevAscent {{ .Tag }}"
+  footer: |
+    ---
+    DevAscent ships no language runtimes — install the toolchain for the language
+    you want to play (see INSTALL.md), then run `devascent -doctor`.

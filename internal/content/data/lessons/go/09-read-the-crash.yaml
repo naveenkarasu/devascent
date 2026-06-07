@@ -1,0 +1,66 @@
+id: read-the-crash
+lang: go
+order: 9
+title: Read the Crash
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      Errors are clues, not failures. At runtime Go *panics* and prints a reason
+      and a line. Common ones: "index out of range" (a slice position that doesn't
+      exist) and "integer divide by zero". Read the FIRST line of the panic. (Many
+      other mistakes — undeclared names, type mismatches — Go catches earlier, at
+      compile time, before it ever runs.)
+
+          s := []int{}
+          _ = s[0]   // panic: index out of range [0] with length 0
+
+      The fix: check the length before you index.
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: 'Returning items[0] panics on an empty slice. Go has no "None", so signal "empty" with -1 instead.'
+    task:
+      prompt: Return the first item, or -1 if the slice is empty.
+      func_name: safe_first
+      starter: |
+        func safe_first(items []int) int {
+            // buggy: return items[0]  -- panics when empty
+            // hint: guard first — if len(items) == 0 { return -1 }
+        }
+      solution: |
+        func safe_first(items []int) int {
+            if len(items) == 0 {
+                return -1
+            }
+            return items[0]
+        }
+      tests:
+        - {name: 'safe_first([5,6])', input: [[5, 6]], expected: 5}
+        - {name: 'safe_first([])', input: [[]], expected: -1}
+        - {name: 'safe_first([7])', input: [[7]], expected: 7}
+  - kind: you_do
+    title: You do — solo
+    body: Dividing by len panics (divide by zero) on an empty slice. Make empty → 0, otherwise the true average.
+    task:
+      prompt: Return the average of the slice; empty slice → 0.
+      func_name: average
+      starter: |
+        func average(numbers []int) float64 {
+            // <- guard the empty case, else  float64(sum) / float64(len(numbers))
+        }
+      solution: |
+        func average(numbers []int) float64 {
+            if len(numbers) == 0 {
+                return 0
+            }
+            s := 0
+            for _, n := range numbers {
+                s += n
+            }
+            return float64(s) / float64(len(numbers))
+        }
+      tests:
+        - {name: 'average([1,2])', input: [[1, 2]], expected: 1.5}
+        - {name: 'average([2,4])', input: [[2, 4]], expected: 3.0}
+        - {name: 'average([])', input: [[]], expected: 0.0}
+        - {name: 'average([10])', input: [[10]], expected: 10.0}

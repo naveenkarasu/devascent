@@ -1,0 +1,106 @@
+- category: "Heap / Priority Queue"
+  lang: python
+  title: "Heap / Priority Queue — Python refresher"
+  summary: |
+    Python's heapq is a min-heap: the smallest element is always at index 0.
+    Use it when you repeatedly need the current minimum (or maximum) of a
+    changing set. Reach for a heap on "k largest/smallest", "merge k sorted
+    lists", "median of data stream", or scheduling problems where you always
+    process the cheapest/earliest item next.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'empty min-heap'
+          code: |
+            import heapq
+            h = []
+        - label: 'heapify an existing list in place'
+          code: 'heapq.heapify(a)'
+        - label: 'max-heap (negate all values)'
+          code: |
+            h = [-v for v in a]
+            heapq.heapify(h)
+        - label: 'heap of tuples (priority, value)'
+          code: 'h = [(priority, item)]'
+    - title: Basic operations
+      ops:
+        - label: 'push'
+          code: 'heapq.heappush(h, val)'
+        - label: 'pop min'
+          code: 'val = heapq.heappop(h)'
+        - label: 'peek min without pop'
+          code: 'val = h[0]'
+        - label: 'push then pop in one step (efficient)'
+          code: 'val = heapq.heappushpop(h, item)'
+        - label: 'size check'
+          code: 'if len(h) > k: heapq.heappop(h)'
+        - label: 'max-heap: read true value'
+          code: 'true_max = -h[0]'
+    - title: Most-used built-in methods
+      ops:
+        - label: 'k smallest elements'
+          code: 'heapq.nsmallest(k, a)  # O(n log k)'
+        - label: 'k largest elements'
+          code: 'heapq.nlargest(k, a)   # O(n log k)'
+        - label: 'merge k sorted iterables lazily'
+          code: |
+            from heapq import merge
+            merged = list(merge(*sorted_lists))
+    - title: Iteration & loops
+      ops:
+        - label: 'process all elements in sorted order'
+          code: |
+            while h:
+                val = heapq.heappop(h)
+                ...
+        - label: 'Dijkstra-style: pop, skip stale, process'
+          code: |
+            while h:
+                d, u = heapq.heappop(h)
+                if d > dist[u]: continue
+                for v, w in adj[u]:
+                    if d + w < dist[v]:
+                        dist[v] = d + w
+                        heapq.heappush(h, (dist[v], v))
+        - label: 'size-k heap (keep k smallest with max-heap)'
+          code: |
+            for val in stream:
+                heapq.heappush(h, -val)
+                if len(h) > k: heapq.heappop(h)
+    - title: Special operations (heap / priority queue)
+      ops:
+        - label: 'two-heap median tracker'
+          code: |
+            lo = []          # max-heap (negate): stores lower half
+            hi = []          # min-heap: stores upper half
+            # invariant: len(lo) >= len(hi)
+        - label: 'push to two-heap structure'
+          code: |
+            heapq.heappush(lo, -val)
+            heapq.heappush(hi, -heapq.heappop(lo))
+            if len(hi) > len(lo): heapq.heappush(lo, -heapq.heappop(hi))
+        - label: 'lazy deletion (mark deleted, skip on pop)'
+          code: |
+            deleted = set()
+            def pop_valid():
+                while h and h[0] in deleted:
+                    heapq.heappop(h)
+                return heapq.heappop(h)
+        - label: 'task scheduler: push (freq, task), pop highest-freq'
+          code: 'heapq.heappush(h, (-freq, task))'
+  example: |
+    Worked example — K Closest Points to Origin:
+      Compute squared distance for each point, push (dist, point) onto a max-heap
+      of size k (negate dist). When heap exceeds k, pop the farthest. What remains
+      are the k closest.
+
+        def k_closest(points, k):
+            h = []
+            for x, y in points:
+                d = x*x + y*y
+                heapq.heappush(h, (-d, x, y))
+                if len(h) > k:
+                    heapq.heappop(h)
+            return [[x, y] for _, x, y in h]
+
+    Takeaway: a size-k heap is the O(n log k) alternative to sorting everything.

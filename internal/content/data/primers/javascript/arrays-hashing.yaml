@@ -1,0 +1,155 @@
+- category: 'Arrays & Hashing'
+  lang: javascript
+  title: 'Arrays & Hashing — JavaScript refresher'
+  summary: |
+    Arrays and hash maps (Map / plain object) are the bread-and-butter of coding
+    interviews. Arrays are ordered and index-accessed in O(1); Maps give you O(1)
+    average-case insert and lookup by any key.
+
+    IMPORTANT JS gotchas:
+      - Array.sort() default compares elements as STRINGS — [10,2,1].sort() gives
+        [1,10,2]. Always pass a comparator for numbers: arr.sort((a,b) => a - b).
+      - Use Map for frequency/count tasks (not plain objects) — Map handles any key
+        type and has .size, .has(), .get(), .set(), .delete().
+      - Set gives O(1) membership test and automatic deduplication.
+      - Spread [...arr] and Array.from() copy arrays; slice() also works.
+      - shift() / unshift() are O(n) because they shift all elements — prefer push/pop
+        for stack patterns; use a pointer index for queue-like reads.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'array literal'
+          code: 'const arr = [1, 2, 3];'
+        - label: 'empty array'
+          code: 'const arr = [];'
+        - label: 'fixed-size array filled with zeros'
+          code: 'const arr = new Array(n).fill(0);'
+        - label: '2-D grid (safe: each row is independent)'
+          code: 'const grid = Array.from({length: rows}, () => new Array(cols).fill(0));'
+        - label: 'Map (hash map)'
+          code: 'const map = new Map();'
+        - label: 'Set (hash set)'
+          code: 'const set = new Set();'
+    - title: Basic operations
+      ops:
+        - label: 'read by index'
+          code: 'const x = arr[i];'
+        - label: 'write by index'
+          code: 'arr[i] = 42;'
+        - label: 'length'
+          code: 'const n = arr.length;'
+        - label: 'append to end (O(1))'
+          code: 'arr.push(x);'
+        - label: 'remove from end (O(1))'
+          code: 'const x = arr.pop();'
+        - label: 'prepend to front (O(n) — avoid in hot loops)'
+          code: 'arr.unshift(x);'
+        - label: 'remove from front (O(n) — avoid in hot loops)'
+          code: 'const x = arr.shift();'
+        - label: 'check membership in Set'
+          code: 'set.has(x);'
+        - label: 'Map get'
+          code: 'map.get(key);'
+        - label: 'Map set'
+          code: 'map.set(key, val);'
+        - label: 'Map has'
+          code: 'map.has(key);'
+    - title: Most-used built-in methods
+      ops:
+        - label: 'slice a subarray [start, end) — non-mutating'
+          code: 'const sub = arr.slice(1, 4);'
+        - label: 'splice — remove/insert in-place'
+          code: 'arr.splice(i, deleteCount, ...newItems);'
+        - label: 'indexOf'
+          code: 'const i = arr.indexOf(x);'
+        - label: 'includes'
+          code: 'arr.includes(x);'
+        - label: 'filter'
+          code: 'const evens = arr.filter(x => x % 2 === 0);'
+        - label: 'map'
+          code: 'const doubled = arr.map(x => x * 2);'
+        - label: 'flat'
+          code: 'const flat = arr.flat();'
+        - label: 'flatMap'
+          code: 'const result = arr.flatMap(x => [x, x * 2]);'
+        - label: 'sort ascending numbers (MUST pass comparator)'
+          code: 'arr.sort((a, b) => a - b);   // default .sort() uses string order!'
+    - title: Iteration & loops
+      ops:
+        - label: 'for...of (value)'
+          code: |
+            for (const x of arr) {
+              /* use x */
+            }
+        - label: 'indexed for loop'
+          code: |
+            for (let i = 0; i < arr.length; i++) {
+              const x = arr[i];
+            }
+        - label: 'for...of Map entries'
+          code: |
+            for (const [key, val] of map) {
+              /* use key, val */
+            }
+        - label: 'forEach with index'
+          code: |
+            arr.forEach((x, i) => {
+              /* x is value, i is index */
+            });
+    - title: Ordering & comparison
+      ops:
+        - label: 'sort numbers ascending'
+          code: 'arr.sort((a, b) => a - b);'
+        - label: 'sort numbers descending'
+          code: 'arr.sort((a, b) => b - a);'
+        - label: 'sort strings (default .sort() is fine for strings)'
+          code: 'words.sort();'
+        - label: 'sort by object property'
+          code: 'items.sort((a, b) => a.freq - b.freq);'
+    - title: Special operations (arrays & hashing)
+      ops:
+        - label: 'frequency map with Map'
+          code: |
+            const freq = new Map();
+            for (const x of arr) freq.set(x, (freq.get(x) ?? 0) + 1);
+        - label: 'deduplicate an array with Set'
+          code: 'const unique = [...new Set(arr)];'
+        - label: 'two-sum: find pair with target sum'
+          code: |
+            const seen = new Set();
+            for (const x of arr) {
+              if (seen.has(target - x)) return true;
+              seen.add(x);
+            }
+        - label: 'prefix sum array'
+          code: |
+            const prefix = [0];
+            for (const x of arr) prefix.push(prefix.at(-1) + x);
+        - label: 'group items by key'
+          code: |
+            const groups = new Map();
+            for (const item of items) {
+                const key = getKey(item);
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(item);
+            }
+  example: |
+    Worked example — group anagrams: given an array of strings, group those that
+    are anagrams of each other.
+
+      Sort each word's characters to get a canonical key — all anagrams share the
+      same key. Use a Map from key -> [words]. One pass over the input, O(n * k log k)
+      where k is the max word length.
+
+        function groupAnagrams(words) {
+            const map = new Map();
+            for (const word of words) {
+                const key = word.split("").sort().join("");
+                if (!map.has(key)) map.set(key, []);
+                map.get(key).push(word);
+            }
+            return [...map.values()];
+        }
+
+    Takeaway: Map is the go-to for grouping and counting. Always pass (a,b) => a-b
+    to sort() for numbers — the default lexicographic sort will silently misorder them.

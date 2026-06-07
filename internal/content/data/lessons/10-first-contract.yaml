@@ -1,0 +1,41 @@
+id: first-contract
+order: 10
+title: First Contract
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      You now have every tool for an Easy problem: variables, conditionals,
+      loops, lists, and reading a spec. Strategy: read the brief, name
+      inputs/outputs, build a result with an accumulator loop, and use
+      if/elif/else to decide what to add each pass. The most specific condition
+      must come FIRST.
+
+      Classify 1..n as "low" (<3) else "high": loop i, append "low" if i<3 else
+      "high". n=4 → ["low","low","high","high"].
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: 'FizzBuzz: for 1..n return a list of strings.'
+    task:
+      prompt: For 1..n — "FizzBuzz" if divisible by 3 and 5; "Fizz" if by 3; "Buzz" if by 5; else the number as a string.
+      func_name: fizz_report
+      starter: |
+        def fizz_report(n):
+            pass  # hint: check i % 15 == 0 FIRST, then % 3, then % 5, else str(i). out.append(...); return out
+      tests:
+        - {name: fizz_report(5), input: [5], expected: ["1", "2", "Fizz", "4", "Buzz"]}
+        - {name: fizz_report(3), input: [3], expected: ["1", "2", "Fizz"]}
+        - {name: fizz_report(15), input: [15], expected: ["1", "2", "Fizz", "4", "Buzz", "Fizz", "7", "8", "Fizz", "Buzz", "11", "Fizz", "13", "14", "FizzBuzz"]}
+  - kind: you_do
+    title: You do — solo (graduation)
+    body: Filter a list — your last task before the bench.
+    task:
+      prompt: Return a new list with only the words that are 4+ letters, in original order ([] → []).
+      func_name: long_words
+      starter: |
+        def long_words(words):
+            pass  # <- build a result list; keep w when len(w) >= 4
+      tests:
+        - {name: 'long_words([hi,code,ok,loops])', input: [["hi", "code", "ok", "loops"]], expected: ["code", "loops"]}
+        - {name: 'long_words([])', input: [[]], expected: []}
+        - {name: 'long_words([a,be,see])', input: [["a", "be", "see"]], expected: []}

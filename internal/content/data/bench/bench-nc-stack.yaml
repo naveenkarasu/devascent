@@ -1,0 +1,228 @@
+# Canonical NeetCode 150 — Stack (original prompts, own solutions).
+# Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
+- id: nc-valid-parentheses
+  title: Valid Parentheses
+  difficulty: easy
+  pattern: stack
+  category: Stack
+  lists: [neetcode150, blind75]
+  func_name: is_valid
+  prompt: |
+    Valid Parentheses
+
+    Given a string containing only '(', ')', '{', '}', '[', and ']', return True if
+    every opening bracket is closed by the correct bracket type in the correct order.
+
+    Examples:
+      is_valid("()") -> True
+      is_valid("(]") -> False
+  starter: |
+    def is_valid(s):
+        pass  # write your solution; delete this line
+  solution: |
+    def is_valid(s):
+        stack = []
+        pairs = {')': '(', ']': '[', '}': '{'}
+        for ch in s:
+            if ch in pairs:
+                if not stack or stack[-1] != pairs[ch]:
+                    return False
+                stack.pop()
+            else:
+                stack.append(ch)
+        return len(stack) == 0
+  tests:
+    - {name: case 1, input: ["()"], expected: true}
+    - {name: case 2, input: ["()[]{}"], expected: true}
+    - {name: case 3, input: ["(]"], expected: false}
+
+- id: nc-eval-rpn
+  title: Evaluate Reverse Polish Notation
+  difficulty: medium
+  pattern: stack
+  category: Stack
+  lists: [neetcode150]
+  func_name: eval_rpn
+  prompt: |
+    Evaluate Reverse Polish Notation
+
+    Given a list of tokens representing a Reverse Polish Notation expression, evaluate
+    it and return the integer result. Operators are "+", "-", "*", "/"; division
+    truncates toward zero.
+
+    Examples:
+      eval_rpn(["2","1","+","3","*"]) -> 9
+      eval_rpn(["4","13","5","/","+"]) -> 6
+  starter: |
+    def eval_rpn(tokens):
+        pass  # write your solution; delete this line
+  solution: |
+    def eval_rpn(tokens):
+        stack = []
+        ops = {'+', '-', '*', '/'}
+        for t in tokens:
+            if t in ops:
+                b = stack.pop()
+                a = stack.pop()
+                if t == '+':
+                    stack.append(a + b)
+                elif t == '-':
+                    stack.append(a - b)
+                elif t == '*':
+                    stack.append(a * b)
+                else:
+                    stack.append(int(a / b))
+            else:
+                stack.append(int(t))
+        return stack[0]
+  tests:
+    - {name: case 1, input: [["2","1","+","3","*"]], expected: 9}
+    - {name: case 2, input: [["4","13","5","/","+"]], expected: 6}
+    - {name: case 3, input: [["3","4","+","2","*"]], expected: 14}
+
+- id: nc-generate-parentheses
+  title: Generate Parentheses
+  difficulty: medium
+  pattern: stack
+  category: Stack
+  lists: [neetcode150]
+  func_name: generate_parenthesis
+  prompt: |
+    Generate Parentheses
+
+    Given n pairs of parentheses, return all combinations of well-formed parentheses
+    as a sorted list of strings.
+
+    Examples:
+      generate_parenthesis(1) -> ["()"]
+      generate_parenthesis(3) -> ["((()))","(()())","(())()","()(())","()()()"]
+  starter: |
+    def generate_parenthesis(n):
+        pass  # write your solution; delete this line
+  solution: |
+    def generate_parenthesis(n):
+        result = []
+
+        def backtrack(current, open_count, close_count):
+            if len(current) == 2 * n:
+                result.append(current)
+                return
+            if open_count < n:
+                backtrack(current + '(', open_count + 1, close_count)
+            if close_count < open_count:
+                backtrack(current + ')', open_count, close_count + 1)
+
+        backtrack('', 0, 0)
+        return sorted(result)
+  tests:
+    - {name: case 1, input: [1], expected: ["()"]}
+    - {name: case 2, input: [2], expected: ["(())","()()"]}
+    - {name: case 3, input: [3], expected: ["((()))","(()())","(())()","()(())","()()()"]}
+
+- id: nc-daily-temperatures
+  title: Daily Temperatures
+  difficulty: medium
+  pattern: stack
+  category: Stack
+  lists: [neetcode150]
+  func_name: daily_temperatures
+  prompt: |
+    Daily Temperatures
+
+    Given a list of daily temperatures, return a list where each value is the number
+    of days you have to wait until a warmer temperature; if no warmer day exists,
+    use 0 for that position.
+
+    Examples:
+      daily_temperatures([73,74,75,71,69,72,76,73]) -> [1,1,4,2,1,1,0,0]
+      daily_temperatures([30,40,50,60]) -> [1,1,1,0]
+  starter: |
+    def daily_temperatures(temps):
+        pass  # write your solution; delete this line
+  solution: |
+    def daily_temperatures(temps):
+        result = [0] * len(temps)
+        stack = []  # (temperature, index)
+        for i, t in enumerate(temps):
+            while stack and t > stack[-1][0]:
+                _, j = stack.pop()
+                result[j] = i - j
+            stack.append((t, i))
+        return result
+  tests:
+    - {name: case 1, input: [[73,74,75,71,69,72,76,73]], expected: [1,1,4,2,1,1,0,0]}
+    - {name: case 2, input: [[30,40,50,60]], expected: [1,1,1,0]}
+    - {name: case 3, input: [[30,60,90]], expected: [1,1,0]}
+
+- id: nc-car-fleet
+  title: Car Fleet
+  difficulty: medium
+  pattern: stack
+  category: Stack
+  lists: [neetcode150]
+  func_name: car_fleet
+  prompt: |
+    Car Fleet
+
+    n cars drive toward a target destination. Each car has a starting position and
+    speed. A faster car that catches a slower car ahead forms a single fleet and
+    travels at the slower car's pace. Return the number of fleets that arrive at
+    the target.
+
+    Examples:
+      car_fleet(12, [10,8,0,5,3], [2,4,1,1,3]) -> 3
+      car_fleet(10, [3], [3]) -> 1
+  starter: |
+    def car_fleet(target, position, speed):
+        pass  # write your solution; delete this line
+  solution: |
+    def car_fleet(target, position, speed):
+        pairs = sorted(zip(position, speed), reverse=True)
+        stack = []
+        for pos, spd in pairs:
+            time = (target - pos) / spd
+            if not stack or time > stack[-1]:
+                stack.append(time)
+        return len(stack)
+  tests:
+    - {name: case 1, input: [12,[10,8,0,5,3],[2,4,1,1,3]], expected: 3}
+    - {name: case 2, input: [10,[3],[3]], expected: 1}
+    - {name: case 3, input: [10,[6,8],[3,2]], expected: 2}
+
+- id: nc-largest-rectangle
+  title: Largest Rectangle in Histogram
+  difficulty: hard
+  pattern: stack
+  category: Stack
+  lists: [neetcode150]
+  func_name: largest_rectangle_area
+  prompt: |
+    Largest Rectangle in Histogram
+
+    Given an array of bar heights in a histogram (each bar has width 1), find the
+    area of the largest rectangle that can be formed within the histogram.
+
+    Examples:
+      largest_rectangle_area([2,1,5,6,2,3]) -> 10
+      largest_rectangle_area([2,4]) -> 4
+  starter: |
+    def largest_rectangle_area(heights):
+        pass  # write your solution; delete this line
+  solution: |
+    def largest_rectangle_area(heights):
+        max_area = 0
+        stack = []  # (start_index, height)
+        for i, h in enumerate(heights):
+            start = i
+            while stack and stack[-1][1] > h:
+                idx, height = stack.pop()
+                max_area = max(max_area, height * (i - idx))
+                start = idx
+            stack.append((start, h))
+        for idx, height in stack:
+            max_area = max(max_area, height * (len(heights) - idx))
+        return max_area
+  tests:
+    - {name: case 1, input: [[2,1,5,6,2,3]], expected: 10}
+    - {name: case 2, input: [[2,4]], expected: 4}
+    - {name: case 3, input: [[1,1]], expected: 2}

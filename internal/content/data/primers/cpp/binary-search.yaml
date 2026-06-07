@@ -1,0 +1,105 @@
+- category: 'Binary Search'
+  lang: cpp
+  title: Binary Search — C++ refresher
+  summary: |
+    Binary search finds a target in a SORTED array in O(log n) by repeatedly halving
+    the search range. Look at the middle: if it is the target you are done; if the
+    target is smaller, throw away the right half; if larger, throw away the left half.
+
+    The pattern generalises far beyond "find this number": any time the answer space
+    is monotonic ("works for everything >= X, fails below X"), you can binary-search
+    the smallest X that works. That is the real superpower.
+
+    C++ notes / the classic bug:
+      - Compute mid as lo + (hi - lo) / 2, NOT (lo + hi) / 2. The naive version can
+        overflow int when lo + hi exceeds ~2.1 billion.
+      - C++ stdlib: lower_bound(begin, end, val) returns iterator to first element
+        >= val; upper_bound returns iterator to first element > val.
+      - Dereference the iterator to get the value; subtract begin() for the index.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'standard inclusive bounds'
+          code: 'int lo = 0, hi = (int)v.size() - 1;'
+        - label: 'answer-space search (search on a value range)'
+          code: 'int lo = minPossible, hi = maxPossible;'
+        - label: 'overflow-safe midpoint'
+          code: 'int mid = lo + (hi - lo) / 2;'
+    - title: Basic operations
+      ops:
+        - label: 'loop condition (inclusive both ends)'
+          code: 'while (lo <= hi) { ... }'
+        - label: 'check middle'
+          code: 'if (v[mid] == target) return mid;'
+        - label: 'discard left half (target is right)'
+          code: 'lo = mid + 1;'
+        - label: 'discard right half (target is left)'
+          code: 'hi = mid - 1;'
+        - label: 'stdlib lower_bound (first element >= val)'
+          code: 'auto it = lower_bound(v.begin(), v.end(), val);'
+    - title: Iteration & loops
+      ops:
+        - label: 'standard binary search loop'
+          code: |
+            while (lo <= hi) {
+                int mid = lo + (hi - lo) / 2;
+                if (v[mid] == target) return mid;
+                else if (v[mid] < target) lo = mid + 1;
+                else hi = mid - 1;
+            }
+        - label: 'left-boundary: first index where v[mid] >= target'
+          code: |
+            while (lo < hi) {
+                int mid = lo + (hi - lo) / 2;
+                if (v[mid] < target) lo = mid + 1; else hi = mid;
+            }
+        - label: 'answer-space: keep best valid, shrink toward it'
+          code: |
+            if (feasible(mid)) {
+                best = mid;
+                hi = mid - 1;
+            } else {
+                lo = mid + 1;
+            }
+    - title: Special operations (binary search)
+      ops:
+        - label: 'find first true in boolean space (lower bound pattern)'
+          code: |
+            int lo = 0, hi = n;
+            while (lo < hi) {
+                int mid = lo + (hi - lo) / 2;
+                if (cond(mid)) hi = mid; else lo = mid + 1;
+            }
+            // lo is the answer
+        - label: 'rotated sorted array: which half is ordered?'
+          code: 'if (v[lo] <= v[mid]) { /* left half sorted */ } else { /* right half sorted */ }'
+        - label: 'search 2-D matrix (flatten to 1-D index)'
+          code: |
+            int mid = lo + (hi - lo) / 2;
+            int val = matrix[mid / cols][mid % cols];
+        - label: 'get index from lower_bound iterator'
+          code: 'int idx = (int)(lower_bound(v.begin(), v.end(), val) - v.begin());'
+  example: |
+    Worked example — find the index of target, or -1 if absent:
+
+      Keep an inclusive range [lo..hi]. Each step look at the middle and drop the
+      half that cannot contain the target. The range shrinks by half every step, so
+      a million elements take only ~20 checks.
+
+        int search(vector<int>& v, int target) {
+            int lo = 0, hi = (int)v.size() - 1;
+            while (lo <= hi) {
+                int mid = lo + (hi - lo) / 2;   // overflow-safe
+                if (v[mid] == target) {
+                    return mid;
+                } else if (v[mid] < target) {
+                    lo = mid + 1;               // answer is to the right
+                } else {
+                    hi = mid - 1;               // answer is to the left
+                }
+            }
+            return -1;
+        }
+
+    Takeaway: the invariant is "if target exists, it is inside [lo..hi]." Every
+    branch must preserve that. When the range is empty (lo > hi), target is absent.

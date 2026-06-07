@@ -1,0 +1,175 @@
+- category: Strings
+  lang: csharp
+  title: 'Strings — C# refresher'
+  summary: |
+    Strings are sequences of characters. The key C# fact: string is IMMUTABLE — every
+    "change" (concatenation, replace) produces a brand-new string. Building a string
+    in a loop with += is O(n^2). Use StringBuilder to append, then call ToString() once.
+
+    Many string problems reduce to counting characters (anagrams, frequency tables) or
+    a two-pointer / sliding-window scan (palindromes, substrings).
+
+    C# notes:
+      - char c = s[i];  and  s.Length  to read (indexer, not a method call).
+      - == compares CONTENT in C#, so "hello" == "hello" is true. This is safe and idiomatic.
+      - c - 'a' maps lowercase letters to 0..25 — use as an int[26] index.
+      - s.ToCharArray() gives a char[] you can sort or scan.
+      - Substring(startIndex, LENGTH) — second arg is a LENGTH, not an end index.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'string literal'
+          code: 'string s = "hello";'
+        - label: 'empty string'
+          code: 'string s = "";'
+        - label: 'single character'
+          code: 'char c = ''a'';'
+        - label: 'mutable builder (for assembling output)'
+          code: 'var sb = new StringBuilder();'
+        - label: 'from a char array — declare array'
+          code: 'char[] cs = {''a'', ''b''};'
+        - label: 'from a char array — build string'
+          code: 'string s = new string(cs);'
+    - title: Basic operations
+      ops:
+        - label: 'length'
+          code: 'int n = s.Length;'
+        - label: 'read a char by index'
+          code: 'char c = s[i];'
+        - label: 'substring (start, LENGTH — not end index)'
+          code: 'string mid = s.Substring(1, 3);  // chars at 1,2,3'
+        - label: 'concatenate (makes a NEW string)'
+          code: 'string t = s + "!";'
+        - label: 'index of a char (-1 if absent)'
+          code: 'int i = s.IndexOf(''x'');'
+        - label: 'index of a substring (-1 if absent)'
+          code: 'int j = s.IndexOf("ab");'
+    - title: Most-used built-in functions
+      ops:
+        - label: 'equality — == compares content (safe in C#)'
+          code: |
+            if (a == b)
+            {
+                // ...
+            }
+        - label: 'case-insensitive comparison'
+          code: |
+            if (string.Equals(a, b, StringComparison.OrdinalIgnoreCase))
+            {
+                // ...
+            }
+        - label: 'contains'
+          code: 's.Contains("lo");'
+        - label: 'StartsWith'
+          code: 's.StartsWith("he");'
+        - label: 'EndsWith'
+          code: 's.EndsWith("lo");'
+        - label: 'to lower case'
+          code: 's.ToLower();'
+        - label: 'to upper case'
+          code: 's.ToUpper();'
+        - label: 'trim surrounding whitespace'
+          code: 's.Trim();'
+        - label: 'replace all occurrences'
+          code: 's.Replace(''a'', ''o'');'
+        - label: 'is it empty?'
+          code: 's == "";'
+        - label: 'is it null or whitespace?'
+          code: 'string.IsNullOrWhiteSpace(s);'
+    - title: Conversions to other types
+      ops:
+        - label: 'string -> char array'
+          code: 'char[] cs = s.ToCharArray();'
+        - label: 'char array -> string'
+          code: 'string s = new string(cs);'
+        - label: 'StringBuilder -> string'
+          code: 'string r = sb.ToString();'
+        - label: 'string -> int'
+          code: 'int n = int.Parse("42");'
+        - label: 'int -> string'
+          code: 'string s = 42.ToString();'
+        - label: 'single digit char -> int'
+          code: 'int d = c - ''0'';            // ''7'' -> 7'
+        - label: 'lowercase letter -> 0..25 index'
+          code: 'int idx = c - ''a'';           // ''c'' -> 2'
+    - title: Iteration & loops
+      ops:
+        - label: 'foreach over characters'
+          code: |
+            foreach (char c in s)
+            {
+                // ...
+            }
+        - label: 'indexed for loop'
+          code: |
+            for (int i = 0; i < s.Length; i++)
+            {
+                char c = s[i];
+            }
+        - label: 'two-pointer while loop (ends inward)'
+          code: |
+            int lo = 0, hi = s.Length - 1;
+            while (lo < hi)
+            {
+                // ...
+                lo++;
+                hi--;
+            }
+    - title: Ordering & comparison
+      ops:
+        - label: 'sort the characters of a string'
+          code: |
+            char[] cs = s.ToCharArray();
+            Array.Sort(cs);
+            string sorted = new string(cs);
+        - label: 'lexicographic compare (<0, 0, >0)'
+          code: 'int cmp = string.Compare(a, b, StringComparison.Ordinal);'
+        - label: 'sort a list of strings — declare list'
+          code: 'List<string> words = new List<string>();'
+        - label: 'sort a list of strings — sort'
+          code: 'words.Sort();'
+        - label: 'sort by length with a comparator'
+          code: 'words.Sort((x, y) => x.Length.CompareTo(y.Length));'
+    - title: Special operations (string patterns)
+      ops:
+        - label: 'frequency table for lowercase letters'
+          code: |
+            int[] freq = new int[26];
+            foreach (char c in s)
+            {
+                freq[c - 'a']++;
+            }
+        - label: 'reverse a string'
+          code: 'string r = new string(s.Reverse().ToArray());'
+        - label: 'build output efficiently (avoid += in a loop)'
+          code: |
+            var sb = new StringBuilder();
+            foreach (var part in parts)
+            {
+                sb.Append(part);
+            }
+            return sb.ToString();
+        - label: 'split on a delimiter'
+          code: 'string[] parts = s.Split('' '');'
+  example: |
+    Worked example — are two strings anagrams (same letters, any order)?
+
+      Different lengths can never be anagrams. Otherwise count each letter of the
+      first string (+1) and subtract for the second (-1). If every count lands back
+      at zero, the letters matched exactly. One pass each, O(n), no sorting needed.
+
+        bool IsAnagram(string a, string b) {
+            if (a.Length != b.Length) return false;
+            int[] count = new int[26];
+            for (int i = 0; i < a.Length; i++) {
+                count[a[i] - 'a']++;
+                count[b[i] - 'a']--;
+            }
+            foreach (int v in count) {
+                if (v != 0) return false;
+            }
+            return true;
+        }
+
+    Takeaway: an int[26] is a tiny, fast frequency map for lowercase letters. Use
+    StringBuilder when assembling output, and note == is safe for content comparison in C#.

@@ -1,0 +1,122 @@
+- category: 'Stack'
+  lang: javascript
+  title: 'Stack — JavaScript refresher'
+  summary: |
+    A stack is a Last-In-First-Out (LIFO) structure. JavaScript has no dedicated Stack
+    class — use a plain array with push() and pop(), both O(1).
+
+    Classic stack problems: matching parentheses/brackets, next greater element,
+    evaluating expressions, monotonic stack for histogram areas.
+
+    JavaScript notes:
+      - arr.push(x) adds to the top; arr.pop() removes and returns the top.
+      - arr.at(-1) or arr[arr.length - 1] peeks at the top without removing.
+      - Never use shift()/unshift() for stacks — they are O(n).
+      - A monotonic stack keeps elements in sorted order by popping anything that
+        breaks the ordering; this solves "next greater/smaller element" in O(n).
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'stack (plain array)'
+          code: 'const stack = [];'
+        - label: 'stack pre-loaded with values'
+          code: 'const stack = [1, 2, 3];   // 3 is on top'
+    - title: Basic operations
+      ops:
+        - label: 'push onto the top'
+          code: 'stack.push(x);'
+        - label: 'pop from the top (removes and returns)'
+          code: 'const top = stack.pop();'
+        - label: 'peek at the top without removing'
+          code: 'const top = stack.at(-1);   // or stack[stack.length - 1]'
+        - label: 'check if empty'
+          code: |
+            if (stack.length === 0) {
+              /* empty */
+            }
+        - label: 'size'
+          code: 'const n = stack.length;'
+    - title: Iteration & loops
+      ops:
+        - label: 'process stack until empty'
+          code: |
+            while (stack.length > 0) {
+              const x = stack.pop();
+              /* process x */
+            }
+        - label: 'iterate top to bottom (without modifying)'
+          code: |
+            for (let i = stack.length - 1; i >= 0; i--) {
+              const x = stack[i];
+            }
+        - label: 'for...of iterates bottom to top'
+          code: |
+            for (const x of stack) {
+              /* x goes from bottom to top */
+            }
+    - title: Special operations (stack)
+      ops:
+        - label: 'valid parentheses check'
+          code: |
+            const stack = [];
+            const match = {")": "(", "]": "[", "}": "{"};
+            for (const ch of s) {
+                if ("([{".includes(ch)) stack.push(ch);
+                else if (stack.pop() !== match[ch]) return false;
+            }
+            return stack.length === 0;
+        - label: 'monotonic decreasing stack (next greater element)'
+          code: |
+            const result = new Array(arr.length).fill(-1);
+            const stack = [];   // holds indices
+            for (let i = 0; i < arr.length; i++) {
+                while (stack.length > 0 && arr[stack.at(-1)] < arr[i]) {
+                    result[stack.pop()] = arr[i];
+                }
+                stack.push(i);
+            }
+        - label: 'evaluate simple RPN expression'
+          code: |
+            const stack = [];
+            for (const token of tokens) {
+                if (!isNaN(token)) {
+                    stack.push(Number(token));
+                    continue;
+                }
+                const b = stack.pop(), a = stack.pop();
+                if (token === "+") stack.push(a + b);
+                else if (token === "-") stack.push(a - b);
+                else if (token === "*") stack.push(a * b);
+                else stack.push(Math.trunc(a / b));
+            }
+            return stack[0];
+        - label: 'min-stack: track minimum alongside stack'
+          code: |
+            const stack = [], minStack = [];
+            function push(x) {
+                stack.push(x);
+                minStack.push(Math.min(x, minStack.at(-1) ?? x));
+            }
+            function getMin() { return minStack.at(-1); }
+  example: |
+    Worked example — valid parentheses: does the string of brackets close correctly?
+
+      Push every opening bracket. When a closing bracket is seen, pop and check that
+      it matches the expected opener. If there is ever a mismatch, or the stack is
+      non-empty at the end, the string is invalid.
+
+        function isValid(s) {
+            const stack = [];
+            const match = { ")": "(", "]": "[", "}": "{" };
+            for (const ch of s) {
+                if ("([{".includes(ch)) {
+                    stack.push(ch);
+                } else {
+                    if (stack.pop() !== match[ch]) return false;
+                }
+            }
+            return stack.length === 0;
+        }
+
+    Takeaway: stacks excel at "remember what I saw before" problems. The monotonic
+    stack pattern (pop while current breaks order) solves many range/histogram tasks.

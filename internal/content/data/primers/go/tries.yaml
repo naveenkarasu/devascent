@@ -1,0 +1,155 @@
+- category: 'Tries'
+  lang: go
+  title: 'Tries — Go refresher'
+  summary: |
+    A trie (prefix tree) stores strings character by character. Each node has
+    up to 26 children (for lowercase English). Insert, search, and startsWith
+    all run in O(m) where m is the string length — independent of how many
+    strings are stored.
+
+    Use a trie when you need:
+      - Fast prefix lookups (autocomplete, dictionary).
+      - "Does any stored word start with this prefix?"
+      - Word search on a board (pruning via the trie).
+
+    Go notes:
+      - Represent a node as a struct with a [26]*TrieNode children array and an
+        isEnd bool.
+      - Index a lowercase letter: idx := r - 'a'.
+      - Pass *Trie or *TrieNode as receiver to mutate in place.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'trie node definition'
+          code: |
+            type TrieNode struct {
+                children [26]*TrieNode
+                isEnd    bool
+            }
+        - label: 'trie with a root node'
+          code: 'type Trie struct { root *TrieNode }'
+        - label: 'constructor'
+          code: 'func NewTrie() *Trie { return &Trie{root: &TrieNode{}} }'
+        - label: 'character to index'
+          code: 'idx := r - ''a'''
+    - title: Basic operations
+      ops:
+        - label: 'check if child exists'
+          code: 'if node.children[idx] == nil { node.children[idx] = &TrieNode{} }'
+        - label: 'descend to child'
+          code: 'node = node.children[idx]'
+        - label: 'mark end of word'
+          code: 'node.isEnd = true'
+        - label: 'check end of word'
+          code: 'if node.isEnd { ... }'
+    - title: Iteration & loops
+      ops:
+        - label: 'insert a word'
+          code: |
+            node := t.root
+            for _, r := range word {
+                idx := r - 'a'
+                if node.children[idx] == nil {
+                    node.children[idx] = &TrieNode{}
+                }
+                node = node.children[idx]
+            }
+            node.isEnd = true
+        - label: 'search for exact word'
+          code: |
+            node := t.root
+            for _, r := range word {
+                idx := r - 'a'
+                if node.children[idx] == nil {
+                    return false
+                }
+                node = node.children[idx]
+            }
+            return node.isEnd
+        - label: 'starts-with prefix check'
+          code: |
+            node := t.root
+            for _, r := range prefix {
+                idx := r - 'a'
+                if node.children[idx] == nil {
+                    return false
+                }
+                node = node.children[idx]
+            }
+            return true
+    - title: Special operations (tries)
+      ops:
+        - label: 'collect all words with a given prefix (DFS)'
+          code: |
+            var collect func(node *TrieNode, prefix string)
+            collect = func(node *TrieNode, prefix string) {
+                if node.isEnd {
+                    results = append(results, prefix)
+                }
+                for i, child := range node.children {
+                    if child != nil {
+                        collect(child, prefix+string(rune('a'+i)))
+                    }
+                }
+            }
+        - label: 'delete a word (mark isEnd = false after walking)'
+          code: 'node.isEnd = false  // after traversing to the end node'
+        - label: 'count words with prefix'
+          code: 'add a count int field to TrieNode; increment on insert, decrement on delete'
+        - label: 'wildcard search (. matches any letter)'
+          code: |
+            var dfs func(node *TrieNode, i int) bool
+            dfs = func(node *TrieNode, i int) bool {
+                if i == len(word) {
+                    return node.isEnd
+                }
+                if word[i] == '.' {
+                    for _, child := range node.children {
+                        if child != nil && dfs(child, i+1) {
+                            return true
+                        }
+                    }
+                    return false
+                }
+                child := node.children[word[i]-'a']
+                return child != nil && dfs(child, i+1)
+            }
+  example: |
+    Worked example — implement Trie with insert, search, and startsWith.
+
+      Each call walks character by character from the root. Insert creates nodes
+      as needed and marks isEnd. Search walks and checks isEnd at the end.
+      StartsWith walks and returns true if we never hit a nil child.
+
+        type TrieNode struct {
+            children [26]*TrieNode
+            isEnd    bool
+        }
+        type Trie struct{ root *TrieNode }
+
+        func Constructor() Trie { return Trie{root: &TrieNode{}} }
+
+        func (t *Trie) Insert(word string) {
+            node := t.root
+            for _, r := range word {
+                idx := r - 'a'
+                if node.children[idx] == nil {
+                    node.children[idx] = &TrieNode{}
+                }
+                node = node.children[idx]
+            }
+            node.isEnd = true
+        }
+
+        func (t *Trie) Search(word string) bool {
+            node := t.root
+            for _, r := range word {
+                idx := r - 'a'
+                if node.children[idx] == nil { return false }
+                node = node.children[idx]
+            }
+            return node.isEnd
+        }
+
+    Takeaway: a [26]*TrieNode array per node is the simplest correct structure.
+    Every operation is O(m) where m = word length, regardless of dictionary size.

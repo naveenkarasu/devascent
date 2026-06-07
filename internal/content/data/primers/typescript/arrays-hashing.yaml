@@ -1,0 +1,153 @@
+- category: 'Arrays & Hashing'
+  lang: typescript
+  title: 'Arrays & Hashing — TypeScript refresher'
+  summary: |
+    Arrays and hash maps are the foundation of most coding problems. In TypeScript,
+    arrays are typed as `number[]` or `Array<T>`, and the standard hash map is
+    `Map<K, V>` (ordered by insertion, any key type). For string/symbol keys you can
+    also use a plain object typed as `Record<string, number>`.
+
+    TypeScript gotchas:
+      - `Array.prototype.sort()` is LEXICOGRAPHIC by default — `[10, 2, 3].sort()`
+        gives `[10, 2, 3]`. Always pass a comparator: `.sort((a, b) => a - b)`.
+      - `Map` preserves insertion order; iteration is deterministic.
+      - `Set<T>` provides O(1) membership tests and deduplication.
+      - `Record<string, number>` is a typed plain object — useful for char-frequency
+        tables when keys are always strings.
+      - There is NO built-in heap in TypeScript/JavaScript.
+
+    Type annotations on variables (`: number[]`, `: Map<string, number>`) are the
+    main thing that distinguishes TypeScript from plain JavaScript.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'typed number array'
+          code: 'const nums: number[] = [1, 2, 3];'
+        - label: 'array of strings'
+          code: 'const words: string[] = ["foo", "bar"];'
+        - label: 'hash map — string key to number value'
+          code: 'const map = new Map<string, number>();'
+        - label: 'set of numbers'
+          code: 'const seen = new Set<number>();'
+        - label: 'Record (plain object) as frequency table'
+          code: 'const freq: Record<string, number> = {};'
+        - label: 'fixed-size array filled with zeros'
+          code: 'const count: number[] = new Array(26).fill(0);'
+    - title: Basic operations
+      ops:
+        - label: 'get by index'
+          code: 'const x = nums[0];'
+        - label: 'set by index'
+          code: 'nums[1] = 99;'
+        - label: 'append to array'
+          code: 'nums.push(4);'
+        - label: 'remove last element'
+          code: 'const last = nums.pop();'
+        - label: 'Map — set'
+          code: 'map.set("a", 1);'
+        - label: 'Map — get'
+          code: 'map.get("a");'
+        - label: 'Map — has'
+          code: 'map.has("a");'
+        - label: 'Map — delete'
+          code: 'map.delete("a");'
+        - label: 'Set — add'
+          code: 'seen.add(5);'
+        - label: 'Set — has'
+          code: 'seen.has(5);'
+        - label: 'Set — delete'
+          code: 'seen.delete(5);'
+        - label: 'increment a frequency counter safely'
+          code: 'freq[ch] = (freq[ch] ?? 0) + 1;'
+    - title: Most-used built-in methods
+      ops:
+        - label: 'length'
+          code: 'const n: number = nums.length;'
+        - label: 'slice a sub-array [start, end)'
+          code: 'const sub = nums.slice(1, 4);'
+        - label: 'splice: remove/insert in-place'
+          code: 'nums.splice(1, 2);          // remove 2 elements at index 1'
+        - label: 'map'
+          code: 'const doubled = nums.map(x => x * 2);'
+        - label: 'filter'
+          code: 'const evens = nums.filter(x => x % 2 === 0);'
+        - label: 'check if element exists'
+          code: 'nums.includes(3);'
+        - label: 'find index (-1 if absent)'
+          code: 'nums.indexOf(3);'
+    - title: Iteration & loops
+      ops:
+        - label: 'for...of loop'
+          code: |
+            for (const n of nums) {
+              console.log(n);
+            }
+        - label: 'indexed for loop'
+          code: |
+            for (let i = 0; i < nums.length; i++) {
+              console.log(nums[i]);
+            }
+        - label: 'iterate Map entries'
+          code: |
+            for (const [key, val] of map) {
+              console.log(key, val);
+            }
+        - label: 'iterate Set values'
+          code: |
+            for (const v of seen) {
+              console.log(v);
+            }
+    - title: Ordering & comparison
+      ops:
+        - label: 'numeric sort ascending (ALWAYS pass comparator)'
+          code: 'nums.sort((a, b) => a - b);'
+        - label: 'numeric sort descending'
+          code: 'nums.sort((a, b) => b - a);'
+        - label: 'sort strings lexicographically'
+          code: 'words.sort((a, b) => a.localeCompare(b));'
+        - label: 'sort objects by a field'
+          code: 'items.sort((a, b) => a.freq - b.freq);'
+    - title: Special operations (Arrays & Hashing)
+      ops:
+        - label: 'group anagrams: sort key -> list'
+          code: |
+            const groups = new Map<string, string[]>();
+            for (const w of words) {
+              const key = w.split("").sort().join("");
+              if (!groups.has(key)) groups.set(key, []);
+              groups.get(key)!.push(w);
+            }
+        - label: 'two-sum with Map (value -> index)'
+          code: |
+            const idx = new Map<number, number>();
+            for (let i = 0; i < nums.length; i++) {
+              const comp = target - nums[i];
+              if (idx.has(comp)) return [idx.get(comp)!, i];
+              idx.set(nums[i], i);
+            }
+        - label: 'deduplicate array preserving order'
+          code: 'const unique = [...new Set(nums)];'
+        - label: 'char-frequency table for a string'
+          code: |
+            const freq: Record<string, number> = {};
+            for (const ch of s) freq[ch] = (freq[ch] ?? 0) + 1;
+  example: |
+    Worked example — given an array of integers, return the indices of the two
+    numbers that add up to a target (Two Sum).
+
+      One pass: store each number and its index in a Map. For every element, check
+      whether its complement (target - num) was already seen. If yes, return both
+      indices immediately. Map lookups are O(1), so total time is O(n).
+
+        function twoSum(nums: number[], target: number): [number, number] {
+            const seen = new Map<number, number>(); // value -> index
+            for (let i = 0; i < nums.length; i++) {
+                const comp = target - nums[i];
+                if (seen.has(comp)) return [seen.get(comp)!, i];
+                seen.set(nums[i], i);
+            }
+            throw new Error("no solution");
+        }
+
+    Takeaway: a Map<number, number> turns an O(n^2) brute-force into O(n). Remember
+    to always pass a numeric comparator to .sort() — the default is lexicographic.

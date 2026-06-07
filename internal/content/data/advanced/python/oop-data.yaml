@@ -1,0 +1,176 @@
+lang: python
+group: OOP & Data
+title: "OOP & Data — dunders, properties, dataclasses, MRO"
+tag: E
+summary: |
+  Python's object model is built on dunder (double-underscore) methods that hook
+  into language operators and protocols. Implementing `__add__`, `__eq__`,
+  `__lt__`, and `__repr__` on a class makes it feel native to Python — sortable,
+  printable, and usable with `+`.
+
+  Key mechanisms:
+
+  `@property` makes attribute access invoke a method transparently, enabling
+  computed attributes and setter validation without changing the call site.
+  A property with no setter is read-only; assigning to it raises `AttributeError`.
+
+  `dataclasses` (3.7+) auto-generate `__init__`, `__repr__`, and `__eq__` from
+  annotated fields. `frozen=True` makes instances immutable (mutation raises
+  `FrozenInstanceError`). `slots=True` (3.10+) replaces `__dict__` with
+  fixed-slot storage, reducing per-instance memory and speeding up attribute access.
+
+  Method Resolution Order (MRO) governs which method is called in multiple
+  inheritance. Python uses C3 linearisation — `super()` follows the MRO, not a
+  fixed parent class. In a diamond hierarchy `D(B, C)` where both `B` and `C`
+  inherit from `A`, `D().method()` traverses D → B → C → A in that order.
+
+  Common mistakes:
+  - Defining `__eq__` without `__hash__` makes the class unhashable — Python sets
+    `__hash__ = None` implicitly. Define both, or use `@dataclass(unsafe_hash=True)`.
+  - `@classmethod` receives the class (`cls`) as first arg and is inheritable;
+    `@staticmethod` is a plain function in the class namespace.
+  - `super()` in multiple inheritance does NOT call the direct parent — it follows
+    the MRO. Never hard-code `ParentClass.method(self)` in MI hierarchies.
+exercises:
+  - prompt: |
+      The `Circle` class has a `radius` attribute. Add:
+        1. A `@property` named `area` (computed, no setter) so `c.area` returns
+           `math.pi * r ** 2`.
+        2. A `radius` property with a setter that raises `ValueError` for
+           negative values.
+
+      The broken version stores `area` as a plain attribute set in `__init__`,
+      so it goes stale when `radius` changes, and negative radii are accepted
+      silently.
+    kind: fix-it
+    broken_code: |
+      import math
+
+      class Circle:
+          def __init__(self, radius):
+              self.radius = radius
+              self.area = math.pi * radius ** 2   # stale after radius changes
+
+          # No validation — Circle(-1) is silently accepted
+    fixed_code: |
+      import math
+
+      class Circle:
+          def __init__(self, radius):
+              self.radius = radius   # uses the setter for validation
+
+          @property
+          def radius(self):
+              return self._radius
+
+          @radius.setter
+          def radius(self, value):
+              if value < 0:
+                  raise ValueError(f"Radius cannot be negative: {value}")
+              self._radius = value
+
+          @property
+          def area(self):
+              return math.pi * self._radius ** 2
+    bug: |
+      Two bugs: (1) `self.area` is computed once in `__init__` and cached as a
+      plain attribute — it becomes stale if `radius` is later changed.
+      (2) There is no setter validation, so `Circle(-1)` silently creates an object
+      with a negative radius. Making `area` a `@property` ensures it is always
+      fresh. Making `radius` a property with a setter that raises `ValueError` for
+      negative values enforces the invariant at every assignment.
+    check: none
+    signal: ""
+
+  - prompt: |
+      The `Money` class needs `__add__` to raise `TypeError` when currencies differ,
+      but the broken version silently adds amounts from different currencies.
+
+      Fix `__add__` to raise `TypeError("Cannot add USD and EUR")` (or appropriate
+      currencies) when `self.currency != other.currency`, and return a new `Money`
+      with the summed amount when currencies match.
+    kind: fix-it
+    broken_code: |
+      class Money:
+          def __init__(self, amount, currency):
+              self.amount = amount
+              self.currency = currency
+
+          def __repr__(self):
+              return f"Money({self.amount!r}, {self.currency!r})"
+
+          def __eq__(self, other):
+              return (
+                  isinstance(other, Money)
+                  and self.amount == other.amount
+                  and self.currency == other.currency
+              )
+
+          def __add__(self, other):
+              # Bug: no currency check — silently adds mismatched currencies
+              return Money(self.amount + other.amount, self.currency)
+    fixed_code: |
+      class Money:
+          def __init__(self, amount, currency):
+              self.amount = amount
+              self.currency = currency
+
+          def __repr__(self):
+              return f"Money({self.amount!r}, {self.currency!r})"
+
+          def __eq__(self, other):
+              return (
+                  isinstance(other, Money)
+                  and self.amount == other.amount
+                  and self.currency == other.currency
+              )
+
+          def __add__(self, other):
+              if self.currency != other.currency:
+                  raise TypeError(
+                      f"Cannot add {self.currency} and {other.currency}"
+                  )
+              return Money(self.amount + other.amount, self.currency)
+    bug: |
+      `__add__` blindly sums `amount` and adopts `self.currency` regardless of
+      `other.currency`. Adding USD and EUR silently produces a USD result with a
+      nonsensical amount. The fix checks currencies first and raises `TypeError`
+      with a descriptive message when they differ.
+    check: none
+    signal: ""
+
+  - prompt: |
+      The `Point` dataclass should be frozen and use slots for memory efficiency,
+      but the broken version uses neither. It also unnecessarily defines `__eq__`
+      manually, which `dataclasses` generates automatically.
+
+      Fix it: add `frozen=True` and `slots=True` to the `@dataclass` decorator,
+      and remove the manual `__eq__` override.
+    kind: fix-it
+    broken_code: |
+      from dataclasses import dataclass
+
+      @dataclass
+      class Point:
+          x: float
+          y: float
+
+          # Unnecessary — dataclass generates __eq__ automatically
+          def __eq__(self, other):
+              return isinstance(other, Point) and self.x == other.x and self.y == other.y
+    fixed_code: |
+      from dataclasses import dataclass
+
+      @dataclass(frozen=True, slots=True)
+      class Point:
+          x: float
+          y: float
+    bug: |
+      Without `frozen=True`, `Point` instances are mutable — callers can do
+      `p.x = 99`. Without `slots=True`, each instance carries a full `__dict__`,
+      wasting memory compared to the fixed-slot alternative. The manual `__eq__`
+      duplicates what `@dataclass` already provides for free, and it does so without
+      `__hash__`, making points unhashable. The fix adds both flags and removes the
+      redundant method.
+    check: none
+    signal: ""

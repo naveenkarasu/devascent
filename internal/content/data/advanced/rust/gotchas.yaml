@@ -1,0 +1,137 @@
+lang: rust
+group: Gotchas
+title: "Gotchas — cross-cutting borrow checker traps and common footguns"
+tag: gotcha
+summary: |
+  This cross-cutting topic consolidates the most common borrow-checker confusions and
+  footguns that trip up developers transitioning to Rust. Many map to specific compiler
+  error codes covered individually per topic; here they appear as a "gotcha quiz" —
+  deliberately tricky code the player must diagnose and fix.
+
+  Key patterns and their error codes:
+  - Move-after-use (E0382): for s in vec moves the vec via into_iter(); use &vec or .iter()
+  - Mutable + immutable borrow (E0502): holding a & reference while calling a &mut method
+  - Rc reference cycles: reference counts never reach zero; use Weak<T> to break the cycle
+  - Panic chains from .unwrap(): a single None or Err anywhere in a chain crashes the whole
+    program; replace with ? and a proper return type
+
+  Non-lexical lifetimes (NLL): the borrow checker ends borrows at the last use, not the
+  end of the block. Reordering code so the last use of an immutable borrow comes before
+  the mutable operation often resolves apparent conflicts without changing logic.
+
+  (Reference-only for now: Rust is not graded yet. When the toolchain is wired these
+  exercises auto-grade against the exact compiler errors they carry.)
+exercises:
+  - prompt: |
+      The loop moves strings into the iteration variable, consuming the vector. After the
+      loop the code tries to print the original vector but it no longer exists. Fix the
+      loop so the vector is still available afterward.
+    kind: fix-it
+    broken_code: |
+      fn main() {
+          let strings = vec![
+              String::from("a"),
+              String::from("b"),
+              String::from("c"),
+          ];
+          for s in strings {
+              println!("{s}");
+          }
+          println!("{:?}", strings);   // strings was moved by into_iter()
+      }
+    fixed_code: |
+      fn main() {
+          let strings = vec![
+              String::from("a"),
+              String::from("b"),
+              String::from("c"),
+          ];
+          for s in &strings {
+              println!("{s}");
+          }
+          println!("{:?}", strings);   // still owned — ok
+      }
+    bug: |
+      for s in strings calls IntoIterator on the Vec, which is equivalent to calling
+      strings.into_iter(). into_iter() consumes the Vec by value, so strings is moved
+      and no longer accessible after the loop. Using &strings (or strings.iter())
+      borrows the Vec instead of consuming it, leaving strings intact for use afterward.
+    check: compile-error
+    signal: "E0382"
+  - prompt: |
+      Two Rc-wrapped nodes form a cycle: each points to the other. Identify why neither
+      node is ever dropped, then fix b's reference to a using Rc::downgrade so the cycle
+      is broken.
+    kind: spot-the-bug
+    broken_code: |
+      use std::rc::Rc;
+      use std::cell::RefCell;
+
+      struct Node {
+          next: Option<Rc<RefCell<Node>>>,
+      }
+
+      fn main() {
+          let a = Rc::new(RefCell::new(Node { next: None }));
+          let b = Rc::new(RefCell::new(Node { next: Some(Rc::clone(&a)) }));
+          // Creates a cycle: a → b → a → ...
+          a.borrow_mut().next = Some(Rc::clone(&b));
+          // Neither a nor b will ever be dropped — memory leak
+      }
+    fixed_code: |
+      use std::rc::{Rc, Weak};
+      use std::cell::RefCell;
+
+      struct Node {
+          next: Option<Rc<RefCell<Node>>>,
+          prev: Option<Weak<RefCell<Node>>>,   // weak back-reference — does not affect count
+      }
+
+      fn main() {
+          let a = Rc::new(RefCell::new(Node { next: None, prev: None }));
+          let b = Rc::new(RefCell::new(Node {
+              next: None,
+              prev: Some(Rc::downgrade(&a)),   // weak reference — count stays at 1
+          }));
+          a.borrow_mut().next = Some(Rc::clone(&b));
+          // When a and b go out of scope:
+          // b's strong count drops to 0 → b is dropped.
+          // a's strong count drops to 0 → a is dropped.
+      }
+    bug: |
+      a holds an Rc to b (strong count 2 from the variable + a.next), and b holds an Rc
+      to a (strong count 2). When both variables go out of scope the counts drop to 1 —
+      never to 0 — so neither value is ever dropped. This is a memory leak that Rust's
+      ownership system cannot prevent, because Rc cycles are logically valid programs.
+      Rc::downgrade creates a Weak<T> reference that does not increment the strong count,
+      breaking the cycle so normal drop behaviour resumes.
+    check: none
+    signal: ""
+  - prompt: |
+      A Vec is borrowed immutably to get first, then mutated via push while the borrow is
+      still live. The fix does not require restructuring the data — only reordering the
+      statements. What is the minimal change?
+    kind: fix-it
+    broken_code: |
+      fn main() {
+          let mut v = vec![1, 2, 3];
+          let first = v.first().unwrap();   // borrows v
+          v.push(4);                         // mutates v while borrow is live
+          println!("{first}");
+      }
+    fixed_code: |
+      fn main() {
+          let mut v = vec![1, 2, 3];
+          let first = v.first().unwrap();   // borrows v
+          println!("{first}");               // last use of first — borrow ends here (NLL)
+          v.push(4);                         // borrow is no longer live — ok
+      }
+    bug: |
+      Non-lexical lifetimes (NLL) end a borrow at the last point where the reference is
+      used, not at the end of the enclosing block. v.first() borrows v; that borrow is
+      live until after the println! that uses first. v.push(4) requires a mutable borrow
+      of v — you cannot hold both at once, so E0502 fires. Moving println! before
+      v.push(4) causes the immutable borrow to end before the mutable one begins,
+      resolving the conflict without any structural change.
+    check: compile-error
+    signal: "E0502"

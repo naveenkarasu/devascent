@@ -1,0 +1,35 @@
+lang: java
+group: Tooling
+title: "Tooling — Maven, Gradle, JUnit 5"
+tag: C
+summary: |
+  Java projects are built and dependency-managed by one of two dominant tools:
+
+  Maven — convention-over-configuration, XML descriptor (pom.xml), backed by Maven
+  Central (the largest public artifact repository). Standard lifecycle phases:
+  validate → compile → test → package → verify → install → deploy. Running
+  `mvn dependency:tree` reveals transitive dependency conflicts. Multi-module
+  projects are supported via parent POM inheritance.
+
+  Gradle — Groovy or Kotlin DSL (build.gradle / build.gradle.kts), incremental
+  build cache, typically faster for large multi-module projects. Lifecycle is more
+  flexible (DAG of tasks rather than fixed phases). The Gradle wrapper (./gradlew)
+  pins the tool version and is the recommended invocation.
+
+  JUnit 5 (Jupiter) is the standard unit testing framework:
+  - @Test marks a test method.
+  - @ParameterizedTest with @ValueSource / @CsvSource / @MethodSource for
+    data-driven tests.
+  - @BeforeEach / @AfterEach run setup/teardown around each test.
+  - @BeforeAll / @AfterAll run once per class (must be static unless
+    @TestInstance(Lifecycle.PER_CLASS) is used).
+  - @ExtendWith(MockitoExtension.class) wires popular extension models (Mockito,
+    Spring, etc.).
+
+  In daily practice: `mvn test` or `./gradlew test` is the outer test loop; IDE
+  integration (IntelliJ IDEA, Eclipse, VS Code + Extension Pack for Java) handles
+  incremental compilation invisibly. Understanding build tools matters for dependency
+  conflict resolution and multi-module project wiring.
+
+  Note: DevAscent exercises assume a Maven or Gradle project skeleton is provided;
+  players do not need to author build descriptors from scratch.

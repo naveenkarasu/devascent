@@ -1,0 +1,131 @@
+- category: 'Stack'
+  lang: cpp
+  title: Stack — C++ refresher
+  summary: |
+    A stack is a Last-In-First-Out (LIFO) container. Use std::stack<T>, which is
+    a container adaptor backed by a deque by default. All core operations — push,
+    pop, top — are O(1).
+
+    Classic stack patterns: matching parentheses, monotonic stack (next greater
+    element, largest rectangle in histogram), undo/redo, DFS without recursion.
+
+    C++ notes:
+      - std::stack has no iterator — you cannot range-for over it.
+      - Always check empty() before calling top() or pop() to avoid undefined
+        behaviour on an empty stack.
+      - For a stack that also needs random access, use a vector and treat the back
+        as the top (v.back(), v.push_back(), v.pop_back()).
+      - Monotonic stack: only push elements that maintain a monotone order; pop
+        elements that violate the order before pushing the new one.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'stack of integers'
+          code: 'stack<int> st;'
+        - label: 'stack of pairs'
+          code: 'stack<pair<int,int>> st;'
+        - label: 'vector used as a stack (allows index access)'
+          code: 'vector<int> st;  // push: push_back, top: back(), pop: pop_back()'
+    - title: Basic operations
+      ops:
+        - label: 'push onto the top'
+          code: 'st.push(x);            // vector: st.push_back(x)'
+        - label: 'peek at the top (do NOT call on empty stack)'
+          code: 'int t = st.top();      // vector: st.back()'
+        - label: 'pop the top (returns void — read top first)'
+          code: 'st.pop();              // vector: st.pop_back()'
+        - label: 'check empty'
+          code: 'if (st.empty()) { ... }'
+        - label: 'size'
+          code: 'int n = (int)st.size();'
+    - title: Iteration & loops
+      ops:
+        - label: 'drain until empty'
+          code: |
+            while (!st.empty()) {
+                int x = st.top();
+                st.pop();
+            }
+        - label: 'push all, then drain'
+          code: |
+            for (int x : v) st.push(x);
+            while (!st.empty()) {
+                result.push_back(st.top());
+                st.pop();
+            }
+        - label: 'monotonic stack: pop smaller elements before pushing'
+          code: |
+            for (int i = 0; i < (int)v.size(); i++) {
+                while (!st.empty() && v[st.top()] < v[i]) {
+                    // v[i] is the "next greater" for index st.top()
+                    st.pop();
+                }
+                st.push(i);
+            }
+    - title: Special operations (stack)
+      ops:
+        - label: 'valid parentheses check'
+          code: |
+            stack<char> st;
+            for (char c : s) {
+                if (c == '(') {
+                    st.push(c);
+                } else {
+                    if (st.empty()) return false;
+                    st.pop();
+                }
+            }
+            return st.empty();
+        - label: 'next greater element for each index'
+          code: |
+            vector<int> res(n, -1);
+            stack<int> st;   // stores indices
+            for (int i = 0; i < n; i++) {
+                while (!st.empty() && v[st.top()] < v[i]) {
+                    res[st.top()] = v[i];
+                    st.pop();
+                }
+                st.push(i);
+            }
+        - label: 'min-stack: track running minimum alongside elements'
+          code: |
+            stack<pair<int,int>> st;  // {value, current_min}
+            // push: int m = st.empty() ? x : min(x, st.top().second); st.push({x, m});
+            // getMin: st.top().second
+        - label: 'DFS on a graph without recursion'
+          code: |
+            stack<int> st;
+            st.push(start);
+            visited[start] = true;
+            while (!st.empty()) {
+                int u = st.top();
+                st.pop();
+                for (int nb : adj[u]) {
+                    if (!visited[nb]) {
+                        visited[nb] = true;
+                        st.push(nb);
+                    }
+                }
+            }
+  example: |
+    Worked example — valid parentheses (only '(' and ')'):
+
+      Every opening bracket must be closed in the correct order. Push '(' onto the
+      stack; on ')' check that the stack is non-empty (unmatched close) and pop.
+      At the end the stack must be empty (no unmatched opens remain).
+
+        bool isValid(const string& s) {
+            stack<char> st;
+            for (char c : s) {
+                if (c == '(') {
+                    st.push(c);
+                } else {
+                    if (st.empty()) return false;
+                    st.pop();
+                }
+            }
+            return st.empty();
+        }
+
+    Takeaway: always guard top()/pop() with an empty() check. For multi-bracket
+    problems, push the opening bracket and compare on the closing bracket.

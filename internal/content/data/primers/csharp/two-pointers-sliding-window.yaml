@@ -1,0 +1,133 @@
+- category: 'Two Pointers & Sliding Window'
+  lang: csharp
+  title: 'Two Pointers & Sliding Window — C# refresher'
+  summary: |
+    Two-pointer technique uses two indices that move through data, avoiding a nested
+    loop and dropping O(n^2) solutions to O(n). It applies whenever the array is sorted
+    or you need to find a pair/triplet satisfying some condition.
+
+    Sliding window is a specialization: keep a [left, right) window expanding from the
+    right and shrinking from the left to maintain a constraint (e.g., at most k distinct
+    chars, sum <= target). Both patterns avoid extra allocations — just indices.
+
+    C# notes:
+      - Use plain int lo/hi or left/right; no special type needed.
+      - A Dictionary or int[26] tracks the window's current contents efficiently.
+      - string.Length and array.Length both give the size; pick the right one.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'opposing ends (sorted array, palindrome check)'
+          code: 'int lo = 0, hi = arr.Length - 1;'
+        - label: 'same-direction window'
+          code: 'int left = 0, right = 0;'
+        - label: 'window character count (string window)'
+          code: 'int[] count = new int[26];'
+        - label: 'window state map (general)'
+          code: 'var window = new Dictionary<char, int>();'
+    - title: Basic operations
+      ops:
+        - label: 'advance right pointer'
+          code: 'right++;'
+        - label: 'shrink left pointer'
+          code: 'left++;'
+        - label: 'current window size'
+          code: 'int size = right - left;'
+        - label: 'add element entering window'
+          code: 'window[c] = window.GetValueOrDefault(c, 0) + 1;'
+        - label: 'remove element leaving window'
+          code: |
+            window[c]--;
+            if (window[c] == 0) window.Remove(c);
+    - title: Iteration & loops
+      ops:
+        - label: 'two-pointer inward (sorted pair sum)'
+          code: |
+            while (lo < hi)
+            {
+                int sum = arr[lo] + arr[hi];
+                if (sum == target)
+                {
+                    /* found */
+                    lo++;
+                    hi--;
+                }
+                else if (sum < target) lo++;
+                else hi--;
+            }
+        - label: 'sliding window template'
+          code: |
+            int left = 0, best = 0;
+            for (int right = 0; right < s.Length; right++)
+            {
+                // expand: add s[right] to window state
+                while (/* window invalid */) left++;
+                best = Math.Max(best, right - left + 1);
+            }
+        - label: 'fixed-size window (size k)'
+          code: |
+            for (int right = 0; right < nums.Length; right++)
+            {
+                if (right >= k) { /* remove nums[right - k] from window */ }
+                // add nums[right], update answer
+            }
+    - title: Special operations (sliding window)
+      ops:
+        - label: 'longest substring with at most k distinct characters'
+          code: |
+            int left = 0, best = 0;
+            var freq = new Dictionary<char, int>();
+            for (int r = 0; r < s.Length; r++)
+            {
+                freq[s[r]] = freq.GetValueOrDefault(s[r], 0) + 1;
+                while (freq.Count > k)
+                {
+                    freq[s[left]]--;
+                    if (freq[s[left]] == 0) freq.Remove(s[left]);
+                    left++;
+                }
+                best = Math.Max(best, r - left + 1);
+            }
+        - label: 'minimum window substring (need map + have counter)'
+          code: |
+            int have = 0, need = need_map.Count, left = 0;
+            for (int r = 0; r < s.Length; r++)
+            {
+                // ... standard minimum-window shrink logic
+            }
+        - label: 'two-pointer three-sum (outer loop + inner two pointers)'
+          code: |
+            Array.Sort(nums);
+            for (int i = 0; i < nums.Length - 2; i++)
+            {
+                int lo = i + 1, hi = nums.Length - 1;
+                while (lo < hi)
+                {
+                    /* check sum, move lo/hi */
+                    lo++;
+                    hi--;
+                }
+            }
+  example: |
+    Worked example — longest substring without repeating characters:
+
+      Expand the right end one character at a time. If the new character is already
+      in the window, shrink from the left until it is gone. Track the best length seen.
+      Every character enters and leaves the window at most once: O(n) total.
+
+        int LengthOfLongestSubstring(string s) {
+            var seen = new HashSet<char>();
+            int left = 0, best = 0;
+            for (int right = 0; right < s.Length; right++) {
+                while (seen.Contains(s[right])) {
+                    seen.Remove(s[left]);
+                    left++;
+                }
+                seen.Add(s[right]);
+                best = Math.Max(best, right - left + 1);
+            }
+            return best;
+        }
+
+    Takeaway: the window shrinks only when a constraint is violated. Each element is
+    processed at most twice (once added, once removed), giving O(n) overall.

@@ -1,0 +1,51 @@
+id: boot-sequence
+lang: typescript
+order: 1
+title: Boot Sequence
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A program runs instructions top to bottom. Two things you'll do constantly:
+      *show* a value and *hand back* a value.
+
+          function boot(): string {
+              return "ready"
+          }
+
+      `console.log(x)` displays x; `return x` hands x back to whoever called the
+      function. In DevAscent we grade by what you RETURN, not what you print.
+      A TypeScript function declares its return type after the parameters — here,
+      `: string`. The keyword is `function`, not `def` or `func`.
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: A function header is written for you. Make it hand back the exact text Hello, world!
+    task:
+      prompt: Make greet() return the exact text "Hello, world!"
+      func_name: greet
+      starter: |
+        function greet(): string {
+            // hint: text goes in double quotes. Use  return "Hello, world!"  (exact punctuation)
+        }
+      solution: |
+        function greet(): string {
+            return "Hello, world!"
+        }
+      tests:
+        - {name: 'greet()', input: [], expected: "Hello, world!"}
+  - kind: you_do
+    title: You do — solo
+    body: Now on your own.
+    task:
+      prompt: Make announce() return the exact text "DevAscent online"
+      func_name: announce
+      starter: |
+        function announce(): string {
+            // <- delete this line and write your code
+        }
+      solution: |
+        function announce(): string {
+            return "DevAscent online"
+        }
+      tests:
+        - {name: 'announce()', input: [], expected: "DevAscent online"}

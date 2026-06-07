@@ -1,0 +1,127 @@
+lang: rust
+group: Error Handling
+title: "Error Handling — Result, ?, and errors as values"
+tag: E
+summary: |
+  Rust has no exceptions. Errors are values. Result<T, E> encodes recoverable failures
+  in the type system — callers are forced to acknowledge error cases at compile time.
+  panic! is reserved for unrecoverable programmer errors such as index out of bounds or
+  assertion failures.
+
+  The ? operator is the ergonomic core: on Ok(v) it unwraps to v; on Err(e) it converts
+  the error via the From trait and returns early. ? can only be used in functions whose
+  return type is Result, Option, or a type implementing FromResidual. Using ? in main
+  requires fn main() -> Result<(), Box<dyn Error>>.
+
+  .unwrap() and .expect("msg") both panic on Err. .unwrap() is acceptable in prototypes
+  and tests; .expect("context") is preferred over .unwrap() in all other cases because
+  the message appears in the panic output. Neither is appropriate in production
+  library code.
+
+  For custom errors: thiserror (library crate) generates boilerplate-free, strongly-typed
+  error enums via derive macros and #[from] for automatic ? conversion. anyhow
+  (application crate) provides a single flexible anyhow::Error type with context
+  chaining via .context(). The idiomatic pattern: libraries use thiserror for precise
+  types callers can match on; applications use anyhow for ergonomic propagation.
+
+  (Reference-only for now: Rust is not graded yet. When the toolchain is wired these
+  exercises auto-grade against the exact compiler errors they carry.)
+exercises:
+  - prompt: |
+      The function uses .unwrap() for both operations but is declared to return i32.
+      Change the return type to Result<i32, Box<dyn std::error::Error>> and replace
+      both .unwrap() calls with the ? operator.
+    kind: fix-it
+    broken_code: |
+      use std::fs;
+
+      fn read_number(path: &str) -> i32 {
+          let s = fs::read_to_string(path)?;   // E0277: ? in a function returning i32
+          s.trim().parse::<i32>()?
+      }
+
+      fn main() {
+          println!("{}", read_number("number.txt"));
+      }
+    fixed_code: |
+      use std::fs;
+      use std::error::Error;
+
+      fn read_number(path: &str) -> Result<i32, Box<dyn Error>> {
+          let s = fs::read_to_string(path)?;
+          let n = s.trim().parse::<i32>()?;
+          Ok(n)
+      }
+
+      fn main() -> Result<(), Box<dyn Error>> {
+          println!("{}", read_number("number.txt")?);
+          Ok(())
+      }
+    bug: |
+      The ? operator can only be used inside a function that returns Result, Option, or
+      a compatible type. Using ? in a function returning i32 fires E0277 because the
+      compiler cannot synthesise an early return of the right type. Changing the return
+      type to Result<i32, Box<dyn Error>> enables ? to convert both io::Error and
+      ParseIntError automatically via their From implementations.
+    check: compile-error
+    signal: "E0277"
+  - prompt: |
+      The function always panics on error. Fix it: if the file is not found, create it
+      and return the new handle; for any other error kind, panic with a descriptive
+      message using expect.
+    kind: fix-it
+    broken_code: |
+      use std::fs::File;
+
+      fn open_or_create(path: &str) -> File {
+          File::open(path).unwrap()
+      }
+    fixed_code: |
+      use std::fs::File;
+      use std::io::ErrorKind;
+
+      fn open_or_create(path: &str) -> File {
+          match File::open(path) {
+              Ok(f) => f,
+              Err(e) if e.kind() == ErrorKind::NotFound => {
+                  File::create(path).expect("failed to create file")
+              }
+              Err(e) => panic!("unexpected error opening file: {e}"),
+          }
+      }
+    bug: |
+      .unwrap() panics on every error variant without distinction. Using a match on the
+      ErrorKind lets us handle the expected case (file not found) gracefully while still
+      panicking loudly for unexpected OS errors. The match guard (if e.kind() == ...)
+      narrows the Err arm to a specific error kind.
+    check: none
+    signal: ""
+  - prompt: |
+      first_char panics on an empty string. Rewrite it to return Option<char> and use
+      the ? operator to propagate None instead of panicking.
+    kind: fix-it
+    broken_code: |
+      fn first_char(s: &str) -> char {
+          s.chars().next().unwrap()   // panics on empty input
+      }
+
+      fn main() {
+          println!("{:?}", first_char("hello"));
+          println!("{:?}", first_char(""));   // panics here
+      }
+    fixed_code: |
+      fn first_char(s: &str) -> Option<char> {
+          Some(s.chars().next()?)
+      }
+
+      fn main() {
+          println!("{:?}", first_char("hello"));  // Some('h')
+          println!("{:?}", first_char(""));       // None
+      }
+    bug: |
+      .unwrap() on an Option panics at runtime when the value is None. Changing the
+      return type to Option<char> lets us use ? to propagate None early. The ? operator
+      works on Option in functions returning Option just as it works on Result in
+      functions returning Result.
+    check: none
+    signal: ""

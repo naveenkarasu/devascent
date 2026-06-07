@@ -1,0 +1,148 @@
+lang: python
+group: Iterators & Generators
+title: "Iterators & Generators — lazy sequences, yield, itertools"
+tag: E
+summary: |
+  The iterator protocol underpins `for` loops, comprehensions, `zip`, `map`, and
+  most of Python's iteration machinery. An iterator is any object with:
+    - `__iter__(self)` — returns `self` (the iterator itself)
+    - `__next__(self)` — returns the next value or raises `StopIteration`
+
+  Generators implement this protocol automatically via `yield`. A generator
+  function returns a generator object the first time it is called; each `next()`
+  resumes execution until the next `yield` or the function returns.
+
+  `yield from subiterator` delegates to another iterator, forwarding `send()` and
+  `throw()` calls — this is richer than `for x in sub: yield x`.
+
+  Generators are SINGLE-USE: once exhausted, iterating again yields nothing. If
+  you need to iterate a sequence multiple times, materialise it with `list()`.
+
+  `itertools` provides composable, memory-efficient combinators:
+    - `islice(it, n)` — take first n items lazily
+    - `filterfalse(pred, it)` — yield items where pred is False
+    - `chain(*iterables)` — concatenate iterables lazily
+    - `batched(it, n)` — yield non-overlapping batches of size n (3.12+)
+    - `pairwise(it)` — consecutive overlapping pairs (3.10+)
+
+  Common mistakes:
+  - Iterating a generator twice silently produces nothing the second time.
+  - `yield from` vs `for x in sub: yield x` — the former propagates `.send()`
+    and `.throw()`; the latter does not.
+  - `itertools.batched` is new in 3.12 — do not polyfill for 3.12+ targets.
+exercises:
+  - prompt: |
+      `Countdown` is a custom iterator class that should yield integers from
+      `start` down to 0 inclusive, then stop.
+
+      The broken version forgets to raise `StopIteration` when the count goes
+      below 0, so it runs forever (or until the caller gives up).
+
+      Fix `__next__` to raise `StopIteration` when `self.current` drops below 0.
+    kind: fix-it
+    broken_code: |
+      class Countdown:
+          def __init__(self, start):
+              self.current = start
+
+          def __iter__(self):
+              return self
+
+          def __next__(self):
+              # Bug: never raises StopIteration — infinite loop!
+              value = self.current
+              self.current -= 1
+              return value
+    fixed_code: |
+      class Countdown:
+          def __init__(self, start):
+              self.current = start
+
+          def __iter__(self):
+              return self
+
+          def __next__(self):
+              if self.current < 0:
+                  raise StopIteration
+              value = self.current
+              self.current -= 1
+              return value
+    bug: |
+      `__next__` decrements and returns `self.current` unconditionally — it never
+      raises `StopIteration`, so the iterator never terminates. A `for` loop relies
+      on `StopIteration` to know when to stop; without it the loop runs forever.
+      The fix checks `self.current < 0` before yielding and raises `StopIteration`
+      when exhausted.
+    check: none
+    signal: ""
+
+  - prompt: |
+      `first_long_words(lines, min_len, n)` should return the first `n` words
+      whose length is >= `min_len`, uppercased. Use `itertools.islice` and a
+      generator expression — no explicit `for` loops.
+
+      The broken version uses `> min_len` (strict greater-than), which excludes
+      words of exactly `min_len` characters. Fix the condition to `>= min_len`
+      and rewrite as a lazy `itertools` pipeline.
+    kind: fix-it
+    broken_code: |
+      def first_long_words(lines, min_len, n):
+          result = []
+          for word in lines:
+              if len(word) > min_len:   # Bug: should be >= not >
+                  result.append(word.upper())
+                  if len(result) == n:
+                      break
+          return result
+    fixed_code: |
+      import itertools
+
+      def first_long_words(lines, min_len, n):
+          long_words = (word.upper() for word in lines if len(word) >= min_len)
+          return list(itertools.islice(long_words, n))
+    bug: |
+      `len(word) > min_len` is off-by-one: words of exactly `min_len` characters
+      are excluded. For `min_len=4`, the word `"four"` (length 4) should be
+      included but the broken condition excludes it. The fix uses `>= min_len` and
+      rewrites the loop as a lazy generator + `itertools.islice` pipeline.
+    check: tests
+    func_name: first_long_words
+    tests:
+      - name: "includes words of exactly min_len characters"
+        input: [["hi", "four", "hello", "ok"], 4, 3]
+        expected: ["FOUR", "HELLO"]
+      - name: "fewer matches than n returns all matches"
+        input: [["cat", "four", "elephant"], 4, 5]
+        expected: ["FOUR", "ELEPHANT"]
+      - name: "no matches returns empty list"
+        input: [["a", "bb", "ccc"], 5, 3]
+        expected: []
+      - name: "n=0 returns empty"
+        input: [["hello", "world"], 3, 0]
+        expected: []
+
+  - prompt: |
+      `gen_squares(n)` is supposed to be a generator that yields the squares of
+      0 through n-1. The broken version returns a list instead of a generator
+      (it uses `return` with a list comprehension), so the caller gets a list
+      object rather than a lazy iterator.
+
+      Fix it by replacing the `return` with `yield` expressions (or using
+      `yield from` with a range).
+    kind: fix-it
+    broken_code: |
+      def gen_squares(n):
+          # Bug: returns a list, not a generator
+          return [x * x for x in range(n)]
+    fixed_code: |
+      def gen_squares(n):
+          for x in range(n):
+              yield x * x
+    bug: |
+      A function with a plain `return` is a regular function that returns a list.
+      It is NOT a generator — calling `gen_squares(5)` immediately computes and
+      materialises all values. Adding `yield` makes the function a generator
+      function: `gen_squares(5)` returns a lazy generator object; values are
+      computed one at a time as the caller advances the iterator.
+    check: none
+    signal: ""

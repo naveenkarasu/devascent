@@ -1,0 +1,103 @@
+# Slot: machine-error (Rust variants) — read a small broken Rust program and spot
+# the bug. Rust catches most beginner mistakes at COMPILE time (types, ownership,
+# mutability); only a few — like an out-of-bounds index — surface as a runtime panic.
+- id: rust_err_index
+  slot: machine-error
+  lang: rust
+  order: 3
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    This Rust program panics when you run it:
+
+        let nums = vec![10, 20, 30];
+        println!("{}", nums[3]);
+
+    It panics: index out of bounds: the len is 3 but the index is 3. What's wrong?
+  choices:
+    - text: "Index 3 is past the end — a 3-element vec has valid indexes 0, 1, 2."
+      correct: true
+      feedback: "Right. len is 3, so the last valid index is 2; nums[3] panics at runtime."
+    - text: "You can't print an integer with println!."
+      correct: false
+      feedback: "Not it — println! prints integers fine. The out-of-range index 3 is the bug."
+    - text: "vec! needs square brackets, not the values directly."
+      correct: false
+      feedback: "Not it — vec![10, 20, 30] is valid. Reading nums[3], which doesn't exist, panics."
+
+- id: rust_err_type
+  slot: machine-error
+  lang: rust
+  order: 3
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    This Rust program won't compile:
+
+        let age: i64 = "30";
+        println!("{}", age + 1);
+
+    The compiler says: mismatched types — expected `i64`, found `&str`. Why?
+  choices:
+    - text: "\"30\" is a string (&str), but age is annotated i64 — Rust won't mix them."
+      correct: true
+      feedback: "Right. Rust is statically typed; you'd parse it: \"30\".parse::<i64>(). The mismatch is caught at compile time."
+    - text: "You can't add 1 to a variable in Rust."
+      correct: false
+      feedback: "Not it — age + 1 is fine for an i64. Assigning a &str to an i64 is the problem."
+    - text: "println! can't take age + 1."
+      correct: false
+      feedback: "Not it — println! handles the integer fine. The string-to-i64 assignment fails."
+
+- id: rust_err_mut
+  slot: machine-error
+  lang: rust
+  order: 3
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    This Rust program won't compile:
+
+        let count = 0;
+        count = count + 1;
+
+    The compiler says: cannot assign twice to immutable variable `count`. Why?
+  choices:
+    - text: "Variables are immutable by default — count must be declared `let mut count`."
+      correct: true
+      feedback: "Right. In Rust you opt into mutation with `mut`; without it, reassigning count is a compile error."
+    - text: "count needs a type annotation like `let count: i64 = 0`."
+      correct: false
+      feedback: "Not it — the type infers fine. The issue is reassigning an immutable binding."
+    - text: "You can't add 1 to zero."
+      correct: false
+      feedback: "Not it — the arithmetic is fine. count was never declared mutable, so the assignment fails."
+
+- id: rust_err_move
+  slot: machine-error
+  lang: rust
+  order: 3
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    This Rust program won't compile:
+
+        let s = String::from("hi");
+        let t = s;
+        println!("{}", s);
+
+    The compiler says: borrow of moved value: `s`. Why?
+  choices:
+    - text: "Assigning s to t MOVED the String; s is no longer valid to use."
+      correct: true
+      feedback: "Right. A String owns its data; `let t = s` transfers ownership, so reading s afterward is rejected. (Clone with s.clone() if you need both.)"
+    - text: "You can't have two variables in the same program."
+      correct: false
+      feedback: "Not it — two bindings are fine. The move of s into t is what invalidates s."
+    - text: "println! requires a &str, not a String."
+      correct: false
+      feedback: "Not it — println! prints a String fine. The problem is s was moved into t."

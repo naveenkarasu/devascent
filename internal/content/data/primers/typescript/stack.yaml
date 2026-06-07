@@ -1,0 +1,129 @@
+- category: 'Stack'
+  lang: typescript
+  title: 'Stack — TypeScript refresher'
+  summary: |
+    A stack is a last-in, first-out (LIFO) structure. In TypeScript, the built-in
+    `number[]` (or `T[]` for any type) already behaves as a stack: `push` appends to
+    the end and `pop` removes from the end — both O(1).
+
+    Stack patterns appear in:
+      - Balanced parentheses / bracket matching
+      - Monotonic stack for next-greater-element problems
+      - Expression evaluation and undo/redo
+      - DFS iterative traversal
+
+    TypeScript specifics:
+      - Declare as `const stack: number[] = [];` — the type annotation prevents
+        accidental mixed-type pushes.
+      - `stack.at(-1)` peeks at the top without removing (ES2022, available in TS).
+      - `stack[stack.length - 1]` is the pre-ES2022 equivalent.
+      - Always check `stack.length > 0` before calling `pop()` — it returns `undefined`
+        on an empty array, which TypeScript types as `T | undefined`.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'empty number stack'
+          code: 'const stack: number[] = [];'
+        - label: 'generic stack of any type'
+          code: 'const stack: string[] = [];'
+        - label: 'stack pre-loaded with values'
+          code: 'const stack: number[] = [1, 2, 3];'
+    - title: Basic operations
+      ops:
+        - label: 'push (add to top)'
+          code: 'stack.push(42);'
+        - label: 'pop (remove from top — returns T | undefined)'
+          code: 'const top = stack.pop();'
+        - label: 'peek at top without removing'
+          code: 'const top = stack.at(-1);          // or stack[stack.length - 1]'
+        - label: 'check if empty'
+          code: |
+            if (stack.length === 0) {
+              /* empty */
+            }
+        - label: 'size'
+          code: 'const size: number = stack.length;'
+    - title: Iteration & loops
+      ops:
+        - label: 'process until stack is empty'
+          code: |
+            while (stack.length > 0) {
+              const v = stack.pop()!;
+              /* use v */
+            }
+        - label: 'iterate stack top-to-bottom (non-destructive)'
+          code: |
+            for (let i = stack.length - 1; i >= 0; i--) {
+              console.log(stack[i]);
+            }
+        - label: 'drain stack into result array'
+          code: |
+            const result: number[] = [];
+            while (stack.length) result.push(stack.pop()!);
+    - title: Special operations (stack)
+      ops:
+        - label: 'balanced parentheses check'
+          code: |
+            const stack: string[] = [];
+            const pairs: Record<string, string> = { ")": "(", "]": "[", "}": "{" };
+            for (const ch of s) {
+              if ("([{".includes(ch)) stack.push(ch);
+              else if (stack.pop() !== pairs[ch]) return false;
+            }
+            return stack.length === 0;
+        - label: 'monotonic decreasing stack (next greater element)'
+          code: |
+            const result: number[] = new Array(nums.length).fill(-1);
+            const stack: number[] = []; // indices
+            for (let i = 0; i < nums.length; i++) {
+              while (stack.length && nums[stack.at(-1)!] < nums[i]) {
+                result[stack.pop()!] = nums[i];
+              }
+              stack.push(i);
+            }
+        - label: 'evaluate RPN expression'
+          code: |
+            const stk: number[] = [];
+            for (const token of tokens) {
+              if ("+-*/".includes(token)) {
+                const b = stk.pop()!, a = stk.pop()!;
+                stk.push(token === "+" ? a+b : token === "-" ? a-b :
+                         token === "*" ? a*b : Math.trunc(a/b));
+              } else stk.push(Number(token));
+            }
+            return stk[0];
+        - label: 'largest rectangle in histogram (monotonic stack)'
+          code: |
+            const stack: number[] = []; // indices, increasing heights
+            let maxArea = 0;
+            for (let i = 0; i <= heights.length; i++) {
+              const h = i < heights.length ? heights[i] : 0;
+              while (stack.length && heights[stack.at(-1)!] > h) {
+                const height = heights[stack.pop()!];
+                const width = stack.length ? i - stack.at(-1)! - 1 : i;
+                maxArea = Math.max(maxArea, height * width);
+              }
+              stack.push(i);
+            }
+  example: |
+    Worked example — validate a string of brackets: '({[]})' is valid, '({)}' is not.
+
+      For every opening bracket, push it. For every closing bracket, pop the top and
+      verify it matches. If the stack is empty when you need to pop, or non-empty at
+      the end, the string is invalid.
+
+        function isValid(s: string): boolean {
+            const stack: string[] = [];
+            const pairs: Record<string, string> = { ")": "(", "]": "[", "}": "{" };
+            for (const ch of s) {
+                if ("([{".includes(ch)) {
+                    stack.push(ch);
+                } else {
+                    if (stack.pop() !== pairs[ch]) return false;
+                }
+            }
+            return stack.length === 0;
+        }
+
+    Takeaway: a plain typed array `string[]` is a perfectly good stack. Use `.at(-1)`
+    to peek; always guard `pop()` calls since it returns `T | undefined` in TypeScript.

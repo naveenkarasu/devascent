@@ -1,0 +1,124 @@
+- category: 'Heap / Priority Queue'
+  lang: rust
+  title: 'Heap / Priority Queue — Rust refresher'
+  summary: |
+    Rust provides BinaryHeap<T> in std::collections. IMPORTANT: it is a MAX-heap
+    by default — the largest value is popped first. For a min-heap wrap values in
+    std::cmp::Reverse: BinaryHeap<Reverse<T>>. Push Reverse(x), pop yields
+    Reverse(x), unwrap with .0 to get the inner value.
+
+    Common heap patterns:
+      - K-th largest element: maintain a min-heap of size k.
+      - K-th smallest element: maintain a max-heap of size k.
+      - Merge k sorted lists: push (value, list_index) into a min-heap.
+      - Dijkstra shortest path: min-heap of (distance, node).
+
+    Rust notes:
+      - push() and pop() are O(log n); peek() is O(1).
+      - BinaryHeap does not implement Ord for floats — store integer distances
+        (e.g., multiply by a factor) or use ordered_float if available.
+      - BinaryHeap is not a stable sort; equal keys can be popped in any order.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'max-heap (default)'
+          code: 'let mut heap: BinaryHeap<i32> = BinaryHeap::new();'
+        - label: 'min-heap using Reverse'
+          code: 'let mut min_heap: BinaryHeap<Reverse<i32>> = BinaryHeap::new();'
+        - label: 'heap from an existing Vec'
+          code: 'let heap: BinaryHeap<i32> = nums.iter().cloned().collect();'
+    - title: Basic operations
+      ops:
+        - label: 'push onto max-heap'
+          code: 'heap.push(42);'
+        - label: 'push onto min-heap'
+          code: 'min_heap.push(Reverse(42));'
+        - label: 'pop from max-heap (returns Option<i32>)'
+          code: 'let top = heap.pop();'
+        - label: 'pop from min-heap and unwrap inner value'
+          code: 'let Reverse(val) = min_heap.pop().unwrap();'
+        - label: 'peek at top without removing'
+          code: 'if let Some(&top) = heap.peek() { /* use top */ }'
+        - label: 'length and empty check'
+          code: 'let n = heap.len(); let empty = heap.is_empty();'
+    - title: Iteration & loops
+      ops:
+        - label: 'drain heap in sorted (max-first) order'
+          code: |
+            while let Some(val) = heap.pop() {
+                println!("{}", val);
+            }
+        - label: 'maintain fixed-size window (top-k min-heap)'
+          code: |
+            for &x in &nums {
+                min_heap.push(Reverse(x));
+                if min_heap.len() > k { min_heap.pop(); }
+            }
+        - label: 'convert heap to a sorted Vec'
+          code: 'let mut sorted: Vec<i32> = heap.into_sorted_vec();  // ascending'
+    - title: Special operations (heap / priority queue)
+      ops:
+        - label: 'k-th largest element'
+          code: |
+            let mut min_h: BinaryHeap<Reverse<i32>> = BinaryHeap::new();
+            for &x in nums {
+                min_h.push(Reverse(x));
+                if min_h.len() > k { min_h.pop(); }
+            }
+            min_h.peek().unwrap().0
+        - label: 'merge k sorted arrays via min-heap'
+          code: |
+            let mut heap: BinaryHeap<Reverse<(i32, usize, usize)>> = BinaryHeap::new();
+            for (i, arr) in arrays.iter().enumerate() {
+                if !arr.is_empty() { heap.push(Reverse((arr[0], i, 0))); }
+            }
+            let mut result = Vec::new();
+            while let Some(Reverse((val, i, j))) = heap.pop() {
+                result.push(val);
+                if j + 1 < arrays[i].len() {
+                    heap.push(Reverse((arrays[i][j + 1], i, j + 1)));
+                }
+            }
+        - label: 'Dijkstra shortest path skeleton'
+          code: |
+            let mut dist = vec![u64::MAX; n];
+            let mut heap: BinaryHeap<Reverse<(u64, usize)>> = BinaryHeap::new();
+            dist[src] = 0;
+            heap.push(Reverse((0, src)));
+            while let Some(Reverse((d, u))) = heap.pop() {
+                if d > dist[u] { continue; }
+                for &(v, w) in &adj[u] {
+                    if dist[u] + w < dist[v] {
+                        dist[v] = dist[u] + w;
+                        heap.push(Reverse((dist[v], v)));
+                    }
+                }
+            }
+        - label: 'top k frequent elements'
+          code: |
+            let mut freq: HashMap<i32, i32> = HashMap::new();
+            for &x in nums { *freq.entry(x).or_insert(0) += 1; }
+            let mut min_h: BinaryHeap<Reverse<(i32, i32)>> = BinaryHeap::new();
+            for (&val, &cnt) in &freq {
+                min_h.push(Reverse((cnt, val)));
+                if min_h.len() > k { min_h.pop(); }
+            }
+            min_h.into_iter().map(|Reverse((_, v))| v).collect()
+  example: |
+    Worked example — find the k-th largest element in an unsorted array:
+
+      Maintain a min-heap of size at most k. After processing all elements the
+      heap contains the k largest values; the heap top (minimum of the k largest)
+      is the answer. Time O(n log k), space O(k).
+
+        fn kth_largest(nums: &[i32], k: usize) -> i32 {
+            let mut heap: BinaryHeap<Reverse<i32>> = BinaryHeap::new();
+            for &x in nums {
+                heap.push(Reverse(x));
+                if heap.len() > k { heap.pop(); }
+            }
+            heap.peek().unwrap().0
+        }
+
+    Takeaway: Reverse flips the ordering so the smallest element is popped first.
+    Wrap on push, destructure on pop. BinaryHeap without Reverse is a max-heap.

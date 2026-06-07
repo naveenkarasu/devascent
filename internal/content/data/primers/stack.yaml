@@ -1,0 +1,91 @@
+- category: "Stack"
+  lang: python
+  title: "Stack — Python refresher"
+  summary: |
+    A stack is a LIFO structure. Use it when the most-recently-seen element is the
+    most relevant — matching brackets, undo sequences, or "next greater element"
+    style problems. A monotonic stack (kept in sorted order) finds the nearest
+    larger/smaller value for every element in O(n) total.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'stack (use a plain list)'
+          code: 'stack = []'
+        - label: 'stack pre-filled'
+          code: 'stack = [0, 1, 2]'
+        - label: 'deque (preferred for explicit stack/queue role)'
+          code: |
+            from collections import deque
+            stack = deque()
+        - label: 'monotonic stack skeleton'
+          code: 'stack = []  # will hold indices or values in sorted order'
+    - title: Basic operations
+      ops:
+        - label: 'push'
+          code: 'stack.append(x)'
+        - label: 'pop'
+          code: 'top = stack.pop()'
+        - label: 'peek without removing'
+          code: 'top = stack[-1]'
+        - label: 'check empty'
+          code: 'if not stack: ...'
+        - label: 'size'
+          code: 'n = len(stack)'
+    - title: Iteration & loops
+      ops:
+        - label: 'process all elements'
+          code: |
+            while stack:
+                v = stack.pop()
+                ...
+        - label: 'build result from stack (reversed order)'
+          code: |
+            result = []
+            result.extend(reversed(stack))
+        - label: 'iterate over items without popping'
+          code: 'for v in stack: ...'
+    - title: Special operations (stack)
+      ops:
+        - label: 'monotonic decreasing stack (pop smaller)'
+          code: |
+            while stack and stack[-1] <= x:
+                stack.pop()
+        - label: 'monotonic increasing stack (pop larger)'
+          code: |
+            while stack and stack[-1] >= x:
+                stack.pop()
+        - label: 'matching brackets'
+          code: |
+            pairs = {")": "(", "}": "{", "]": "["}
+            for c in s:
+                if c in pairs:
+                    if not stack or stack[-1] != pairs[c]: return False
+                    stack.pop()
+                else:
+                    stack.append(c)
+        - label: 'simulate call stack for iterative DFS'
+          code: |
+            stack = [root]
+            while stack:
+                node = stack.pop()
+        - label: 'min-stack (track running minimum)'
+          code: |
+            min_stack = []
+            min_stack.append(min(val, min_stack[-1] if min_stack else val))
+  example: |
+    Worked example — Daily Temperatures (next warmer day):
+      For each day, we want the first future day that is warmer. Keep a stack of
+      indices of days we haven't found a warmer day for yet. When temps[i] is
+      warmer than temps[stack[-1]], that index gets its answer.
+
+        def daily_temps(temps):
+            ans = [0] * len(temps)
+            stack = []          # indices, monotone decreasing temps
+            for i, t in enumerate(temps):
+                while stack and temps[stack[-1]] < t:
+                    j = stack.pop()
+                    ans[j] = i - j
+                stack.append(i)
+            return ans
+
+    Takeaway: monotonic stack processes each element at most twice — O(n).

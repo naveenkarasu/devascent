@@ -1,0 +1,94 @@
+# Slot: coding-probe — the harder probe (difficulty 3). Acing this (plus the
+# other coding items) is what earns the test-out offer.
+- id: second_largest
+  slot: coding-probe
+  order: 7
+  difficulty: 3
+  measures: coding
+  kind: code
+  prompt: |
+    Write a function second_largest(nums) that returns the second-largest
+    DISTINCT value in the list (e.g. for [5, 5, 4] the answer is 4).
+  task:
+    func_name: second_largest
+    starter: |
+      def second_largest(nums):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'second_largest([3,1,2])', input: [[3, 1, 2]], expected: 2}
+      - {name: 'second_largest([5,5,4])', input: [[5, 5, 4]], expected: 4}
+      - {name: 'second_largest([10,5,8])', input: [[10, 5, 8]], expected: 8}
+
+- id: is_palindrome
+  slot: coding-probe
+  order: 7
+  difficulty: 3
+  measures: coding
+  kind: code
+  prompt: |
+    Write a function is_palindrome(s) that returns True if the string reads the
+    same forwards and backwards, else False.
+  task:
+    func_name: is_palindrome
+    starter: |
+      def is_palindrome(s):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'is_palindrome(racecar)', input: ["racecar"], expected: true}
+      - {name: 'is_palindrome(hello)', input: ["hello"], expected: false}
+      - {name: 'is_palindrome(empty)', input: [""], expected: true}
+
+- id: factorial
+  slot: coding-probe
+  order: 7
+  difficulty: 3
+  measures: coding
+  kind: code
+  prompt: |
+    Write a function factorial(n) that returns n! (the product 1*2*...*n).
+    factorial(0) is 1.
+  task:
+    func_name: factorial
+    starter: |
+      def factorial(n):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'factorial(5)', input: [5], expected: 120}
+      - {name: 'factorial(0)', input: [0], expected: 1}
+      - {name: 'factorial(1)', input: [1], expected: 1}
+
+- id: sum_evens
+  slot: coding-probe
+  order: 7
+  difficulty: 3
+  measures: coding
+  kind: code
+  prompt: Write a function sum_evens(nums) that returns the sum of only the even numbers in the list.
+  task:
+    func_name: sum_evens
+    starter: |
+      def sum_evens(nums):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'sum_evens([1,2,3,4])', input: [[1, 2, 3, 4]], expected: 6}
+      - {name: 'sum_evens([1,3,5])', input: [[1, 3, 5]], expected: 0}
+      - {name: 'sum_evens([2,4])', input: [[2, 4]], expected: 6}
+
+- id: count_words
+  slot: coding-probe
+  order: 7
+  difficulty: 3
+  measures: coding
+  kind: code
+  prompt: |
+    Write a function count_words(s) that returns the number of words in the
+    string (words are separated by spaces).
+  task:
+    func_name: count_words
+    starter: |
+      def count_words(s):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'count_words(hello world)', input: ["hello world"], expected: 2}
+      - {name: 'count_words(one)', input: ["one"], expected: 1}
+      - {name: 'count_words(spaced)', input: ["  a  b  c "], expected: 3}

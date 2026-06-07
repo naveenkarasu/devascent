@@ -1,0 +1,123 @@
+lang: python
+group: Core Model
+title: "Core Model — names, objects, mutability, and truthiness"
+tag: E
+summary: |
+  Python uses a reference model: names are labels bound to objects, not typed
+  boxes containing values. Assignment never copies — it rebinds a name to an
+  object. Two names can point to the same mutable object, which is why
+  `a = b = []` and then `b.append(1)` also changes `a`.
+
+  Everything is an object — integers, strings, functions, and classes alike.
+  This enables first-class callables: functions can be stored in lists, passed
+  as arguments, and introspected via `__name__`, `__doc__`, etc.
+
+  Python is dynamically typed: a name can be rebound to a value of any type at
+  any time. Type errors appear at runtime, not at parse time.
+
+  Mutability is per type:
+  - Mutable: `list`, `dict`, `set`, most user-defined objects
+  - Immutable: `int`, `float`, `str`, `tuple`, `frozenset`, `bytes`
+
+  Truthiness is protocol-based — `bool(x)` consults `__bool__` first, then
+  `__len__`. Falsy values: `None`, `False`, `0`, `0.0`, `""`, `[]`, `{}`, `set()`.
+  Everything else is truthy, including `[0]` and `"False"`.
+
+  Common mistakes:
+  - `a = b = []` makes both names point to the SAME list.
+  - `bool(x)` on a custom class returns `True` unless `__bool__` or `__len__` is
+    defined.
+  - `type(x) == int` is stricter than `isinstance(x, int)` and breaks with
+    subclasses — always prefer `isinstance`.
+exercises:
+  - prompt: |
+      `is_empty(x)` should return True only for empty containers and None,
+      and False for everything else — including non-empty containers and
+      "falsy-but-non-empty" values like 0 or False.
+
+      The broken version incorrectly returns True for 0, False, and 0.0
+      because it uses a bare boolean test instead of checking container
+      emptiness explicitly.
+
+      Fix `is_empty` so that:
+        - is_empty(None)  → True
+        - is_empty([])    → True
+        - is_empty({})    → True
+        - is_empty("")    → True
+        - is_empty([0])   → False
+        - is_empty(0)     → False
+        - is_empty(False) → False
+    kind: fix-it
+    broken_code: |
+      def is_empty(x):
+          # Incorrectly treats 0, False, 0.0 as "empty"
+          return not x
+    fixed_code: |
+      def is_empty(x):
+          if x is None:
+              return True
+          if isinstance(x, (list, dict, set, str, tuple, frozenset)):
+              return len(x) == 0
+          return False
+    bug: |
+      `not x` evaluates to True for ANY falsy value — including 0, 0.0, and False,
+      which are not "empty containers or None". The fix checks for None explicitly,
+      then uses `len()` for recognised container types, and returns False for
+      everything else (integers, booleans, etc.).
+    check: tests
+    func_name: is_empty
+    tests:
+      - name: "None is empty"
+        input: [null]
+        expected: true
+      - name: "empty list is empty"
+        input: [[]]
+        expected: true
+      - name: "empty dict is empty"
+        input: [{}]
+        expected: true
+      - name: "empty string is empty"
+        input: [""]
+        expected: true
+      - name: "list with one element is NOT empty"
+        input: [[0]]
+        expected: false
+      - name: "zero integer is NOT empty"
+        input: [0]
+        expected: false
+      - name: "False is NOT empty"
+        input: [false]
+        expected: false
+      - name: "non-empty string is NOT empty"
+        input: ["False"]
+        expected: false
+
+  - prompt: |
+      `safe_add(a, b)` is supposed to raise a `TypeError` with a helpful message
+      when the two arguments are not the same type, preventing silent string
+      concatenation when a caller passes mixed types.
+
+      The broken version does no type checking at all, so `safe_add("3", 4)`
+      raises an ugly `TypeError` from inside the `+` operator instead of our
+      friendly message.
+
+      Fix it so the function raises `TypeError("Both arguments must be the same
+      type")` when `type(a) != type(b)`, and otherwise returns `a + b`.
+    kind: fix-it
+    broken_code: |
+      def safe_add(a, b):
+          # No type guard — crashes with an unhelpful message on mixed types
+          return a + b
+    fixed_code: |
+      def safe_add(a, b):
+          if type(a) != type(b):
+              raise TypeError("Both arguments must be the same type")
+          return a + b
+    bug: |
+      Without a type guard, `safe_add("3", 4)` lets Python attempt `"3" + 4`,
+      which raises a `TypeError` from the `+` operator with a message that
+      references the operator rather than the caller's intent. Checking
+      `type(a) != type(b)` first and raising our own `TypeError` gives a
+      clear, actionable error message.
+    check: none
+    signal: ""

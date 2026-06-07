@@ -1,0 +1,23 @@
+lang: javascript
+label: JavaScript
+notes: JavaScript runs on Node.js. Installing Node also gives you npm (needed for TypeScript).
+os:
+  windows:
+    link: https://nodejs.org/en/download
+    steps:
+      - Download the Node.js LTS Windows installer from nodejs.org.
+      - Run it with the default options (it adds Node to PATH).
+      - Restart DevAscent.
+    verify: node --version
+  macos:
+    link: https://nodejs.org/en/download
+    steps:
+      - Install via Homebrew - "brew install node" - or download the macOS LTS installer from nodejs.org.
+      - Restart your terminal.
+    verify: node --version
+  linux:
+    link: https://nodejs.org/en/download/package-manager
+    steps:
+      - Install via your package manager or nvm. With nvm - "nvm install --lts".
+      - Or - "sudo apt install nodejs npm" (Debian/Ubuntu).
+    verify: node --version

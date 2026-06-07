@@ -1,0 +1,116 @@
+- category: 'Greedy'
+  lang: csharp
+  title: 'Greedy — C# refresher'
+  summary: |
+    A greedy algorithm makes the locally optimal choice at each step, trusting that
+    those local choices add up to a globally optimal answer. It works when you can
+    prove a greedy property: choosing the "best" option now never prevents a better
+    global answer later.
+
+    Classic greedy problems: interval scheduling (sort by end time, always pick the
+    earliest-ending interval that fits), jump game (track the farthest reachable
+    index), and gas station (running sum). Sorting is the most common setup step.
+
+    C# notes:
+      - Array.Sort with a custom Comparison<T> delegate is the quickest way to sort
+        by a derived key: Array.Sort(intervals, (a, b) => a[1] - b[1]).
+      - LINQ OrderBy/ThenBy is readable for multi-key sorts; returns a new sequence.
+      - Math.Max is your friend for "farthest reach" style updates.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'sort intervals by end time (greedy scheduling)'
+          code: 'Array.Sort(intervals, (a, b) => a[1] - b[1]);'
+        - label: 'sort by first element, break ties by second'
+          code: 'Array.Sort(intervals, (a, b) => a[0] != b[0] ? a[0] - b[0] : a[1] - b[1]);'
+        - label: 'track running maximum'
+          code: 'int farthest = 0;'
+    - title: Basic operations
+      ops:
+        - label: 'update farthest reachable index'
+          code: 'farthest = Math.Max(farthest, i + nums[i]);'
+        - label: 'check if current position is reachable'
+          code: 'if (i > farthest) return false;'
+        - label: 'greedily take if it fits (interval scheduling)'
+          code: |
+            if (intervals[i][0] >= lastEnd)
+            {
+                count++;
+                lastEnd = intervals[i][1];
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'jump game — scan and extend reach'
+          code: |
+            int farthest = 0;
+            for (int i = 0; i < nums.Length; i++)
+            {
+                if (i > farthest) return false;
+                farthest = Math.Max(farthest, i + nums[i]);
+            }
+            return true;
+        - label: 'non-overlapping intervals count'
+          code: |
+            Array.Sort(intervals, (a, b) => a[1] - b[1]);
+            int count = 0, lastEnd = int.MinValue;
+            foreach (var iv in intervals)
+            {
+                if (iv[0] >= lastEnd)
+                {
+                    lastEnd = iv[1];
+                    count++;
+                }
+            }
+    - title: Special operations (greedy)
+      ops:
+        - label: 'minimum number of intervals to remove for non-overlap'
+          code: |
+            Array.Sort(intervals, (a, b) => a[1] - b[1]);
+            int remove = 0, lastEnd = int.MinValue;
+            foreach (var iv in intervals)
+            {
+                if (iv[0] >= lastEnd) lastEnd = iv[1];
+                else remove++;
+            }
+            return remove;
+        - label: 'gas station: can complete circuit?'
+          code: |
+            int total = 0, tank = 0, start = 0;
+            for (int i = 0; i < gas.Length; i++)
+            {
+                int gain = gas[i] - cost[i];
+                total += gain;
+                tank += gain;
+                if (tank < 0)
+                {
+                    start = i + 1;
+                    tank = 0;
+                }
+            }
+            return total >= 0 ? start : -1;
+        - label: 'assign cookies: sort both, match greedily'
+          code: |
+            Array.Sort(children);
+            Array.Sort(cookies);
+            int child = 0;
+            foreach (int cookie in cookies)
+                if (child < children.Length && cookie >= children[child]) child++;
+            return child;
+  example: |
+    Worked example — jump game (can you reach the last index?):
+
+      Track the farthest index reachable so far. At each position, if you are
+      beyond the farthest reach you are stuck — return false. Otherwise extend
+      the reach and continue. A single O(n) scan suffices; no recursion needed.
+
+        bool CanJump(int[] nums) {
+            int farthest = 0;
+            for (int i = 0; i < nums.Length; i++) {
+                if (i > farthest) return false;
+                farthest = Math.Max(farthest, i + nums[i]);
+            }
+            return true;
+        }
+
+    Takeaway: greedy works here because extending your reach as far as possible
+    locally never hurts you globally. Prove the greedy choice is safe before coding it.

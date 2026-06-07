@@ -1,0 +1,260 @@
+lang: cpp
+group: OOP — Classes, Virtual Dispatch, Operator Overloading
+title: "OOP — Classes, Virtual Dispatch, Operator Overloading"
+tag: E
+summary: |
+  C++ OOP extends C-style structs with constructors, destructors, access control
+  (public/protected/private), and member functions. Virtual dispatch is the mechanism
+  for runtime polymorphism: a virtual function in a base class is resolved at runtime
+  through a vtable pointer. override (C++11) is essential — it tells the compiler you
+  intend to override a virtual function, catching signature mismatches as compile
+  errors.
+
+  Operator overloading lets user-defined types behave like built-in types (+, ==, <,
+  <<, etc.), enabling them to work with STL algorithms and containers directly.
+
+  Object slicing — assigning a derived object to a base-type value variable — silently
+  strips derived members. Polymorphism only works through pointers or references.
+
+  Gotchas:
+    - Calling a virtual function in a constructor/destructor dispatches to the current
+      class version, not the derived override — often surprising.
+    - Non-virtual destructor in a polymorphic base class causes UB on delete base_ptr
+      when the actual object is derived.
+    - operator= in derived classes does not automatically call the base operator= —
+      forgetting this causes partial assignment.
+exercises:
+  - prompt: |
+      Shape has no virtual destructor. Circle extends it and allocates data on the heap
+      in its constructor. Deleting a Circle through a Shape* calls only ~Shape, leaking
+      Circle's resource. Fix by adding virtual ~Shape() = default; Run under
+      AddressSanitizer to confirm the partial-destruction leak before and after the fix.
+    kind: fix-it
+    broken_code: |
+      class Shape {
+      public:
+          // no virtual destructor — UB when deleting derived through base pointer
+          ~Shape() {}
+          virtual double area() const = 0;
+      };
+
+      class Circle : public Shape {
+      public:
+          explicit Circle(double r)
+              : radius_(r), extra_(new double[1024]) {}
+
+          ~Circle() { delete[] extra_; }   // never called through Shape*
+
+          double area() const override {
+              return 3.14159265 * radius_ * radius_;
+          }
+
+      private:
+          double  radius_;
+          double* extra_;   // leaked when destroyed via Shape*
+      };
+
+      void destroy(Shape* s) {
+          delete s;   // only ~Shape() runs — Circle data leaks
+      }
+    fixed_code: |
+      class Shape {
+      public:
+          virtual ~Shape() = default;   // ensures derived destructors are called
+          virtual double area() const = 0;
+      };
+
+      class Circle : public Shape {
+      public:
+          explicit Circle(double r)
+              : radius_(r), extra_(new double[1024]) {}
+
+          ~Circle() override { delete[] extra_; }
+
+          double area() const override {
+              return 3.14159265 * radius_ * radius_;
+          }
+
+      private:
+          double  radius_;
+          double* extra_;
+      };
+
+      void destroy(Shape* s) {
+          delete s;   // now calls ~Circle() then ~Shape()
+      }
+    bug: |
+      When a class is used polymorphically (objects accessed through base pointers),
+      the base class destructor must be virtual. Without it, delete on a base pointer
+      invokes only the base destructor — derived members that require cleanup (heap
+      allocations, file handles, locks) are leaked or left open. The fix is a single
+      virtual ~Shape() = default; in the base class.
+    check: none
+    signal: ""
+
+  - prompt: |
+      The derived class intends to override draw() from Base, but the signature differs
+      — const is missing. The compiler silently accepts this as a new overload (hiding),
+      not an override. Add override to the derived declaration and fix the resulting
+      compile error.
+    kind: fix-it
+    broken_code: |
+      class Widget {
+      public:
+          virtual void draw() const {
+              std::puts("Widget::draw");
+          }
+          virtual ~Widget() = default;
+      };
+
+      class Button : public Widget {
+      public:
+          void draw() {   // missing const — this HIDES Widget::draw, not overrides it
+              std::puts("Button::draw");
+          }
+      };
+
+      void render(const Widget& w) {
+          w.draw();   // calls Widget::draw — Button::draw is never reached
+      }
+    fixed_code: |
+      class Widget {
+      public:
+          virtual void draw() const {
+              std::puts("Widget::draw");
+          }
+          virtual ~Widget() = default;
+      };
+
+      class Button : public Widget {
+      public:
+          void draw() const override {   // const added; override causes compile error
+              std::puts("Button::draw"); // if signature does not match base
+          }
+      };
+
+      void render(const Widget& w) {
+          w.draw();   // now calls Button::draw via vtable
+      }
+    bug: |
+      A derived member function with a different signature (even differing only in
+      cv-qualifiers like const) does not override the base virtual — it creates a new
+      overload that hides the base name. The override keyword forces the compiler to
+      verify that the function actually overrides a base virtual; if it does not, the
+      compilation fails. This converts a silent runtime misbehaviour into a compile
+      error.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Implement a Fraction class with operator+, operator==, operator<, and operator<<.
+      operator< must be a strict weak ordering (required for std::sort and std::map).
+      operator<< must take std::ostream& by reference and return std::ostream&.
+    kind: fix-it
+    broken_code: |
+      class Fraction {
+      public:
+          Fraction(int num, int den) : num_(num), den_(den) {}
+
+          // BUG: operator< returns true for equal fractions — not irreflexive
+          bool operator<(const Fraction& o) const {
+              return num_ * o.den_ <= o.num_ * den_;   // <= instead of <
+          }
+
+          Fraction operator+(const Fraction& o) const {
+              return {num_ * o.den_ + o.num_ * den_, den_ * o.den_};
+          }
+
+          bool operator==(const Fraction& o) const {
+              return num_ * o.den_ == o.num_ * den_;
+          }
+
+      private:
+          int num_, den_;
+      };
+    fixed_code: |
+      class Fraction {
+      public:
+          Fraction(int num, int den) : num_(num), den_(den) {}
+
+          bool operator<(const Fraction& o) const {
+              return num_ * o.den_ < o.num_ * den_;   // strict less-than
+          }
+
+          bool operator==(const Fraction& o) const {
+              return num_ * o.den_ == o.num_ * den_;
+          }
+
+          Fraction operator+(const Fraction& o) const {
+              return {num_ * o.den_ + o.num_ * den_, den_ * o.den_};
+          }
+
+          friend std::ostream& operator<<(std::ostream& os, const Fraction& f) {
+              return os << f.num_ << '/' << f.den_;
+          }
+
+      private:
+          int num_, den_;
+      };
+    bug: |
+      Using <= in operator< makes it non-irreflexive: f < f is true for any f. A
+      strict weak ordering requires comp(x,x) == false for all x. std::sort, std::map,
+      and std::set all rely on this property; violating it causes UB — the sort may
+      loop, the tree may corrupt. The fix: use strict < instead of <=.
+      operator<< must return std::ostream& (not void) so that chained expressions
+      like (cout << a << b) compile.
+    check: none
+    signal: ""
+
+  - prompt: |
+      process() takes Animal by value and calls a.speak(). Passing a Dog results in
+      Animal::speak() being called, not Dog::speak() — slicing strips the Dog part.
+      Fix by changing the parameter to const Animal& (or Animal*).
+    kind: spot-the-bug
+    broken_code: |
+      class Animal {
+      public:
+          virtual void speak() const { std::puts("..."); }
+          virtual ~Animal() = default;
+      };
+
+      class Dog : public Animal {
+      public:
+          void speak() const override { std::puts("Woof"); }
+      };
+
+      void process(Animal a) {   // takes by VALUE — slices derived part away
+          a.speak();             // always calls Animal::speak, never Dog::speak
+      }
+
+      void demo() {
+          Dog d;
+          process(d);   // Dog is sliced to Animal during copy construction
+      }
+    fixed_code: |
+      class Animal {
+      public:
+          virtual void speak() const { std::puts("..."); }
+          virtual ~Animal() = default;
+      };
+
+      class Dog : public Animal {
+      public:
+          void speak() const override { std::puts("Woof"); }
+      };
+
+      void process(const Animal& a) {   // reference — no slicing, vtable intact
+          a.speak();                    // correctly dispatches to Dog::speak
+      }
+
+      void demo() {
+          Dog d;
+          process(d);   // prints "Woof"
+      }
+    bug: |
+      Taking a polymorphic object by value copies only the base subobject — the derived
+      data and vtable pointer of the copy refer to the base class, not the derived class.
+      This is object slicing: silent, no warning, semantically wrong. Virtual dispatch
+      only works through a pointer or reference. The minimal fix is const Animal&.
+    check: none
+    signal: ""

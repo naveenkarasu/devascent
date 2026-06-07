@@ -1,0 +1,66 @@
+id: read-the-brief
+lang: java
+order: 8
+title: Read the Brief
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      Before coding, decode the problem: the INPUTS (name + type), the OUTPUT
+      (type + meaning), and the EDGE CASES (empty, zero, negative). A *test case*
+      is a chosen input paired with the output you expect — writing one forces you
+      to understand the spec first.
+
+      Brief: "Given a number, return whether it is even." Input: long n. Output:
+      boolean. Edge case: 0 is even. A good test:  is_even(0) → true.  In Java
+      the result type boolean is written before the method name.
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: 'Implement the brief: return true if n is even, else false.'
+    task:
+      prompt: Return true if n is even, otherwise false.
+      func_name: is_even
+      starter: |
+        class Solution {
+            public boolean is_even(long n) {
+                // hint: even means remainder 0 after %2 →  return n % 2 == 0;
+            }
+        }
+      solution: |
+        class Solution {
+            public boolean is_even(long n) {
+                return n % 2 == 0;
+            }
+        }
+      tests:
+        - {name: is_even(4), input: [4], expected: true}
+        - {name: is_even(7), input: [7], expected: false}
+        - {name: is_even(0), input: [0], expected: true}
+  - kind: you_do
+    title: You do — solo
+    body: 'New brief — decode it, then implement: "Given an array of test scores, return how many are passing (60 or above). Empty array → 0."'
+    task:
+      prompt: Return how many scores are 60 or above.
+      func_name: count_passing
+      starter: |
+        class Solution {
+            public long count_passing(long[] scores) {
+                // <- accumulator + a condition (score >= 60)
+            }
+        }
+      solution: |
+        class Solution {
+            public long count_passing(long[] scores) {
+                long c = 0;
+                for (long s : scores) {
+                    if (s >= 60) {
+                        c++;
+                    }
+                }
+                return c;
+            }
+        }
+      tests:
+        - {name: 'count_passing([55,60,90])', input: [[55, 60, 90]], expected: 2}
+        - {name: 'count_passing([])', input: [[]], expected: 0}
+        - {name: 'count_passing([40,60,60])', input: [[40, 60, 60]], expected: 2}

@@ -1,0 +1,37 @@
+id: boot-sequence
+order: 1
+title: Boot Sequence
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A program runs instructions top to bottom. Two things you'll do constantly:
+      *show* a value and *hand back* a value.
+
+          def boot():
+              return "ready"
+
+      `print(x)` displays x; `return x` hands x back to whoever called the code.
+      In DevAscent we grade by what you RETURN, not what you print.
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: A function header is written for you. Make it hand back the exact text Hello, world!
+    task:
+      prompt: Make greet() return the exact text "Hello, world!"
+      func_name: greet
+      starter: |
+        def greet():
+            pass  # hint: text goes in quotes. Use  return "Hello, world!"  (exact punctuation)
+      tests:
+        - {name: 'greet()', input: [], expected: "Hello, world!"}
+  - kind: you_do
+    title: You do — solo
+    body: Now on your own.
+    task:
+      prompt: Make announce() return the exact text "DevAscent online"
+      func_name: announce
+      starter: |
+        def announce():
+            pass  # <- delete this line and write your code
+      tests:
+        - {name: 'announce()', input: [], expected: "DevAscent online"}

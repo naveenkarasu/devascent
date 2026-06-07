@@ -1,0 +1,151 @@
+- category: 'Trees & Graphs'
+  lang: typescript
+  title: 'Trees & Graphs — TypeScript refresher'
+  summary: |
+    Trees are acyclic connected graphs; a binary tree node has at most two children.
+    Graphs can be directed or undirected, weighted or unweighted, and may contain cycles.
+
+    Traversal algorithms:
+      - DFS: use recursion or an explicit stack. Good for path-finding, cycle detection,
+        topological sort.
+      - BFS: use a queue (array with shift, or a proper deque). Good for shortest path
+        in unweighted graphs, level-order traversal.
+
+    TypeScript specifics:
+      - Define node types explicitly: `interface TreeNode { val: number; left: TreeNode | null; right: TreeNode | null; }`
+      - Adjacency list: `const graph: Map<number, number[]> = new Map();`
+      - Visited set: `const visited = new Set<number>();`
+      - BFS queue: `const queue: TreeNode[] = [root];` — use `shift()` (O(n)) or a
+        proper deque class for performance-critical code.
+      - `null` checks are enforced by TypeScript: always guard `node !== null`.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'binary tree node interface'
+          code: |
+            interface TreeNode {
+              val: number;
+              left: TreeNode | null;
+              right: TreeNode | null;
+            }
+        - label: 'adjacency list (undirected graph)'
+          code: 'const graph = new Map<number, number[]>();'
+        - label: 'BFS queue'
+          code: 'const queue: TreeNode[] = [];'
+        - label: 'visited set (graph traversal)'
+          code: 'const visited = new Set<number>();'
+    - title: Basic operations
+      ops:
+        - label: 'add edge to adjacency list'
+          code: |
+            if (!graph.has(u)) graph.set(u, []);
+            graph.get(u)!.push(v);
+        - label: 'enqueue (BFS)'
+          code: 'queue.push(node);'
+        - label: 'dequeue (BFS)'
+          code: 'const curr = queue.shift();'
+        - label: 'check and mark visited'
+          code: |
+            if (visited.has(node)) continue;
+            visited.add(node);
+        - label: 'null-safe access of children'
+          code: |
+            if (node.left !== null) {
+              /* process node.left */
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'DFS recursive (inorder traversal)'
+          code: |
+            function inorder(node: TreeNode | null): void {
+              if (node === null) return;
+              inorder(node.left);
+              console.log(node.val);
+              inorder(node.right);
+            }
+        - label: 'BFS level-order traversal'
+          code: |
+            const queue: TreeNode[] = [root];
+            while (queue.length > 0) {
+              const size = queue.length;
+              for (let i = 0; i < size; i++) {
+                const node = queue.shift()!;
+                if (node.left) queue.push(node.left);
+                if (node.right) queue.push(node.right);
+              }
+            }
+        - label: 'DFS iterative with explicit stack'
+          code: |
+            const stack: number[] = [start];
+            while (stack.length > 0) {
+              const node = stack.pop()!;
+              if (visited.has(node)) continue;
+              visited.add(node);
+              for (const nb of (graph.get(node) ?? [])) stack.push(nb);
+            }
+    - title: Special operations (Trees & Graphs)
+      ops:
+        - label: 'tree height / max depth'
+          code: |
+            function maxDepth(node: TreeNode | null): number {
+              if (node === null) return 0;
+              return 1 + Math.max(maxDepth(node.left), maxDepth(node.right));
+            }
+        - label: 'count connected components (DFS)'
+          code: |
+            let components = 0;
+            for (const node of graph.keys()) {
+              if (!visited.has(node)) {
+                dfs(node);
+                components++;
+              }
+            }
+        - label: 'topological sort (Kahn BFS)'
+          code: |
+            const indegree: number[] = new Array(n).fill(0);
+            for (const [u, v] of edges) indegree[v]++;
+            const queue: number[] = [];
+            for (let i = 0; i < n; i++) if (indegree[i] === 0) queue.push(i);
+            const order: number[] = [];
+            while (queue.length) {
+              const u = queue.shift()!;
+              order.push(u);
+              for (const v of (graph.get(u) ?? [])) {
+                if (--indegree[v] === 0) queue.push(v);
+              }
+            }
+        - label: 'lowest common ancestor (BST)'
+          code: |
+            function lcaBST(root: TreeNode, p: TreeNode, q: TreeNode): TreeNode {
+              if (p.val < root.val && q.val < root.val) return lcaBST(root.left!, p, q);
+              if (p.val > root.val && q.val > root.val) return lcaBST(root.right!, p, q);
+              return root;
+            }
+  example: |
+    Worked example — level-order traversal of a binary tree (BFS).
+
+      Use a queue. Seed it with the root. On each level, record the current queue
+      size, process exactly that many nodes (collecting values), then enqueue their
+      children. Each iteration of the outer loop corresponds to one level.
+
+        function levelOrder(root: TreeNode | null): number[][] {
+            if (root === null) return [];
+            const result: number[][] = [];
+            const queue: TreeNode[] = [root];
+            while (queue.length > 0) {
+                const level: number[] = [];
+                const size = queue.length;
+                for (let i = 0; i < size; i++) {
+                    const node = queue.shift()!;
+                    level.push(node.val);
+                    if (node.left) queue.push(node.left);
+                    if (node.right) queue.push(node.right);
+                }
+                result.push(level);
+            }
+            return result;
+        }
+
+    Takeaway: snapshot `queue.length` at the start of each level so the inner loop
+    processes exactly one level. TypeScript's null checks ensure you never traverse
+    a null child.

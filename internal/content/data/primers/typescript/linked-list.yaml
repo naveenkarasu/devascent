@@ -1,0 +1,146 @@
+- category: 'Linked List'
+  lang: typescript
+  title: 'Linked List — TypeScript refresher'
+  summary: |
+    A linked list is a sequence of nodes where each node holds a value and a pointer
+    to the next node. Unlike arrays, insertion/deletion at a known node is O(1), but
+    random access is O(n).
+
+    TypeScript specifics:
+      - Define a typed node: `interface ListNode { val: number; next: ListNode | null; }`
+      - TypeScript forces you to handle `null` explicitly — use `!` (non-null assertion)
+        only when you have guaranteed it is not null, or use an `if` guard instead.
+      - A dummy head node simplifies edge cases: `const dummy: ListNode = { val: 0, next: head };`
+      - Fast/slow pointer pattern detects cycles and finds midpoints in O(n) / O(1) space.
+
+    Common linked list patterns:
+      - Dummy head to simplify insert/delete at the front.
+      - Reverse: iterative (prev, curr, next pointers) or recursive.
+      - Fast/slow pointers: cycle detection, find middle, find k-th from end.
+      - Merge two sorted lists.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'linked list node interface'
+          code: |
+            interface ListNode {
+              val: number;
+              next: ListNode | null;
+            }
+        - label: 'create a node'
+          code: 'const node: ListNode = { val: 5, next: null };'
+        - label: 'dummy head (simplifies edge cases)'
+          code: 'const dummy: ListNode = { val: 0, next: head };'
+        - label: 'prev pointer'
+          code: 'let prev: ListNode | null = null;'
+        - label: 'curr pointer'
+          code: 'let curr: ListNode | null = head;'
+    - title: Basic operations
+      ops:
+        - label: 'advance a pointer'
+          code: 'curr = curr.next;'
+        - label: 'link two nodes'
+          code: 'prev.next = curr;'
+        - label: 'detach a node (skip over it)'
+          code: 'prev.next = curr.next;'
+        - label: 'check end of list'
+          code: |
+            while (curr !== null) {
+              /* ... */
+              curr = curr.next;
+            }
+        - label: 'read node value safely'
+          code: 'const v = curr?.val ?? 0;'
+    - title: Iteration & loops
+      ops:
+        - label: 'linear scan'
+          code: |
+            let curr: ListNode | null = head;
+            while (curr !== null) {
+              console.log(curr.val);
+              curr = curr.next;
+            }
+        - label: 'fast / slow pointer (find middle)'
+          code: |
+            let slow: ListNode | null = head;
+            let fast: ListNode | null = head;
+            while (fast !== null && fast.next !== null) {
+              slow = slow!.next;
+              fast = fast.next.next;
+            }
+            // slow is now at the middle
+        - label: 'cycle detection (Floyd)'
+          code: |
+            let slow: ListNode | null = head, fast: ListNode | null = head;
+            while (fast !== null && fast.next !== null) {
+              slow = slow!.next;
+              fast = fast.next.next;
+              if (slow === fast) return true;
+            }
+            return false;
+    - title: Special operations (linked list)
+      ops:
+        - label: 'reverse a linked list (iterative)'
+          code: |
+            function reverseList(head: ListNode | null): ListNode | null {
+              let prev: ListNode | null = null;
+              let curr = head;
+              while (curr !== null) {
+                const next = curr.next;
+                curr.next = prev;
+                prev = curr;
+                curr = next;
+              }
+              return prev;
+            }
+        - label: 'merge two sorted lists'
+          code: |
+            function mergeTwoLists(l1: ListNode | null, l2: ListNode | null): ListNode | null {
+              const dummy: ListNode = { val: 0, next: null };
+              let cur = dummy;
+              while (l1 && l2) {
+                if (l1.val <= l2.val) {
+                  cur.next = l1;
+                  l1 = l1.next;
+                } else {
+                  cur.next = l2;
+                  l2 = l2.next;
+                }
+                cur = cur.next!;
+              }
+              cur.next = l1 ?? l2;
+              return dummy.next;
+            }
+        - label: 'remove n-th node from end (two pointers)'
+          code: |
+            const dummy: ListNode = { val: 0, next: head };
+            let fast: ListNode | null = dummy, slow: ListNode | null = dummy;
+            for (let i = 0; i <= n; i++) fast = fast!.next;
+            while (fast !== null) {
+              slow = slow!.next;
+              fast = fast.next;
+            }
+            slow!.next = slow!.next!.next;
+            return dummy.next;
+  example: |
+    Worked example — reverse a singly linked list in place.
+
+      Use three pointers: prev (starts null), curr (starts at head), and a temporary
+      next. For each node, store its next, flip its pointer to prev, then advance
+      both prev and curr. When curr is null, prev is the new head.
+
+        function reverseList(head: ListNode | null): ListNode | null {
+            let prev: ListNode | null = null;
+            let curr: ListNode | null = head;
+            while (curr !== null) {
+                const next: ListNode | null = curr.next;
+                curr.next = prev;
+                prev = curr;
+                curr = next;
+            }
+            return prev;   // prev is now the new head
+        }
+
+    Takeaway: the dummy head pattern eliminates special-casing the front of the list.
+    TypeScript's `ListNode | null` type forces you to handle null explicitly — use `!`
+    only when you have proven the pointer is non-null.

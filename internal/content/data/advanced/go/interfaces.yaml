@@ -1,0 +1,316 @@
+lang: go
+group: Interfaces
+title: "Interfaces — implicit satisfaction & typed nil"
+tag: E
+summary: |
+  Go interfaces are satisfied implicitly — a type implements an interface simply by
+  having the required methods, with no implements keyword. This decouples definition
+  from implementation: any third-party type that happens to have the right method set
+  automatically satisfies your interface, without modification.
+
+    type Stringer interface { String() string }
+
+    type Point struct{ X, Y int }
+    func (p Point) String() string { return fmt.Sprintf("(%d,%d)", p.X, p.Y) }
+    // Point satisfies Stringer — no declaration needed.
+
+  Internally an interface value is a pair (concrete type, concrete value), sometimes
+  called the (type, data) pair. This representation has a critical and often surprising
+  consequence: a non-nil interface value can hold a nil pointer.
+
+    var err error            // (nil, nil)      — err == nil is true
+    var p *MyError = nil
+    err = p                  // (*MyError, nil) — err == nil is false!
+
+  This is the "typed nil" gotcha. The interface is not nil because its type slot is
+  filled, even though the underlying pointer is nil. The fix is to return nil directly
+  as the error interface type, never assign a concrete nil pointer to it first.
+
+  Type assertions extract the concrete value: v, ok := i.(ConcreteType). The two-
+  value form never panics; the single-value form panics if the assertion fails. Type
+  switches dispatch on dynamic type and are the idiomatic way to handle heterogeneous
+  interface values.
+
+  The blank-identifier interface guard is a compile-time check idiom:
+    var _ io.Writer = (*MyWriter)(nil)
+  If MyWriter does not implement io.Writer the program will not compile, catching the
+  error far earlier than a runtime type assertion.
+
+  Additional gotchas: returning a concrete error type (e.g., *MyError) from a function
+  declared to return error triggers the typed-nil problem if the value is ever nil.
+  any (interface{}) swallows the type system and requires runtime assertions with no
+  compile-time safety. Interface comparison with == compares both type slot and value
+  slot; two interface values with identical data but different dynamic types are not
+  equal.
+exercises:
+  - prompt: |
+      The function below is supposed to return nil when there is no error, but the
+      caller's "if err != nil" check fires even when no error occurs. Explain why and
+      fix the function.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import "fmt"
+
+      type MyError struct{ Msg string }
+
+      func (e *MyError) Error() string { return e.Msg }
+
+      func mayFail(fail bool) error {
+          var err *MyError // nil pointer of concrete type
+          if fail {
+              err = &MyError{Msg: "something went wrong"}
+          }
+          return err // returns (*MyError, nil) — not a nil interface!
+      }
+
+      func main() {
+          err := mayFail(false)
+          if err != nil {
+              fmt.Println("got error:", err) // prints even though fail==false
+          } else {
+              fmt.Println("no error")
+          }
+      }
+    fixed_code: |
+      package main
+
+      import "fmt"
+
+      type MyError struct{ Msg string }
+
+      func (e *MyError) Error() string { return e.Msg }
+
+      func mayFail(fail bool) error {
+          if fail {
+              return &MyError{Msg: "something went wrong"}
+          }
+          return nil // returns (nil, nil) — a true nil interface
+      }
+
+      func main() {
+          err := mayFail(false)
+          if err != nil {
+              fmt.Println("got error:", err)
+          } else {
+              fmt.Println("no error") // prints correctly
+          }
+      }
+    bug: |
+      An interface value is a (type, data) pair. When a *MyError nil pointer is assigned
+      to error, the type slot is set to *MyError and the data slot is nil — the interface
+      itself is not nil. Returning the concrete-typed nil variable gives callers a
+      non-nil error even when nothing went wrong. Always return nil directly (untyped)
+      when the function's return type is an interface.
+    check: stdout
+    signal: "no error"
+
+  - prompt: |
+      The type switch below compiles but panics at runtime on the Shape case. Spot the
+      bug and fix it so the function handles all four cases safely.
+    kind: spot-the-bug
+    broken_code: |
+      package main
+
+      import "fmt"
+
+      type Shape interface{ Area() float64 }
+
+      type Circle struct{ Radius float64 }
+
+      func (c Circle) Area() float64 { return 3.14159 * c.Radius * c.Radius }
+
+      func describe(i interface{}) {
+          switch v := i.(type) {
+          case int:
+              fmt.Println("int:", v)
+          case string:
+              fmt.Println("string:", v)
+          case []byte:
+              fmt.Println("bytes:", string(v))
+          default:
+              s := i.(Shape) // single-value assertion — panics if i is not a Shape
+              fmt.Printf("shape with area %.2f\n", s.Area())
+          }
+      }
+
+      func main() {
+          describe(42)
+          describe("hello")
+          describe([]byte("hi"))
+          describe(Circle{Radius: 5})
+          describe(3.14) // triggers default, not a Shape — panics!
+      }
+    fixed_code: |
+      package main
+
+      import "fmt"
+
+      type Shape interface{ Area() float64 }
+
+      type Circle struct{ Radius float64 }
+
+      func (c Circle) Area() float64 { return 3.14159 * c.Radius * c.Radius }
+
+      func describe(i interface{}) {
+          switch v := i.(type) {
+          case int:
+              fmt.Println("int:", v)
+          case string:
+              fmt.Println("string:", v)
+          case []byte:
+              fmt.Println("bytes:", string(v))
+          case Shape:
+              fmt.Printf("shape with area %.2f\n", v.Area())
+          default:
+              fmt.Println("unknown type")
+          }
+      }
+
+      func main() {
+          describe(42)
+          describe("hello")
+          describe([]byte("hi"))
+          describe(Circle{Radius: 5})
+          describe(3.14)
+      }
+    bug: |
+      The single-value type assertion i.(Shape) in the default branch panics when i does
+      not implement Shape (e.g., when i is a float64). The fix is to add Shape as an
+      explicit case in the type switch — Go checks interface satisfaction in type-switch
+      cases at runtime safely, with no panic. The two-value assertion form (s, ok :=
+      i.(Shape)) is the safe alternative when you cannot use a type switch.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Add the compile-time interface guard idiom so the program will not compile unless
+      *MyWriter correctly implements io.Writer. Then fix the missing method so it does.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import (
+          "fmt"
+          "io"
+      )
+
+      type MyWriter struct{ data []byte }
+
+      // Write method is missing — MyWriter does not satisfy io.Writer yet.
+
+      func useWriter(w io.Writer) {
+          w.Write([]byte("hello"))
+      }
+
+      func main() {
+          mw := &MyWriter{}
+          useWriter(mw)
+          fmt.Println(string(mw.data))
+      }
+    fixed_code: |
+      package main
+
+      import (
+          "fmt"
+          "io"
+      )
+
+      type MyWriter struct{ data []byte }
+
+      var _ io.Writer = (*MyWriter)(nil) // compile-time guard
+
+      func (mw *MyWriter) Write(p []byte) (int, error) {
+          mw.data = append(mw.data, p...)
+          return len(p), nil
+      }
+
+      func useWriter(w io.Writer) {
+          w.Write([]byte("hello"))
+      }
+
+      func main() {
+          mw := &MyWriter{}
+          useWriter(mw)
+          fmt.Println(string(mw.data))
+      }
+    bug: |
+      MyWriter is missing the Write([]byte) (int, error) method required by io.Writer.
+      Without the blank-identifier guard the missing method is only caught when the
+      compiler tries to convert *MyWriter to io.Writer at the call site — sometimes far
+      from where the type is defined. The var _ io.Writer = (*MyWriter)(nil) guard makes
+      the compiler report the missing method at the type's definition site, much earlier
+      and with a clearer message.
+    check: stdout
+    signal: "hello"
+
+  - prompt: |
+      The Logger interface is defined below along with two concrete types. Wire them
+      both to a runAll function that accepts []Logger, without modifying FileLogger or
+      SilentLogger, then call runAll with one of each.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import "fmt"
+
+      type Logger interface {
+          Log(msg string)
+      }
+
+      type FileLogger struct{ Path string }
+
+      // FileLogger is missing Log — does not satisfy Logger.
+      func (fl FileLogger) Write(msg string) {
+          fmt.Println("FILE:", fl.Path, "->", msg)
+      }
+
+      type SilentLogger struct{}
+
+      func (sl SilentLogger) Log(msg string) {} // satisfies Logger
+
+      func runAll(loggers []Logger) {
+          for _, l := range loggers {
+              l.Log("event")
+          }
+      }
+
+      func main() {
+          runAll([]Logger{FileLogger{Path: "/tmp/app.log"}, SilentLogger{}})
+      }
+    fixed_code: |
+      package main
+
+      import "fmt"
+
+      type Logger interface {
+          Log(msg string)
+      }
+
+      type FileLogger struct{ Path string }
+
+      func (fl FileLogger) Log(msg string) {
+          fmt.Println("FILE:", fl.Path, "->", msg)
+      }
+
+      type SilentLogger struct{}
+
+      func (sl SilentLogger) Log(msg string) {}
+
+      func runAll(loggers []Logger) {
+          for _, l := range loggers {
+              l.Log("event")
+          }
+      }
+
+      func main() {
+          runAll([]Logger{FileLogger{Path: "/tmp/app.log"}, SilentLogger{}})
+      }
+    bug: |
+      FileLogger has Write(msg string) but the Logger interface requires Log(msg string).
+      Method names must match exactly — Go's structural typing checks the full signature.
+      Renaming Write to Log (or adding a Log method) makes FileLogger satisfy Logger
+      without any other changes.
+    check: stdout
+    signal: "FILE: /tmp/app.log -> event"

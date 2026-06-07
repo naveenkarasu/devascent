@@ -1,0 +1,108 @@
+- category: 'Greedy'
+  lang: rust
+  title: 'Greedy — Rust refresher'
+  summary: |
+    A greedy algorithm makes the locally optimal choice at each step, trusting
+    that this produces a globally optimal solution. When it applies, greedy is
+    typically O(n) or O(n log n) — much faster than DP.
+
+    Greedy works when the problem has the greedy-choice property: a local best
+    can always be extended to a global best. Classic examples: interval
+    scheduling, jump game, gas station, task assignment.
+
+    Rust notes:
+      - Sort with .sort_by() or .sort_by_key() for custom orderings.
+      - Use i32::MAX / i64::MAX as negative-infinity sentinels.
+      - The fold() iterator method maps cleanly to greedy accumulators.
+      - Closures |a, b| a.partial_cmp(b).unwrap() handle f64 sort (floats do not
+        implement Ord in Rust — use partial_cmp or sort integers instead).
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'mutable accumulator'
+          code: 'let mut best = i32::MIN;'
+        - label: 'sort intervals by start time'
+          code: 'intervals.sort_by_key(|&(s, _)| s);'
+        - label: 'sort intervals by end time (interval scheduling)'
+          code: 'intervals.sort_by_key(|&(_, e)| e);'
+    - title: Basic operations
+      ops:
+        - label: 'update a running maximum'
+          code: 'best = best.max(current);'
+        - label: 'extend a reach (jump game)'
+          code: 'reach = reach.max(i + nums[i] as usize);'
+        - label: 'test if a new interval overlaps the last taken'
+          code: 'if start >= last_end { /* no overlap — take this interval */ }'
+    - title: Iteration & loops
+      ops:
+        - label: 'scan forward updating a greedy choice'
+          code: |
+            let mut best = 0;
+            for &x in nums.iter() {
+                best = best.max(x);
+            }
+        - label: 'interval greedy — count non-overlapping intervals'
+          code: |
+            let mut count = 0;
+            let mut last_end = i32::MIN;
+            for &(start, end) in &intervals {
+                if start >= last_end {
+                    count += 1;
+                    last_end = end;
+                }
+            }
+    - title: Special operations (greedy)
+      ops:
+        - label: 'jump game — can you reach the last index?'
+          code: |
+            let mut reach = 0usize;
+            for i in 0..nums.len() {
+                if i > reach { return false; }
+                reach = reach.max(i + nums[i] as usize);
+            }
+            true
+        - label: 'assign tasks to minimize maximum load'
+          code: |
+            workers.sort();
+            tasks.sort_by(|a, b| b.cmp(a));
+            let mut loads = vec![0i64; workers.len()];
+            for (i, &task) in tasks.iter().enumerate() {
+                loads[i % workers.len()] += task as i64;
+            }
+        - label: 'minimum number of arrows to burst balloons'
+          code: |
+            balloons.sort_by_key(|&(_, e)| e);
+            let mut arrows = 1;
+            let mut end = balloons[0].1;
+            for &(s, e) in balloons.iter().skip(1) {
+                if s > end { arrows += 1; end = e; }
+            }
+        - label: 'gas station — find valid starting position'
+          code: |
+            let (mut total, mut tank, mut start) = (0i32, 0i32, 0usize);
+            for i in 0..gas.len() {
+                let gain = gas[i] - cost[i];
+                total += gain;
+                tank  += gain;
+                if tank < 0 { start = i + 1; tank = 0; }
+            }
+            if total < 0 { -1 } else { start as i32 }
+  example: |
+    Worked example — Jump Game: can you reach the last index?
+
+      Track the farthest index reachable so far. At each position check whether
+      you have been stranded (i > reach). If not, extend reach. Greedy works here
+      because taking the longest jump at each reachable point is never worse.
+
+        fn can_jump(nums: &[usize]) -> bool {
+            let mut reach = 0usize;
+            for i in 0..nums.len() {
+                if i > reach { return false; }
+                reach = reach.max(i + nums[i]);
+            }
+            true
+        }
+
+    Takeaway: greedy is justified when a local extension (longest reach, earliest
+    end-time) provably never blocks a better global solution. When unsure, verify
+    with a small counterexample before committing to greedy over DP.

@@ -1,0 +1,68 @@
+lang: go
+group: Stdlib
+title: "Stdlib — batteries-included standard library"
+tag: C
+summary: |
+  Go's standard library is intentionally complete for backend and systems work. Most
+  simple services require no third-party framework at all. Key packages:
+
+  net/http
+    Full HTTP server and client. http.ListenAndServe + http.HandleFunc is sufficient
+    for many microservices. Go 1.22 added method+path routing to http.ServeMux
+    (e.g., "GET /users/{id}"), reducing the need for third-party routers.
+
+  encoding/json
+    JSON marshal (json.Marshal / json.NewEncoder) and unmarshal (json.Unmarshal /
+    json.NewDecoder). Struct field tags control the JSON key names and behaviour:
+    `json:"name,omitempty"` — use "name" as the key, omit the field if it is the zero
+    value. Decode into map[string]interface{} for unknown schemas.
+
+  io / io/fs
+    The io.Reader and io.Writer interfaces glue the entire I/O stack. Any type
+    implementing Read([]byte) (int, error) composes with bufio, encoding/json,
+    compress/gzip, etc. io/fs provides a read-only file-system abstraction (embed.FS,
+    os.DirFS).
+
+  context
+    context.Background() is the root context. context.WithTimeout and
+    context.WithCancel create derived contexts that propagate cancellation. All
+    blocking stdlib calls (http.Get, database/sql queries) accept a context.
+
+  sync / sync/atomic
+    sync.Mutex, sync.RWMutex, sync.WaitGroup, sync.Once, sync.Map. sync/atomic
+    provides lock-free integer and pointer operations for performance-critical paths.
+
+  testing
+    Table-driven tests: define []struct{ name, input, want } and loop with t.Run.
+    Benchmarks: func BenchmarkX(b *testing.B) { for b.N times { ... } }.
+    Example functions: func ExampleX() { fmt.Println(...) // Output: ... } — verified
+    by go test. Use testing/httptest (httptest.NewRecorder, httptest.NewServer) for
+    HTTP handler tests without a real server.
+
+  os / path/filepath
+    os.Open, os.Create, os.ReadFile, os.WriteFile, os.Getenv, os.Args.
+    path/filepath handles OS-specific path separators and glob patterns.
+
+  strings / bytes / strconv
+    strings.Contains, strings.Split, strings.Builder (efficient concatenation).
+    bytes.Buffer is to []byte what strings.Builder is to string.
+    strconv.Atoi, strconv.Itoa, strconv.FormatFloat.
+
+  log / log/slog (Go 1.21+)
+    slog is the new structured logging package: slog.Info("msg", "key", value).
+    Handlers write JSON or text; the default handler writes to stderr.
+    log/slog replaces custom structured-logging wrappers for most projects.
+
+  database/sql
+    Generic SQL interface: sql.Open returns a *sql.DB connection pool. Drivers
+    (postgres, mysql, sqlite) register themselves via init(). Use db.QueryContext and
+    db.ExecContext — always pass a context for cancellation. Scan result rows into
+    typed variables; always call rows.Close() (or defer it).
+
+  Design philosophy: small interfaces, big composability. io.Reader + io.Writer
+  compose with every I/O package. The standard library overview is at
+  https://pkg.go.dev/std; browse it — no separate book is needed.
+
+  Sources:
+  - https://pkg.go.dev/std — Standard library index
+  - https://go.dev/doc/effective_go#interfaces — Effective Go: io model

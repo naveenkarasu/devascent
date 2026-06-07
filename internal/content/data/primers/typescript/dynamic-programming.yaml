@@ -1,0 +1,115 @@
+- category: 'Dynamic Programming'
+  lang: typescript
+  title: 'Dynamic Programming — TypeScript refresher'
+  summary: |
+    Dynamic programming solves problems by breaking them into overlapping sub-problems
+    and storing results to avoid redundant recomputation. Two styles exist:
+      - Top-down (memoisation): write recursion, cache results in a Map or array.
+      - Bottom-up (tabulation): fill a dp table iteratively from base cases.
+
+    DP applies when the problem has OPTIMAL SUBSTRUCTURE (optimal solution is built
+    from optimal sub-solutions) and OVERLAPPING SUB-PROBLEMS (same sub-problems recur).
+
+    TypeScript specifics:
+      - Declare dp arrays with explicit types: `const dp: number[] = new Array(n+1).fill(0);`
+      - 2-D dp: `const dp: number[][] = Array.from({length: m}, () => new Array(n).fill(0));`
+      - For memoisation use `Map<string, number>` with a serialised key, or a plain
+        object `Record<string, number>` when keys are small strings.
+      - `Infinity` / `-Infinity` are valid TypeScript sentinels (type `number`).
+  sections:
+    - title: Declarations
+      ops:
+        - label: '1-D dp array, zero-initialised'
+          code: 'const dp: number[] = new Array(n + 1).fill(0);'
+        - label: '1-D dp initialised to Infinity (min problems)'
+          code: 'const dp: number[] = new Array(n + 1).fill(Infinity);'
+        - label: '2-D dp table'
+          code: 'const dp: number[][] = Array.from({length: m + 1}, () => new Array(n + 1).fill(0));'
+        - label: 'memoisation map'
+          code: 'const memo = new Map<string, number>();'
+    - title: Basic operations
+      ops:
+        - label: 'set base case'
+          code: 'dp[0] = 0;   // e.g., zero coins needed to make amount 0'
+        - label: 'transition (1-D)'
+          code: 'dp[i] = Math.min(dp[i], dp[i - coin] + 1);'
+        - label: 'transition (2-D, LCS style)'
+          code: 'dp[i][j] = s[i-1] === t[j-1] ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1]);'
+        - label: 'check memo before recursing'
+          code: 'if (memo.has(key)) return memo.get(key)!;'
+        - label: 'store result in memo'
+          code: |
+            memo.set(key, result);
+            return result;
+    - title: Iteration & loops
+      ops:
+        - label: 'bottom-up 1-D fill'
+          code: |
+            for (let i = 1; i <= n; i++) {
+              for (const val of choices) {
+                if (val <= i) dp[i] = Math.min(dp[i], dp[i - val] + 1);
+              }
+            }
+        - label: 'bottom-up 2-D fill'
+          code: |
+            for (let i = 1; i <= m; i++) {
+              for (let j = 1; j <= n; j++) {
+                dp[i][j] = /* transition */;
+              }
+            }
+        - label: 'space-optimised: roll two rows'
+          code: |
+            let prev: number[] = new Array(n + 1).fill(0);
+            let curr: number[] = new Array(n + 1).fill(0);
+            // swap: [prev, curr] = [curr, prev];
+    - title: Special operations (dynamic programming)
+      ops:
+        - label: 'coin change (minimum coins)'
+          code: |
+            const dp: number[] = new Array(amount + 1).fill(Infinity);
+            dp[0] = 0;
+            for (let i = 1; i <= amount; i++) {
+              for (const c of coins) {
+                if (c <= i) dp[i] = Math.min(dp[i], dp[i - c] + 1);
+              }
+            }
+            return dp[amount] === Infinity ? -1 : dp[amount];
+        - label: 'longest increasing subsequence (O(n^2))'
+          code: |
+            const dp: number[] = new Array(nums.length).fill(1);
+            for (let i = 1; i < nums.length; i++) {
+              for (let j = 0; j < i; j++) {
+                if (nums[j] < nums[i]) dp[i] = Math.max(dp[i], dp[j] + 1);
+              }
+            }
+            return Math.max(...dp);
+        - label: '0/1 knapsack'
+          code: |
+            const dp: number[] = new Array(W + 1).fill(0);
+            for (const [wt, val] of items) {
+              for (let cap = W; cap >= wt; cap--) {
+                dp[cap] = Math.max(dp[cap], dp[cap - wt] + val);
+              }
+            }
+  example: |
+    Worked example — minimum number of coins to reach a target amount.
+
+      Build dp[0..amount] where dp[i] = fewest coins to make exactly i. Base case:
+      dp[0] = 0. For each amount i, try every coin: if we used that coin, we need
+      dp[i - coin] more coins plus one. Take the minimum over all coins.
+
+        function coinChange(coins: number[], amount: number): number {
+            const dp: number[] = new Array(amount + 1).fill(Infinity);
+            dp[0] = 0;
+            for (let i = 1; i <= amount; i++) {
+                for (const c of coins) {
+                    if (c <= i && dp[i - c] + 1 < dp[i]) {
+                        dp[i] = dp[i - c] + 1;
+                    }
+                }
+            }
+            return dp[amount] === Infinity ? -1 : dp[amount];
+        }
+
+    Takeaway: start with explicit types on dp arrays and always initialise with a
+    sentinel (Infinity or 0). The transition formula IS the dp definition written as code.

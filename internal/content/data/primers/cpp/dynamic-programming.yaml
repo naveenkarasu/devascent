@@ -1,0 +1,106 @@
+- category: 'Dynamic Programming'
+  lang: cpp
+  title: Dynamic Programming — C++ refresher
+  summary: |
+    Dynamic programming (DP) solves problems by breaking them into overlapping
+    subproblems, solving each once, and storing the result. Two styles:
+    top-down (memoisation with recursion) and bottom-up (tabulation with loops).
+
+    Identify DP by: "optimal value", "number of ways", "can we achieve X?" with
+    overlapping subproblems. Define the state clearly (dp[i] means "answer for
+    prefix of length i"), write the recurrence, handle base cases.
+
+    C++ notes:
+      - For 1-D DP: vector<int> dp(n+1, 0) or vector<long long> dp.
+      - For 2-D DP: vector<vector<int>> dp(m+1, vector<int>(n+1, 0)).
+      - Top-down: use an unordered_map or a dp array filled with -1 as "unseen".
+      - Watch out for int overflow in counting problems — use long long or modular
+        arithmetic.
+  sections:
+    - title: Declarations
+      ops:
+        - label: '1-D DP table, zero-initialised'
+          code: 'vector<int> dp(n + 1, 0);'
+        - label: '2-D DP table'
+          code: 'vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));'
+        - label: 'memo map for top-down DP'
+          code: 'unordered_map<int, long long> memo;'
+        - label: '1-D array pre-filled with sentinel for top-down'
+          code: 'vector<int> dp(n + 1, -1);'
+    - title: Basic operations
+      ops:
+        - label: 'read/write DP cell'
+          code: 'dp[i] = max(dp[i], dp[i-1] + val);'
+        - label: 'check memo cache (top-down)'
+          code: 'if (memo.count(state)) return memo[state];'
+        - label: 'store result in memo'
+          code: 'return memo[state] = result;'
+        - label: 'rolling array (space optimisation for 2-D)'
+          code: |
+            vector<int> prev(n+1), curr(n+1);
+            swap(prev, curr);
+    - title: Iteration & loops
+      ops:
+        - label: 'bottom-up 1-D (Fibonacci-style)'
+          code: |
+            dp[0] = 0;
+            dp[1] = 1;
+            for (int i = 2; i <= n; i++) dp[i] = dp[i-1] + dp[i-2];
+        - label: 'knapsack (0/1): iterate items then capacities BACKWARDS'
+          code: |
+            for (auto& item : items)
+                for (int cap = maxCap; cap >= item.weight; cap--)
+                    dp[cap] = max(dp[cap], dp[cap - item.weight] + item.value);
+        - label: 'unbounded knapsack: iterate capacity FORWARDS'
+          code: |
+            for (int cap = 0; cap <= maxCap; cap++)
+                for (int item : items)
+                    if (item <= cap) dp[cap] = max(dp[cap], dp[cap - item] + 1);
+        - label: '2-D DP loop (LCS / edit distance style)'
+          code: |
+            for (int i = 1; i <= m; i++)
+                for (int j = 1; j <= n; j++)
+                    dp[i][j] = (a[i-1] == b[j-1]) ? dp[i-1][j-1] + 1
+                                                   : max(dp[i-1][j], dp[i][j-1]);
+    - title: Special operations (dynamic programming)
+      ops:
+        - label: 'coin change: minimum coins to reach amount'
+          code: |
+            vector<int> dp(amount + 1, INT_MAX);
+            dp[0] = 0;
+            for (int coin : coins)
+                for (int i = coin; i <= amount; i++)
+                    if (dp[i - coin] != INT_MAX)
+                        dp[i] = min(dp[i], dp[i - coin] + 1);
+        - label: 'longest increasing subsequence (patience sort O(n log n))'
+          code: |
+            vector<int> tails;
+            for (int x : nums) {
+                auto it = lower_bound(tails.begin(), tails.end(), x);
+                if (it == tails.end()) tails.push_back(x);
+                else *it = x;
+            }
+            // tails.size() is the LIS length
+        - label: 'number of ways: add rather than take max'
+          code: 'dp[i] = (dp[i] + dp[i - coin]) % MOD;'
+  example: |
+    Worked example — coin change (minimum coins to reach amount):
+
+      dp[i] = minimum coins to make amount i. Base case: dp[0] = 0. For each
+      amount i, try every coin: if dp[i - coin] is reachable, dp[i] can be
+      dp[i - coin] + 1. Final answer is dp[amount] (INT_MAX means unreachable).
+
+        int coinChange(vector<int>& coins, int amount) {
+            vector<int> dp(amount + 1, INT_MAX);
+            dp[0] = 0;
+            for (int i = 1; i <= amount; i++) {
+                for (int coin : coins) {
+                    if (coin <= i && dp[i - coin] != INT_MAX)
+                        dp[i] = min(dp[i], dp[i - coin] + 1);
+                }
+            }
+            return dp[amount] == INT_MAX ? -1 : dp[amount];
+        }
+
+    Takeaway: define dp[i] precisely before coding. The recurrence falls out of
+    the definition. Guard against INT_MAX + 1 overflow when updating.

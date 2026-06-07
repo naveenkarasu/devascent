@@ -1,0 +1,45 @@
+lang: javascript
+group: Browser/DOM
+title: "Browser/DOM — document, events, fetch"
+tag: P
+summary: |
+  The DOM (Document Object Model) is the browser's representation of the HTML document
+  as a tree of nodes. JavaScript manipulates the DOM to build interactive UIs.
+
+  Selecting elements: `document.querySelector(selector)` returns the first matching
+  element; `querySelectorAll` returns a static NodeList of all matches. Prefer these
+  over the older `getElementById`/`getElementsByClassName`.
+
+  Mutating the DOM: `createElement`, `appendChild`, `removeChild`, `replaceChild`,
+  `element.remove()`. `element.classList` provides `add`, `remove`, `toggle`, `contains`
+  for CSS class manipulation. Attribute access: `getAttribute`/`setAttribute`, or direct
+  property access (`el.id`, `el.href`).
+
+  Content: `element.textContent` sets or reads the text content of an element (safe for
+  user data). `element.innerHTML` parses an HTML string — convenient but opens XSS
+  vectors when the string contains user input. Prefer `textContent` or
+  `document.createTextNode` for user-supplied data.
+
+  Event handling: `element.addEventListener(type, handler)` and
+  `element.removeEventListener(type, handler)`. Events bubble up the DOM tree by default
+  (bubbling phase); `addEventListener(type, handler, { capture: true })` handles events
+  on the way down. `event.preventDefault()` stops the browser's default action (e.g.,
+  form submission, link navigation). `event.stopPropagation()` prevents the event from
+  bubbling or capturing further.
+
+  Event delegation: attach one listener on a parent and use `event.target` to identify
+  which child triggered it — more efficient than attaching listeners to each child,
+  especially for dynamically added elements.
+
+  Network: `fetch(url, options)` returns a Promise that resolves with a `Response`
+  object. `fetch` only rejects on network failure — HTTP 4xx/5xx responses resolve with
+  `ok: false`. Always check `response.ok` before calling `response.json()`.
+
+  Client-side persistence: `localStorage` (persists across sessions) and
+  `sessionStorage` (cleared when the tab closes) store key-value strings. Parse/stringify
+  JSON manually for structured data.
+
+  Best exercised as a small DOM project (Todo list, weather widget, form validation)
+  rather than isolated snippets. Standalone exercises can target event delegation, the
+  fetch + render cycle, or the `textContent` vs `innerHTML` security distinction.
+exercises: []

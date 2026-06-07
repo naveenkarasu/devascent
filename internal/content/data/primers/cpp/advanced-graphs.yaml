@@ -1,0 +1,145 @@
+- category: 'Advanced Graphs'
+  lang: cpp
+  title: Advanced Graphs — C++ refresher
+  summary: |
+    Advanced graph algorithms go beyond basic BFS/DFS to handle weighted shortest
+    paths, minimum spanning trees, topological ordering, and strongly connected
+    components.
+
+    Key algorithms:
+      - Dijkstra: single-source shortest paths in weighted graphs (no negative edges).
+        Uses a min-heap; O((V + E) log V).
+      - Bellman-Ford: handles negative edges; O(VE). Detect negative cycles.
+      - Kruskal / Prim: minimum spanning tree; Kruskal uses Union-Find, O(E log E).
+      - Topological sort: ordering of a DAG; Kahn BFS or DFS with a stack.
+      - Union-Find (DSU): near-O(1) amortised union and find; essential for cycle
+        detection, connected components, Kruskal.
+
+    C++ notes:
+      - Weighted graph: vector<vector<pair<int,int>>> adj(n) where each pair is {neighbour, weight}.
+      - Distances: vector<int> dist(n, INT_MAX).
+      - Use long long distances when edge weights can accumulate past 2^31.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'weighted adjacency list'
+          code: |
+            vector<vector<pair<int,int>>> adj(n);
+            adj[u].push_back({v, w});
+        - label: 'distance array initialised to infinity'
+          code: |
+            vector<int> dist(n, INT_MAX);
+            dist[src] = 0;
+        - label: 'Union-Find (DSU) arrays'
+          code: |
+            vector<int> parent(n), rank_(n, 0);
+            iota(parent.begin(), parent.end(), 0);
+    - title: Basic operations
+      ops:
+        - label: 'Dijkstra: relax an edge'
+          code: |
+            if (dist[u] + w < dist[v]) {
+                dist[v] = dist[u] + w;
+                pq.push({dist[v], v});
+            }
+        - label: 'Union-Find: find with path compression'
+          code: |
+            int find(vector<int>& p, int x) {
+                if (p[x] != x) p[x] = find(p, p[x]);
+                return p[x];
+            }
+        - label: 'Union-Find: union by rank'
+          code: |
+            void unite(vector<int>& p, vector<int>& r, int a, int b) {
+                a = find(p, a);
+                b = find(p, b);
+                if (a == b) return;
+                if (r[a] < r[b]) swap(a, b);
+                p[b] = a;
+                if (r[a] == r[b]) r[a]++;
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'Dijkstra main loop'
+          code: |
+            priority_queue<pair<int,int>, vector<pair<int,int>>, greater<>> pq;
+            pq.push({0, src});
+            while (!pq.empty()) {
+                auto [d, u] = pq.top();
+                pq.pop();
+                if (d > dist[u]) continue;   // stale entry
+                for (auto [v, w] : adj[u])
+                    if (dist[u] + w < dist[v]) {
+                        dist[v] = dist[u] + w;
+                        pq.push({dist[v], v});
+                    }
+            }
+        - label: 'Bellman-Ford: relax all edges V-1 times'
+          code: |
+            for (int iter = 0; iter < n - 1; iter++)
+                for (auto& [u, v, w] : edges)
+                    if (dist[u] != INT_MAX && dist[u] + w < dist[v])
+                        dist[v] = dist[u] + w;
+        - label: 'Kruskal MST: sort edges, union-find for cycles'
+          code: |
+            sort(edges.begin(), edges.end());   // {weight, u, v}
+            for (auto& [w, u, v] : edges) {
+                if (find(p, u) != find(p, v)) {
+                    unite(p, r, u, v);
+                    mst_cost += w;
+                }
+            }
+    - title: Special operations (advanced graphs)
+      ops:
+        - label: 'topological sort — Kahn BFS (detect cycle if order.size() < n)'
+          code: |
+            queue<int> q;
+            for (int i = 0; i < n; i++) if (indegree[i] == 0) q.push(i);
+            while (!q.empty()) {
+                int u = q.front();
+                q.pop();
+                order.push_back(u);
+                for (int v : adj[u]) if (--indegree[v] == 0) q.push(v);
+            }
+        - label: 'count connected components with Union-Find'
+          code: |
+            int components = n;
+            for (auto& [u, v] : edges) {
+                if (find(p, u) != find(p, v)) {
+                    unite(p, r, u, v);
+                    components--;
+                }
+            }
+        - label: 'detect negative cycle (Bellman-Ford extra pass)'
+          code: |
+            for (auto& [u, v, w] : edges)
+                if (dist[u] != INT_MAX && dist[u] + w < dist[v])
+                    return true;   // negative cycle exists
+  example: |
+    Worked example — Dijkstra's shortest path from source to all nodes:
+
+      Use a min-heap of (distance, node). Start with dist[src] = 0. Each step
+      extract the closest unprocessed node, then relax all its edges. Skip stale
+      heap entries (where d > dist[u]) to keep correctness without a "visited"
+      array.
+
+        vector<int> dijkstra(int n, vector<vector<pair<int,int>>>& adj, int src) {
+            vector<int> dist(n, INT_MAX);
+            dist[src] = 0;
+            priority_queue<pair<int,int>, vector<pair<int,int>>, greater<>> pq;
+            pq.push({0, src});
+            while (!pq.empty()) {
+                auto [d, u] = pq.top();
+                pq.pop();
+                if (d > dist[u]) continue;
+                for (auto [v, w] : adj[u])
+                    if (dist[u] + w < dist[v]) {
+                        dist[v] = dist[u] + w;
+                        pq.push({dist[v], v});
+                    }
+            }
+            return dist;
+        }
+
+    Takeaway: always skip stale heap entries with the if (d > dist[u]) continue
+    guard. For negative edges, switch to Bellman-Ford.

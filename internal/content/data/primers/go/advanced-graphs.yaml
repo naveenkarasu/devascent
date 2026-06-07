@@ -1,0 +1,177 @@
+- category: 'Advanced Graphs'
+  lang: go
+  title: 'Advanced Graphs — Go refresher'
+  summary: |
+    Advanced graph algorithms cover shortest paths, minimum spanning trees,
+    topological sort, and strongly connected components. These are O(E log V)
+    to O(V+E) depending on the algorithm.
+
+    Algorithms to know:
+      - Dijkstra: single-source shortest path on non-negative weights (min-heap).
+      - Bellman-Ford: handles negative weights; detects negative cycles.
+      - Topological sort: Kahn (BFS with in-degrees) or DFS post-order.
+      - Union-Find: disjoint set union for cycle detection and MST.
+      - Prim / Kruskal: minimum spanning tree.
+
+    Go notes:
+      - Dijkstra needs a min-heap of [dist, node]; use container/heap.
+      - Union-Find is a []int parent array with path compression.
+      - For topological sort, track in-degrees with a []int or map[int]int.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'weighted adjacency list'
+          code: |
+            type Edge struct{ to, w int }
+            graph := make([][]Edge, n)
+        - label: 'distance array initialised to infinity'
+          code: |
+            dist := make([]int, n)
+            for i := range dist {
+                dist[i] = 1 << 62
+            }
+            dist[src] = 0
+        - label: 'Union-Find parent array'
+          code: |
+            parent := make([]int, n)
+            for i := range parent {
+                parent[i] = i
+            }
+        - label: 'in-degree array for topological sort'
+          code: 'inDeg := make([]int, n)'
+    - title: Basic operations
+      ops:
+        - label: 'relax an edge (Dijkstra / Bellman-Ford)'
+          code: 'if dist[u]+w < dist[v] { dist[v] = dist[u] + w }'
+        - label: 'Union-Find: find with path compression'
+          code: |
+            func find(p []int, x int) int {
+                if p[x] != x {
+                    p[x] = find(p, p[x])
+                }
+                return p[x]
+            }
+        - label: 'Union-Find: union by rank'
+          code: |
+            func union(p, rank []int, x, y int) bool {
+                px, py := find(p, x), find(p, y)
+                if px == py {
+                    return false
+                }
+                if rank[px] < rank[py] {
+                    px, py = py, px
+                }
+                p[py] = px
+                if rank[px] == rank[py] {
+                    rank[px]++
+                }
+                return true
+            }
+        - label: 'decrement in-degree and enqueue zero-degree nodes'
+          code: |
+            for _, nb := range graph[v] {
+                inDeg[nb]--
+                if inDeg[nb] == 0 {
+                    queue = append(queue, nb)
+                }
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'Dijkstra main loop'
+          code: |
+            for h.Len() > 0 {
+                cur := heap.Pop(h).([2]int) // [dist, node]
+                d, u := cur[0], cur[1]
+                if d > dist[u] {
+                    continue
+                }
+                for _, e := range graph[u] {
+                    if dist[u]+e.w < dist[e.to] {
+                        dist[e.to] = dist[u] + e.w
+                        heap.Push(h, [2]int{dist[e.to], e.to})
+                    }
+                }
+            }
+        - label: 'Bellman-Ford: relax all edges V-1 times'
+          code: |
+            for i := 0; i < n-1; i++ {
+                for _, e := range edges {
+                    if dist[e.u]+e.w < dist[e.v] {
+                        dist[e.v] = dist[e.u] + e.w
+                    }
+                }
+            }
+        - label: 'Kahn topological sort'
+          code: |
+            queue := []int{}
+            for i, d := range inDeg {
+                if d == 0 {
+                    queue = append(queue, i)
+                }
+            }
+            order := []int{}
+            for len(queue) > 0 {
+                v := queue[0]
+                queue = queue[1:]
+                order = append(order, v)
+                for _, nb := range graph[v] {
+                    inDeg[nb]--
+                    if inDeg[nb] == 0 {
+                        queue = append(queue, nb)
+                    }
+                }
+            }
+    - title: Special operations (advanced graphs)
+      ops:
+        - label: 'detect negative cycle (Bellman-Ford extra pass)'
+          code: 'for _, e := range edges { if dist[e.u]+e.w < dist[e.v] { return true /* negative cycle */ } }'
+        - label: 'Kruskal MST (sort edges, union-find)'
+          code: |
+            sort.Slice(edges, func(i, j int) bool { return edges[i].w < edges[j].w })
+            for _, e := range edges {
+                if union(parent, rank, e.u, e.v) {
+                    mstCost += e.w
+                }
+            }
+        - label: 'count connected components (union-find)'
+          code: |
+            comps := n
+            for _, e := range edges {
+                if union(p, rank, e[0], e[1]) {
+                    comps--
+                }
+            }
+            return comps
+        - label: 'check if graph is a valid DAG (cycle = topo sort shorter than n)'
+          code: 'if len(order) != n { return false /* cycle detected */ }'
+  example: |
+    Worked example — Dijkstra single-source shortest paths on a weighted graph.
+
+      Push (0, src) onto a min-heap. Each step pop the cheapest unvisited node,
+      skip it if its recorded distance is already outdated, then relax all its
+      outgoing edges. Because we always expand the cheapest node first, the first
+      time we pop a node is its true shortest distance.
+
+        func dijkstra(graph [][]Edge, src, n int) []int {
+            dist := make([]int, n)
+            for i := range dist { dist[i] = 1 << 62 }
+            dist[src] = 0
+            h := &PairHeap{{0, src}}
+            heap.Init(h)
+            for h.Len() > 0 {
+                cur := heap.Pop(h).([2]int)
+                d, u := cur[0], cur[1]
+                if d > dist[u] { continue }
+                for _, e := range graph[u] {
+                    if dist[u]+e.w < dist[e.to] {
+                        dist[e.to] = dist[u] + e.w
+                        heap.Push(h, [2]int{dist[e.to], e.to})
+                    }
+                }
+            }
+            return dist
+        }
+
+    Takeaway: the stale-entry check (if d > dist[u]) is what makes the lazy
+    heap approach work without a decrease-key operation. Use 1<<62 as infinity
+    to avoid overflow when adding weights.

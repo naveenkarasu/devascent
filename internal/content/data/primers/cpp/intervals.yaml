@@ -1,0 +1,104 @@
+- category: 'Intervals'
+  lang: cpp
+  title: Intervals — C++ refresher
+  summary: |
+    Interval problems deal with ranges [start, end] and ask you to merge, insert,
+    detect overlaps, or schedule them. The key insight: SORT by start time first,
+    then a single pass is enough for most operations.
+
+    Two intervals [a, b] and [c, d] overlap when a <= d && c <= b.
+    Merging them gives [min(a, c), max(b, d)].
+
+    C++ notes:
+      - Represent intervals as vector<pair<int,int>> or vector<vector<int>>.
+      - Sort with sort(v.begin(), v.end()) — pairs sort by first element then second.
+      - Use a min-heap of end times to count minimum meeting rooms needed.
+      - Structured bindings (auto& [s, e]) make interval code very clean.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'vector of intervals as pairs'
+          code: 'vector<pair<int,int>> intervals;'
+        - label: 'vector of intervals as sub-vectors'
+          code: 'vector<vector<int>> intervals;  // each is {start, end}'
+        - label: 'min-heap of end times (for meeting rooms)'
+          code: 'priority_queue<int, vector<int>, greater<int>> ends;'
+    - title: Basic operations
+      ops:
+        - label: 'sort intervals by start time'
+          code: 'sort(intervals.begin(), intervals.end());'
+        - label: 'sort by end time'
+          code: 'sort(intervals.begin(), intervals.end(), [](auto& a, auto& b){ return a.second < b.second; });'
+        - label: 'check if two intervals overlap'
+          code: 'bool overlap = (a.first <= b.second) && (b.first <= a.second);'
+        - label: 'merge two overlapping intervals'
+          code: 'int s = min(a.first, b.first), e = max(a.second, b.second);'
+    - title: Iteration & loops
+      ops:
+        - label: 'merge all overlapping intervals'
+          code: |
+            sort(intervals.begin(), intervals.end());
+            vector<pair<int,int>> res;
+            for (auto& [s, e] : intervals) {
+                if (!res.empty() && s <= res.back().second)
+                    res.back().second = max(res.back().second, e);
+                else
+                    res.push_back({s, e});
+            }
+        - label: 'insert new interval into sorted non-overlapping list'
+          code: |
+            vector<vector<int>> res;
+            int i = 0, n = (int)intervals.size();
+            while (i < n && intervals[i][1] < newInterval[0]) res.push_back(intervals[i++]);
+            while (i < n && intervals[i][0] <= newInterval[1]) {
+                newInterval[0] = min(newInterval[0], intervals[i][0]);
+                newInterval[1] = max(newInterval[1], intervals[i][1]);
+                i++;
+            }
+            res.push_back(newInterval);
+            while (i < n) res.push_back(intervals[i++]);
+    - title: Special operations (intervals)
+      ops:
+        - label: 'minimum meeting rooms (greedy + min-heap)'
+          code: |
+            sort(intervals.begin(), intervals.end());
+            priority_queue<int, vector<int>, greater<int>> ends;
+            for (auto& [s, e] : intervals) {
+                if (!ends.empty() && ends.top() <= s) ends.pop();
+                ends.push(e);
+            }
+            // ends.size() is the answer
+        - label: 'total covered length after merging'
+          code: |
+            int total = 0;
+            int cur = INT_MIN;
+            for (auto& [s, e] : intervals) {
+                int start = max(s, cur);
+                if (start < e) total += e - start;
+                cur = max(cur, e);
+            }
+        - label: 'find all intervals overlapping query [ql, qr]'
+          code: |
+            for (auto& [s, e] : intervals)
+                if (s <= qr && ql <= e) result.push_back({s, e});
+  example: |
+    Worked example — merge all overlapping intervals:
+
+      Sort by start time. Walk through: if the current interval starts at or
+      before the last merged interval's end, extend the end. Otherwise start a
+      new merged interval. One pass after sorting gives O(n log n) total.
+
+        vector<pair<int,int>> merge(vector<pair<int,int>>& iv) {
+            sort(iv.begin(), iv.end());
+            vector<pair<int,int>> res;
+            for (auto& [s, e] : iv) {
+                if (!res.empty() && s <= res.back().second)
+                    res.back().second = max(res.back().second, e);
+                else
+                    res.push_back({s, e});
+            }
+            return res;
+        }
+
+    Takeaway: sort + single pass covers merge, insert, and scheduling. For
+    minimum rooms, swap the single pass for a min-heap of end times.

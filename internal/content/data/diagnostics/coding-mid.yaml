@@ -1,0 +1,85 @@
+# Slot: coding-mid — a small loop/collection task (difficulty 2).
+- id: reverse_text
+  slot: coding-mid
+  order: 5
+  difficulty: 2
+  measures: coding
+  kind: code
+  prompt: Write a function reverse_text(s) that returns the input string reversed.
+  task:
+    func_name: reverse_text
+    starter: |
+      def reverse_text(s):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'reverse_text(hello)', input: ["hello"], expected: "olleh"}
+      - {name: 'reverse_text(ab)', input: ["ab"], expected: "ba"}
+      - {name: 'reverse_text(empty)', input: [""], expected: ""}
+
+- id: sum_list
+  slot: coding-mid
+  order: 5
+  difficulty: 2
+  measures: coding
+  kind: code
+  prompt: Write a function sum_list(numbers) that returns the sum of a list of numbers.
+  task:
+    func_name: sum_list
+    starter: |
+      def sum_list(numbers):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'sum_list([1,2,3])', input: [[1, 2, 3]], expected: 6}
+      - {name: 'sum_list([])', input: [[]], expected: 0}
+      - {name: 'sum_list([-1,1])', input: [[-1, 1]], expected: 0}
+
+- id: count_evens
+  slot: coding-mid
+  order: 5
+  difficulty: 2
+  measures: coding
+  kind: code
+  prompt: Write a function count_evens(nums) that returns how many numbers in the list are even.
+  task:
+    func_name: count_evens
+    starter: |
+      def count_evens(nums):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'count_evens([1,2,3,4])', input: [[1, 2, 3, 4]], expected: 2}
+      - {name: 'count_evens([2,4,6])', input: [[2, 4, 6]], expected: 3}
+      - {name: 'count_evens([1,3])', input: [[1, 3]], expected: 0}
+
+- id: count_vowels
+  slot: coding-mid
+  order: 5
+  difficulty: 2
+  measures: coding
+  kind: code
+  prompt: Write a function count_vowels(s) that returns how many vowels (a, e, i, o, u) are in the string.
+  task:
+    func_name: count_vowels
+    starter: |
+      def count_vowels(s):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'count_vowels(hello)', input: ["hello"], expected: 2}
+      - {name: 'count_vowels(xyz)', input: ["xyz"], expected: 0}
+      - {name: 'count_vowels(aeiou)', input: ["aeiou"], expected: 5}
+
+- id: count_positives
+  slot: coding-mid
+  order: 5
+  difficulty: 2
+  measures: coding
+  kind: code
+  prompt: Write a function count_positives(nums) that returns how many numbers in the list are greater than zero.
+  task:
+    func_name: count_positives
+    starter: |
+      def count_positives(nums):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'count_positives([1,-2,3,0])', input: [[1, -2, 3, 0]], expected: 2}
+      - {name: 'count_positives([-1,-2])', input: [[-1, -2]], expected: 0}
+      - {name: 'count_positives([5,5])', input: [[5, 5]], expected: 2}

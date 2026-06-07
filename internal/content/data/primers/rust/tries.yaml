@@ -1,0 +1,156 @@
+- category: 'Tries'
+  lang: rust
+  title: 'Tries — Rust refresher'
+  summary: |
+    A trie (prefix tree) stores strings so that common prefixes share nodes.
+    Insert, search, and starts_with all run in O(L) where L is the word length,
+    independent of how many words are stored.
+
+    Common problems: autocomplete, word search, longest common prefix.
+
+    Rust trie representation: each node holds an array (or HashMap) of children
+    and an is_end flag. The fixed-array approach ([Option<Box<TrieNode>>; 26])
+    is fast and simple for lowercase-ASCII inputs.
+
+    Rust notes:
+      - Index children with (c as u8 - b'a') as usize.
+      - Box the child nodes so they live on the heap.
+      - Ownership: inserting a new child requires children[idx].get_or_insert_with
+        or replace the None with Some(Box::new(TrieNode::new())).
+      - For unicode or large alphabets use HashMap<char, Box<TrieNode>> instead
+        of the fixed array to avoid 26 Options per node.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'trie node with fixed-size children array'
+          code: |
+            struct TrieNode {
+                children: [Option<Box<TrieNode>>; 26],
+                is_end: bool,
+            }
+        - label: 'constructor'
+          code: |
+            impl TrieNode {
+                fn new() -> Self {
+                    TrieNode { children: std::array::from_fn(|_| None), is_end: false }
+                }
+            }
+        - label: 'trie root'
+          code: 'let mut root = TrieNode::new();'
+        - label: 'char to child index'
+          code: |
+            let idx = (c as u8 - b'a') as usize;
+    - title: Basic operations
+      ops:
+        - label: 'insert a word'
+          code: |
+            fn insert(root: &mut TrieNode, word: &str) {
+                let mut node = root;
+                for c in word.chars() {
+                    let i = (c as u8 - b'a') as usize;
+                    node = node.children[i].get_or_insert_with(|| Box::new(TrieNode::new()));
+                }
+                node.is_end = true;
+            }
+        - label: 'search for an exact word'
+          code: |
+            fn search(root: &TrieNode, word: &str) -> bool {
+                let mut node = root;
+                for c in word.chars() {
+                    let i = (c as u8 - b'a') as usize;
+                    match &node.children[i] {
+                        None => return false,
+                        Some(child) => node = child,
+                    }
+                }
+                node.is_end
+            }
+        - label: 'check if any word starts with a prefix'
+          code: |
+            fn starts_with(root: &TrieNode, prefix: &str) -> bool {
+                let mut node = root;
+                for c in prefix.chars() {
+                    let i = (c as u8 - b'a') as usize;
+                    match &node.children[i] {
+                        None => return false,
+                        Some(child) => node = child,
+                    }
+                }
+                true
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'collect all words stored in the trie (DFS)'
+          code: |
+            fn collect(node: &TrieNode, prefix: &mut String, words: &mut Vec<String>) {
+                if node.is_end { words.push(prefix.clone()); }
+                for (i, child) in node.children.iter().enumerate() {
+                    if let Some(c) = child {
+                        prefix.push((b'a' + i as u8) as char);
+                        collect(c, prefix, words);
+                        prefix.pop();
+                    }
+                }
+            }
+        - label: 'count words with a given prefix'
+          code: |
+            fn count_with_prefix(node: &TrieNode) -> usize {
+                let mut cnt = if node.is_end { 1 } else { 0 };
+                for c in &node.children {
+                    if let Some(child) = c { cnt += count_with_prefix(child); }
+                }
+                cnt
+            }
+    - title: Special operations (tries)
+      ops:
+        - label: 'longest common prefix of a list of words'
+          code: |
+            fn lcp(words: &[&str]) -> String {
+                if words.is_empty() { return String::new(); }
+                let first = words[0].as_bytes();
+                let mut len = first.len();
+                for word in &words[1..] {
+                    let b = word.as_bytes();
+                    len = len.min(b.len());
+                    while len > 0 && first[len-1] != b[len-1] { len -= 1; }
+                }
+                std::str::from_utf8(&first[..len]).unwrap().to_string()
+            }
+        - label: 'word search in a 2-D grid (trie + DFS)'
+          code: |
+            // Insert all target words into the trie, then DFS from each grid cell
+            // following the trie to prune dead branches early.
+            // (Full implementation omitted for brevity — see trees-graphs.yaml for DFS grid.)
+        - label: 'delete a word (mark is_end = false)'
+          code: |
+            fn delete(root: &mut TrieNode, word: &str) {
+                let mut node = root;
+                for c in word.chars() {
+                    let i = (c as u8 - b'a') as usize;
+                    match node.children[i].as_mut() {
+                        None => return,
+                        Some(child) => node = child,
+                    }
+                }
+                node.is_end = false;
+            }
+  example: |
+    Worked example — implement a trie with insert, search, and starts_with:
+
+      Each character maps to a child slot via (c as u8 - b'a'). Inserting walks
+      or creates nodes for each character and marks the last node is_end = true.
+      Search and starts_with differ only in whether they check is_end at the end.
+
+        fn insert(root: &mut TrieNode, word: &str) {
+            let mut node = root;
+            for c in word.chars() {
+                let i = (c as u8 - b'a') as usize;
+                node = node.children[i]
+                           .get_or_insert_with(|| Box::new(TrieNode::new()));
+            }
+            node.is_end = true;
+        }
+
+    Takeaway: get_or_insert_with avoids a double-lookup and handles the
+    None-to-Some creation idiomatically. The &mut node reborrow on each step
+    is safe because each iteration moves into the unique child.

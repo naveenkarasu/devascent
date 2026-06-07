@@ -1,0 +1,71 @@
+id: dicts
+lang: rust
+order: 7
+title: Labeled Storage
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A HashMap stores values under named keys. Use the fully-qualified path
+      std::collections::HashMap::new() (no use statement needed). Insert with
+      insert, read with get, or use the entry API to increment counts safely.
+      A HashSet works like a set — add items, then count distinct ones with len().
+
+          let mut counts = std::collections::HashMap::<String, i64>::new();
+          let e = counts.entry("a".to_string()).or_insert(0);
+          *e += 1;   // {"a": 1}
+
+      len() returns usize; cast to i64 with  as i64  when the return type is i64.
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: 'Count the DISTINCT items. Put each into a HashSet, then the answer is how many items it has.'
+    task:
+      prompt: Return how many distinct items are in the Vec ([] → 0).
+      func_name: unique_count
+      starter: |
+        fn unique_count(items: Vec<String>) -> i64 {
+            // hint: let mut seen = std::collections::HashSet::new();
+            //       for it in &items { seen.insert(it.clone()); }
+            //       seen.len() as i64
+        }
+      solution: |
+        fn unique_count(items: Vec<String>) -> i64 {
+            let mut seen = std::collections::HashSet::new();
+            for it in &items {
+                seen.insert(it.clone());
+            }
+            seen.len() as i64
+        }
+      tests:
+        - {name: 'unique_count([a,b,a])', input: [["a", "b", "a"]], expected: 2}
+        - {name: 'unique_count([x])', input: [["x"]], expected: 1}
+        - {name: 'unique_count([])', input: [[]], expected: 0}
+  - kind: you_do
+    title: You do — solo
+    body: 'Tally each character with a HashMap, and return the highest count (the most frequent character''s count). "" → 0.'
+    task:
+      prompt: Return the count of the most frequent character in word ("" → 0).
+      func_name: top_count
+      starter: |
+        fn top_count(word: String) -> i64 {
+            // <- let mut counts = std::collections::HashMap::new();
+            //    for c in word.chars() { ... counts.entry(c).or_insert(0); ... }
+            //    track the max
+        }
+      solution: |
+        fn top_count(word: String) -> i64 {
+            let mut counts = std::collections::HashMap::new();
+            let mut best = 0;
+            for c in word.chars() {
+                let e = counts.entry(c).or_insert(0i64);
+                *e += 1;
+                if *e > best {
+                    best = *e;
+                }
+            }
+            best
+        }
+      tests:
+        - {name: 'top_count(aab)', input: ["aab"], expected: 2}
+        - {name: 'top_count(abc)', input: ["abc"], expected: 1}
+        - {name: 'top_count(empty)', input: [""], expected: 0}

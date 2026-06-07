@@ -1,0 +1,175 @@
+lang: csharp
+group: Pattern Matching
+title: "Pattern Matching — switch expressions, type patterns, and exhaustiveness"
+tag: E
+summary: |
+  Pattern matching in C# (C# 7–12) unifies type testing and data destructuring.
+  The is expression and switch expression/statement are the two contexts.
+
+  Pattern types:
+  - Type / declaration: if (obj is string s) — tests type and binds.
+  - Constant: x is null, x is 42.
+  - Relational: x is > 0 and <= 100.
+  - Property: order is { Status: OrderStatus.Pending, Total: > 1000 }.
+  - Positional: point is (> 0, > 0) — calls Deconstruct.
+  - List (C# 11): arr is [1, 2, ..].
+  - Logical combinators: and, or, not.
+
+  Switch expressions are exhaustive by design — the compiler warns if the _ discard
+  arm is unreachable or if inputs are not covered. A non-exhaustive switch expression
+  throws SwitchExpressionException at runtime for unmatched inputs.
+
+  Common mistakes:
+  - when guards fire after the pattern succeeds — misplacing the guard can create
+    unreachable arms.
+  - List patterns require the type to implement Length/Count and an indexer;
+    IEnumerable<T> is not directly matchable.
+  - Non-exhaustive switch expressions throw at runtime, not at compile time for all
+    cases — always include a _ discard arm unless exhaustiveness is provable.
+exercises:
+  - prompt: |
+      Replace the five-branch if/else if chain with a switch expression using type
+      patterns. Then add a Pentagon type without updating the switch and observe the
+      compiler warning. Finally, add the missing arm.
+    kind: fix-it
+    broken_code: |
+      abstract class Shape { }
+      class Circle    : Shape { public double Radius;  }
+      class Rectangle : Shape { public double W, H;   }
+      class Triangle  : Shape { public double Base, Height; }
+
+      static double Area(Shape s)
+      {
+          if (s is Circle c)
+              return Math.PI * c.Radius * c.Radius;
+          else if (s is Rectangle r)
+              return r.W * r.H;
+          else if (s is Triangle t)
+              return 0.5 * t.Base * t.Height;
+          else
+              throw new NotSupportedException(s.GetType().Name);
+      }
+
+      // Adding Pentagon exposes no compile warning with if/else — silently falls
+      // through to the throw at runtime.
+      class Pentagon : Shape { public double Side; }
+    fixed_code: |
+      abstract class Shape { }
+      class Circle    : Shape { public double Radius;  }
+      class Rectangle : Shape { public double W, H;   }
+      class Triangle  : Shape { public double Base, Height; }
+      class Pentagon  : Shape { public double Side;   }
+
+      static double Area(Shape s) => s switch
+      {
+          Circle    c => Math.PI * c.Radius * c.Radius,
+          Rectangle r => r.W * r.H,
+          Triangle  t => 0.5 * t.Base * t.Height,
+          Pentagon  p => (p.Side * p.Side * Math.Sqrt(25 + 10 * Math.Sqrt(5))) / 4,
+          // Without the Pentagon arm, CS8509 warns that the switch is non-exhaustive.
+          // Without any _ arm, a Pentagon would throw SwitchExpressionException at runtime.
+          _            => throw new NotSupportedException(s.GetType().Name),
+      };
+    bug: |
+      Switch expressions generate CS8509 (non-exhaustive) when the compiler can prove
+      a possible input has no matching arm. Adding a new derived type without updating
+      the switch is caught by the warning. Without a _ arm, an unmatched input throws
+      SwitchExpressionException at runtime. Always include a _ arm (or ensure the
+      compiler can prove exhaustiveness via a sealed hierarchy).
+    check: none
+    signal: ""
+
+  - prompt: |
+      Write GetDiscount(Order o) using a switch expression that combines property
+      patterns, relational patterns, and a when guard for VIP customers. Ensure no
+      arm is unreachable.
+    kind: fix-it
+    broken_code: |
+      enum OrderStatus { Pending, Active, Completed }
+
+      record Order(OrderStatus Status, decimal Total, string CustomerId);
+
+      static readonly HashSet<string> VipCustomers = ["C001", "C002"];
+
+      static decimal GetDiscount(Order o)
+      {
+          // Imperative style — hard to read, easy to miss a case
+          if (o.Status == OrderStatus.Active && o.Total >= 500 && VipCustomers.Contains(o.CustomerId))
+              return 0.20m;
+          else if (o.Status == OrderStatus.Active && o.Total >= 500)
+              return 0.10m;
+          else if (o.Status == OrderStatus.Active)
+              return 0.05m;
+          else
+              return 0m;
+      }
+    fixed_code: |
+      enum OrderStatus { Pending, Active, Completed }
+
+      record Order(OrderStatus Status, decimal Total, string CustomerId);
+
+      static readonly HashSet<string> VipCustomers = ["C001", "C002"];
+
+      static decimal GetDiscount(Order o) => o switch
+      {
+          // VIP check via 'when' guard (fires AFTER property pattern succeeds)
+          { Status: OrderStatus.Active, Total: >= 500 }
+              when VipCustomers.Contains(o.CustomerId) => 0.20m,
+
+          { Status: OrderStatus.Active, Total: >= 500 } => 0.10m,
+
+          { Status: OrderStatus.Active } => 0.05m,
+
+          _ => 0m,
+      };
+    bug: |
+      when guards fire only AFTER the preceding pattern matches. The VIP arm must
+      appear BEFORE the plain-Active-500 arm — otherwise the latter matches first and
+      the VIP arm is unreachable (CS8510 unreachable pattern warning). Property
+      patterns are tested left-to-right; place the most specific (guarded) arm first.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Write a switch expression with list patterns that identifies five array shapes:
+      empty, single-element, starts with 0, ends with -1, and everything else.
+      Demonstrate the .. slice pattern.
+    kind: fix-it
+    broken_code: |
+      static string Classify(int[] arr)
+      {
+          if (arr.Length == 0)
+              return "empty";
+          if (arr.Length == 1)
+              return $"single: {arr[0]}";
+          if (arr[0] == 0)
+              return "starts with zero";
+          if (arr[arr.Length - 1] == -1)
+              return "ends with minus-one";
+          return "other";
+      }
+    fixed_code: |
+      static string Classify(int[] arr) => arr switch
+      {
+          []                => "empty",
+          [var only]        => $"single: {only}",
+          [0, ..]           => "starts with zero",
+          [.., -1]          => "ends with minus-one",
+          _                 => "other",
+      };
+
+      // Test:
+      Console.WriteLine(Classify([]));              // empty
+      Console.WriteLine(Classify([42]));            // single: 42
+      Console.WriteLine(Classify([0, 1, 2]));       // starts with zero
+      Console.WriteLine(Classify([5, 6, -1]));      // ends with minus-one
+      Console.WriteLine(Classify([3, 4, 5]));       // other
+    bug: |
+      List patterns require the type to implement a Length or Count property and an
+      indexer — arrays, List<T>, and spans qualify. IEnumerable<T> does NOT: call
+      .ToArray() first if your source is a plain IEnumerable<T>. The .. slice pattern
+      matches zero or more elements; [0, ..] means "starts with 0, followed by
+      anything." Arm order matters: a more specific pattern must precede a more general
+      one to avoid unreachable-pattern warnings.
+    check: none
+    signal: ""

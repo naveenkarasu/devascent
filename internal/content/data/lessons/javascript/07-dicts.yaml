@@ -1,0 +1,64 @@
+id: dicts
+lang: javascript
+order: 7
+title: Labeled Storage
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      An object stores values under named keys:  {"coffee": 3, "tea": 2}.
+      Look up a value by key with  menu["tea"]  or  menu.tea.  To tally, read
+      with  counts[key] || 0  then add 1 and store back. A Set (new Set()) holds
+      only distinct values and reports its size with  set.size.
+
+          const counts = {};
+          counts["a"] = (counts["a"] || 0) + 1;   // {"a": 1}
+          counts["a"] = (counts["a"] || 0) + 1;   // {"a": 2}
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: 'Count the DISTINCT items. Put each into a Set, then the answer is how many entries it holds.'
+    task:
+      prompt: Return how many distinct items are in the array ([] → 0).
+      func_name: unique_count
+      starter: |
+        function unique_count(items) {
+            // hint: const seen = new Set(); for (const it of items) { seen.add(it); } return seen.size;
+        }
+      solution: |
+        function unique_count(items) {
+            const seen = new Set();
+            for (const it of items) {
+                seen.add(it);
+            }
+            return seen.size;
+        }
+      tests:
+        - {name: 'unique_count([a,b,a])', input: [["a", "b", "a"]], expected: 2}
+        - {name: 'unique_count([x])', input: [["x"]], expected: 1}
+        - {name: 'unique_count([])', input: [[]], expected: 0}
+  - kind: you_do
+    title: You do — solo
+    body: 'Tally each character with an object, and return the highest count (the most frequent character''s count). "" → 0.'
+    task:
+      prompt: Return the count of the most frequent character in word ("" → 0).
+      func_name: top_count
+      starter: |
+        function top_count(word) {
+            // <- const counts = {}; for each char: counts[c] = (counts[c] || 0) + 1; track the max
+        }
+      solution: |
+        function top_count(word) {
+            const counts = {};
+            let best = 0;
+            for (const c of word) {
+                counts[c] = (counts[c] || 0) + 1;
+                if (counts[c] > best) {
+                    best = counts[c];
+                }
+            }
+            return best;
+        }
+      tests:
+        - {name: 'top_count(aab)', input: ["aab"], expected: 2}
+        - {name: 'top_count(abc)', input: ["abc"], expected: 1}
+        - {name: 'top_count(empty)', input: [""], expected: 0}

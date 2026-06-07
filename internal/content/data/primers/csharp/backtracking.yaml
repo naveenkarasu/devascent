@@ -1,0 +1,122 @@
+- category: 'Backtracking'
+  lang: csharp
+  title: 'Backtracking — C# refresher'
+  summary: |
+    Backtracking is a systematic trial-and-error search: build a solution incrementally,
+    and the moment a partial solution cannot possibly lead to a valid answer, undo the
+    last choice (backtrack) and try the next option. It explores the entire solution
+    space implicitly — like DFS on a decision tree.
+
+    Common problems: subsets, permutations, combinations, N-queens, Sudoku solver,
+    word search on a grid. The template is always: choose, recurse, unchoose.
+
+    C# notes:
+      - Pass a List<int> path; add before recursing, RemoveAt(path.Count-1) after.
+      - To avoid re-using elements, pass a start index or a bool[] used array.
+      - Pruning is key: a good constraint check before recursing cuts the tree early.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'result collector'
+          code: 'var result = new List<List<int>>();'
+        - label: 'current path'
+          code: 'var path = new List<int>();'
+        - label: 'visited array for grid DFS'
+          code: 'bool[,] visited = new bool[rows, cols];'
+        - label: 'used array for permutations'
+          code: 'bool[] used = new bool[nums.Length];'
+    - title: Basic operations
+      ops:
+        - label: 'add current path to results (snapshot)'
+          code: 'result.Add(new List<int>(path));'
+        - label: 'choose: add element'
+          code: 'path.Add(nums[i]);'
+        - label: 'unchoose: remove last element'
+          code: 'path.RemoveAt(path.Count - 1);'
+        - label: 'mark / unmark visited'
+          code: |
+            visited[r, c] = true;
+            /* recurse */
+            visited[r, c] = false;
+    - title: Iteration & loops
+      ops:
+        - label: 'subset / combination template'
+          code: |
+            void Backtrack(int start)
+            {
+                result.Add(new List<int>(path));
+                for (int i = start; i < nums.Length; i++)
+                {
+                    path.Add(nums[i]);
+                    Backtrack(i + 1);
+                    path.RemoveAt(path.Count - 1);
+                }
+            }
+        - label: 'permutation template'
+          code: |
+            void Backtrack()
+            {
+                if (path.Count == nums.Length)
+                {
+                    result.Add(new List<int>(path));
+                    return;
+                }
+                for (int i = 0; i < nums.Length; i++)
+                {
+                    if (used[i]) continue;
+                    used[i] = true;
+                    path.Add(nums[i]);
+                    Backtrack();
+                    used[i] = false;
+                    path.RemoveAt(path.Count - 1);
+                }
+            }
+        - label: 'grid word search (4-directional)'
+          code: |
+            int[][] dirs = { new[]{0,1}, new[]{0,-1}, new[]{1,0}, new[]{-1,0} };
+            void Dfs(int r, int c, int idx)
+            {
+                if (idx == word.Length)
+                {
+                    found = true;
+                    return;
+                }
+                if (r < 0 || r >= rows || c < 0 || c >= cols) return;
+                if (visited[r, c] || board[r][c] != word[idx]) return;
+                visited[r, c] = true;
+                foreach (var d in dirs) Dfs(r + d[0], c + d[1], idx + 1);
+                visited[r, c] = false;
+            }
+    - title: Special operations (backtracking)
+      ops:
+        - label: 'skip duplicates in sorted input (combinations II)'
+          code: 'if (i > start && nums[i] == nums[i - 1]) continue;'
+        - label: 'pruning: stop if remaining elements too few'
+          code: 'if (path.Count + (nums.Length - start) < k) return;'
+        - label: 'Sudoku: try digits 1-9, skip if invalid'
+          code: |
+            for (char d = '1'; d <= '9'; d++)
+            {
+                if (!IsValid(board, r, c, d)) continue;
+                board[r][c] = d;
+                if (Solve(board)) return true;
+                board[r][c] = '.';
+            }
+  example: |
+    Worked example — generate all subsets of a list of integers:
+
+      At each index we have two choices: include the element or skip it (move to
+      start+1). Snapshot the current path into results at every node of the tree —
+      including the empty path at the root. Total subsets: 2^n.
+
+        void Backtrack(int[] nums, int start, List<int> path, List<List<int>> result) {
+            result.Add(new List<int>(path));   // snapshot
+            for (int i = start; i < nums.Length; i++) {
+                path.Add(nums[i]);             // choose
+                Backtrack(nums, i + 1, path, result);
+                path.RemoveAt(path.Count - 1); // unchoose
+            }
+        }
+
+    Takeaway: choose-recurse-unchoose is the invariant. Every recursive call leaves
+    path in the same state it was in before the call — that is what makes backtracking safe.

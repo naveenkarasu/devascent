@@ -1,0 +1,70 @@
+id: first-contract
+lang: go
+order: 10
+title: First Contract
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      You now have every tool for an Easy problem: variables, conditionals, loops,
+      slices, and reading a spec. Strategy: read the brief, name inputs/outputs,
+      build a result with an accumulator loop, and use if / else if / else to
+      decide what to append each pass. The most specific condition must come FIRST.
+      To turn a number into a string, use fmt.Sprintf("%d", i).
+
+      Classify 1..n as "low" (<3) else "high": loop i, append "low" if i<3 else
+      "high". n=4 → ["low","low","high","high"].
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: 'FizzBuzz: for 1..n return a slice of strings. Hint: test i%15 FIRST, then i%3, then i%5, else fmt.Sprintf("%d", i).'
+    task:
+      prompt: For 1..n — "FizzBuzz" if divisible by 3 and 5; "Fizz" if by 3; "Buzz" if by 5; else the number as a string.
+      func_name: fizz_report
+      starter: |
+        func fizz_report(n int) []string {
+            // hint: out := []string{}; loop 1..n; check i%15==0 first; out = append(out, ...); return out
+        }
+      solution: |
+        func fizz_report(n int) []string {
+            out := []string{}
+            for i := 1; i <= n; i++ {
+                if i%15 == 0 {
+                    out = append(out, "FizzBuzz")
+                } else if i%3 == 0 {
+                    out = append(out, "Fizz")
+                } else if i%5 == 0 {
+                    out = append(out, "Buzz")
+                } else {
+                    out = append(out, fmt.Sprintf("%d", i))
+                }
+            }
+            return out
+        }
+      tests:
+        - {name: fizz_report(5), input: [5], expected: ["1", "2", "Fizz", "4", "Buzz"]}
+        - {name: fizz_report(3), input: [3], expected: ["1", "2", "Fizz"]}
+        - {name: fizz_report(15), input: [15], expected: ["1", "2", "Fizz", "4", "Buzz", "Fizz", "7", "8", "Fizz", "Buzz", "11", "Fizz", "13", "14", "FizzBuzz"]}
+  - kind: you_do
+    title: You do — solo (graduation)
+    body: Filter a slice — your last task before the bench.
+    task:
+      prompt: Return a new slice with only the words that are 4+ letters, in original order ([] → []).
+      func_name: long_words
+      starter: |
+        func long_words(words []string) []string {
+            // <- build a result slice; keep w when len(w) >= 4
+        }
+      solution: |
+        func long_words(words []string) []string {
+            out := []string{}
+            for _, w := range words {
+                if len(w) >= 4 {
+                    out = append(out, w)
+                }
+            }
+            return out
+        }
+      tests:
+        - {name: 'long_words([hi,code,ok,loops])', input: [["hi", "code", "ok", "loops"]], expected: ["code", "loops"]}
+        - {name: 'long_words([])', input: [[]], expected: []}
+        - {name: 'long_words([a,be,see])', input: [["a", "be", "see"]], expected: []}

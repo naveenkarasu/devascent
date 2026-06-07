@@ -1,0 +1,23 @@
+# Shown as a friendly warm-up BEFORE the counted intake — not scored, not an
+# "item N of M". Sets tone. (One is picked at random if more are added.)
+- id: self_report
+  slot: self
+  measures: self
+  kind: choice
+  prompt: |
+    Before we start — a quick one, no wrong answers.
+
+    How much have you coded before?
+  choices:
+    - text: "Never — I'm starting from zero."
+      value: never
+      correct: true
+      feedback: "Perfect — we'll keep the questions gentle and start you in Tutorial Island."
+    - text: "A little — some tutorials or a class."
+      value: a-little
+      correct: true
+      feedback: "Great — expect easy-to-medium questions while we find your level."
+    - text: "I'm comfortable — I write code regularly."
+      value: regularly
+      correct: true
+      feedback: "Good — these will be medium-to-hard so we can place you accurately."

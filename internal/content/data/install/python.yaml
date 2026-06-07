@@ -1,0 +1,22 @@
+lang: python
+label: Python
+notes: DevAscent needs Python 3.8 or newer. After installing, restart DevAscent (or press [R] to re-check).
+os:
+  windows:
+    link: https://www.python.org/downloads/windows/
+    steps:
+      - Download the latest Python 3 installer from python.org.
+      - Run it and CHECK "Add python.exe to PATH" on the first screen.
+      - Finish the install, then restart DevAscent.
+    verify: python --version
+  macos:
+    link: https://www.python.org/downloads/macos/
+    steps:
+      - Install via Homebrew - "brew install python" - or download the macOS installer from python.org.
+      - Restart your terminal so PATH updates.
+    verify: python3 --version
+  linux:
+    link: https://www.python.org/downloads/source/
+    steps:
+      - Install with your package manager, e.g. "sudo apt install python3" (Debian/Ubuntu) or "sudo dnf install python3" (Fedora).
+    verify: python3 --version

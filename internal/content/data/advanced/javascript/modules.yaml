@@ -1,0 +1,27 @@
+lang: javascript
+group: Modules
+title: "Modules — ESM vs CommonJS"
+tag: C
+summary: |
+  Modules give JS a file-level scope and an explicit dependency graph. Before modules,
+  all scripts shared the global scope.
+
+  ESM (ES2015 native modules) uses `import`/`export` syntax. Modules are evaluated once
+  and statically analyzed — enabling tree-shaking by bundlers. `import` declarations are
+  hoisted; bindings are live (they track the exported value, unlike CommonJS). ESM works
+  natively in browsers and Node.js 12+. Top-level `await` (ES2022) works in ESM only.
+
+  CommonJS (CJS) is Node.js's legacy format. Uses `require()` and `module.exports`.
+  Synchronous, no static analysis. Still found in older Node codebases and many npm
+  packages. Interop with ESM is possible but has edge cases: a pure-ESM package cannot
+  be `require()`d without a wrapper, and dynamic `import()` (which returns a Promise) is
+  needed to load ESM from CJS.
+
+  Bundlers (webpack, Rollup, Vite, esbuild) remain relevant for production even with
+  native ESM: minification, code-splitting, dead-code elimination (tree-shaking), and
+  transforming CJS packages for the browser. The `"type": "module"` field in
+  `package.json` and the `.mjs`/`.cjs` extensions signal which module system a file uses.
+
+  Understanding `import`/`export` vs `require()` is a daily practical skill for any JS
+  role.
+exercises: []

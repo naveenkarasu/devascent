@@ -1,0 +1,171 @@
+# Slot: coding-floor — the floor (can you write a tiny function at all?). One is
+# chosen per run. Failing/​skipping THIS slot early-exits to full Tutorial Island.
+- id: add
+  slot: coding-floor
+  order: 2
+  difficulty: 1
+  measures: coding
+  kind: code
+  prompt: Write a function add(a, b) that returns their sum.
+  task:
+    func_name: add
+    starter: |
+      def add(a, b):
+          pass  # <- 'pass' means "do nothing". Delete this line and write your code.
+    tests:
+      - {name: 'add(2, 3)', input: [2, 3], expected: 5}
+      - {name: 'add(10, -4)', input: [10, -4], expected: 6}
+      - {name: 'add(0, 0)', input: [0, 0], expected: 0}
+
+- id: subtract
+  slot: coding-floor
+  order: 2
+  difficulty: 1
+  measures: coding
+  kind: code
+  prompt: Write a function subtract(a, b) that returns a minus b.
+  task:
+    func_name: subtract
+    starter: |
+      def subtract(a, b):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'subtract(5, 3)', input: [5, 3], expected: 2}
+      - {name: 'subtract(0, 4)', input: [0, 4], expected: -4}
+      - {name: 'subtract(-2, -2)', input: [-2, -2], expected: 0}
+
+- id: multiply
+  slot: coding-floor
+  order: 2
+  difficulty: 1
+  measures: coding
+  kind: code
+  prompt: Write a function multiply(a, b) that returns their product.
+  task:
+    func_name: multiply
+    starter: |
+      def multiply(a, b):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'multiply(3, 4)', input: [3, 4], expected: 12}
+      - {name: 'multiply(-2, 5)', input: [-2, 5], expected: -10}
+      - {name: 'multiply(0, 9)', input: [0, 9], expected: 0}
+
+- id: max_two
+  slot: coding-floor
+  order: 2
+  difficulty: 1
+  measures: coding
+  kind: code
+  prompt: Write a function max_two(a, b) that returns the larger of the two numbers.
+  task:
+    func_name: max_two
+    starter: |
+      def max_two(a, b):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'max_two(3, 7)', input: [3, 7], expected: 7}
+      - {name: 'max_two(9, 2)', input: [9, 2], expected: 9}
+      - {name: 'max_two(-1, -5)', input: [-1, -5], expected: -1}
+
+- id: min_two
+  slot: coding-floor
+  order: 2
+  difficulty: 1
+  measures: coding
+  kind: code
+  prompt: Write a function min_two(a, b) that returns the smaller of the two numbers.
+  task:
+    func_name: min_two
+    starter: |
+      def min_two(a, b):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'min_two(3, 7)', input: [3, 7], expected: 3}
+      - {name: 'min_two(9, 2)', input: [9, 2], expected: 2}
+      - {name: 'min_two(-1, -5)', input: [-1, -5], expected: -5}
+
+- id: square
+  slot: coding-floor
+  order: 2
+  difficulty: 1
+  measures: coding
+  kind: code
+  prompt: Write a function square(n) that returns n multiplied by itself.
+  task:
+    func_name: square
+    starter: |
+      def square(n):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'square(3)', input: [3], expected: 9}
+      - {name: 'square(0)', input: [0], expected: 0}
+      - {name: 'square(-4)', input: [-4], expected: 16}
+
+- id: triple
+  slot: coding-floor
+  order: 2
+  difficulty: 1
+  measures: coding
+  kind: code
+  prompt: Write a function triple(n) that returns n multiplied by 3.
+  task:
+    func_name: triple
+    starter: |
+      def triple(n):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'triple(4)', input: [4], expected: 12}
+      - {name: 'triple(0)', input: [0], expected: 0}
+      - {name: 'triple(-2)', input: [-2], expected: -6}
+
+- id: last_element
+  slot: coding-floor
+  order: 2
+  difficulty: 1
+  measures: coding
+  kind: code
+  prompt: Write a function last_element(items) that returns the last item in the list.
+  task:
+    func_name: last_element
+    starter: |
+      def last_element(items):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'last_element([1,2,3])', input: [[1, 2, 3]], expected: 3}
+      - {name: 'last_element([9])', input: [[9]], expected: 9}
+      - {name: 'last_element([4,8])', input: [[4, 8]], expected: 8}
+
+- id: first_char
+  slot: coding-floor
+  order: 2
+  difficulty: 1
+  measures: coding
+  kind: code
+  prompt: Write a function first_char(s) that returns the first character of the string.
+  task:
+    func_name: first_char
+    starter: |
+      def first_char(s):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'first_char(hello)', input: ["hello"], expected: "h"}
+      - {name: 'first_char(abc)', input: ["abc"], expected: "a"}
+      - {name: 'first_char(Z)', input: ["Z"], expected: "Z"}
+
+- id: negate
+  slot: coding-floor
+  order: 2
+  difficulty: 1
+  measures: coding
+  kind: code
+  prompt: Write a function negate(n) that returns the negative of n (flip its sign).
+  task:
+    func_name: negate
+    starter: |
+      def negate(n):
+          pass  # <- delete this line and write your code
+    tests:
+      - {name: 'negate(5)', input: [5], expected: -5}
+      - {name: 'negate(-3)', input: [-3], expected: 3}
+      - {name: 'negate(0)', input: [0], expected: 0}

@@ -1,0 +1,165 @@
+lang: typescript
+group: Enums & Unions
+title: "Enums & Unions — Enums, Discriminated Unions, Exhaustiveness Checks"
+tag: E
+summary: |
+  Enums are one of TS's few features that emit JavaScript (a runtime object). Numeric
+  enums auto-increment; string enums require explicit initialisation. `const enum`
+  members are inlined at compile time and the object is erased entirely.
+
+  Why discriminated unions are often preferred over enums:
+  - Enums emit JS — they are not erased like other TS types, which can cause
+    tree-shaking issues and bundle surprises.
+  - `const enum` with ambient declarations causes inlining bugs when library versions
+    change.
+  - The `object as const` pattern (`{ Up: "UP" } as const`) keeps code aligned with
+    plain JS and is Zod/JSON-serialization-friendly.
+  - Numeric enums have reverse mapping (`Direction[0]` returns `"Up"`), which
+    surprises: the TS team has said they regret introducing enums (they predate modern
+    TS patterns).
+
+  Discriminated unions — union of types sharing a literal-typed discriminant field;
+  combined with exhaustiveness checking via `never` they are the idiomatic TS
+  alternative.
+
+  Common mistakes: numeric enums have reverse mapping; string enums do not; `const
+  enum` in .d.ts files (ambient) breaks consumers using isolatedModules; heterogeneous
+  enums (mixed number/string) are technically valid but practically always a mistake;
+  enums prevent tree-shaking; two enums with the same values are not structurally
+  compatible (nominal-like behaviour).
+exercises:
+  - prompt: |
+      Refactor the `Status` enum and its usage to an `as const` object + union type,
+      while keeping all the same type checks passing.
+    kind: fix-it
+    broken_code: |
+      enum Status {
+        Pending = "PENDING",
+        Active = "ACTIVE",
+        Archived = "ARCHIVED",
+      }
+
+      function describe(s: Status): string {
+        if (s === Status.Active) return "live";
+        return "other";
+      }
+
+      describe(Status.Pending);
+    fixed_code: |
+      const Status = {
+        Pending: "PENDING",
+        Active: "ACTIVE",
+        Archived: "ARCHIVED",
+      } as const;
+
+      type Status = (typeof Status)[keyof typeof Status];
+
+      function describe(s: Status): string {
+        if (s === Status.Active) return "live";
+        return "other";
+      }
+
+      describe(Status.Pending);
+    bug: |
+      The `as const` object + union pattern is structurally equivalent to a string
+      enum but emits no extra JS runtime object beyond the plain constant. The union
+      type is derived via `(typeof Status)[keyof typeof Status]`, which evaluates to
+      `"PENDING" | "ACTIVE" | "ARCHIVED"`. All call-site checks remain identical.
+    check: compiles
+    signal: ""
+  - prompt: |
+      Implement `area(s: Shape): number` for a discriminated union of
+      Circle | Square | Triangle with a `never` exhaustiveness guard. Then add
+      `Rectangle` to the union and confirm the resulting compile error.
+    kind: fix-it
+    broken_code: |
+      type Shape =
+        | { kind: "circle"; radius: number }
+        | { kind: "square"; side: number };
+
+      function area(s: Shape): number {
+        switch (s.kind) {
+          case "circle":
+            return Math.PI * s.radius ** 2;
+          case "square":
+            return s.side ** 2;
+        }
+        // No exhaustiveness guard — adding new kinds is silent
+      }
+    fixed_code: |
+      type Shape =
+        | { kind: "circle"; radius: number }
+        | { kind: "square"; side: number }
+        | { kind: "triangle"; base: number; height: number };
+
+      function assertNever(x: never): never {
+        throw new Error(`Unhandled shape: ${JSON.stringify(x)}`);
+      }
+
+      function area(s: Shape): number {
+        switch (s.kind) {
+          case "circle":
+            return Math.PI * s.radius ** 2;
+          case "square":
+            return s.side ** 2;
+          case "triangle":
+            return 0.5 * s.base * s.height;
+          default:
+            return assertNever(s);
+        }
+      }
+
+      // Adding a new union member without a case will error at: assertNever(s)
+      // because s is narrowed to the unhandled member, which is not `never`.
+    bug: |
+      Without an exhaustiveness guard, adding a new variant to the union is a silent
+      runtime bug. Assigning the `default` value to `assertNever(x: never)` turns it
+      into a compile error: if any union member reaches the default branch, TS knows
+      the value is not `never` and rejects the call. The error points to the exact
+      assertion site.
+    check: compiles
+    signal: ""
+  - prompt: |
+      Show the reverse-mapping quirk of numeric enums: `Direction[Direction.Up]`
+      compiles and returns `"Up"` at runtime. Demonstrate that a string enum does NOT
+      have reverse mapping. Explain why this makes numeric enums weaker for
+      serialisation.
+    kind: spot-the-bug
+    broken_code: |
+      enum Direction {
+        Up,    // 0
+        Down,  // 1
+      }
+
+      enum Color {
+        Red = "RED",
+        Blue = "BLUE",
+      }
+
+      console.log(Direction[Direction.Up]);  // what does this print?
+      console.log(Color[Color.Red]);         // what does this print?
+    fixed_code: |
+      enum Direction {
+        Up,    // 0
+        Down,  // 1
+      }
+
+      enum Color {
+        Red = "RED",
+        Blue = "BLUE",
+      }
+
+      // Direction[0] === "Up"  — reverse mapping exists for numeric enums
+      console.log(Direction[Direction.Up]); // "Up"
+
+      // Color["RED"] is undefined — string enums have no reverse mapping
+      // console.log(Color[Color.Red]);     // runtime: undefined (TS allows the expression)
+    bug: |
+      Numeric enums emit a JS object with both forward (`Up → 0`) and reverse
+      (`0 → "Up"`) mappings. This means `Direction[0]` is a valid runtime access —
+      the enum object can be indexed with any number, widening to `string` rather than
+      a specific member name. String enums only emit forward mappings, so there is no
+      way to accidentally look up a member by its value. This makes string enums safer
+      for serialisation and JSON round-trips.
+    check: none
+    signal: ""

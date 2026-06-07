@@ -1,0 +1,241 @@
+# Canonical NeetCode 150 — Binary Search (original prompts, own solutions).
+# Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
+- id: nc-binary-search
+  title: Binary Search
+  difficulty: easy
+  pattern: binary-search
+  category: Binary Search
+  lists: [neetcode150]
+  func_name: search
+  prompt: |
+    Binary Search
+
+    Given a sorted integer array and a target, return the index of the target using
+    binary search. Return -1 if the target does not exist.
+
+    Examples:
+      search([-1,0,3,5,9,12], 9) -> 4
+      search([-1,0,3,5,9,12], 2) -> -1
+  starter: |
+    def search(nums, target):
+        pass  # write your solution; delete this line
+  solution: |
+    def search(nums, target):
+        lo, hi = 0, len(nums) - 1
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            if nums[mid] == target:
+                return mid
+            elif nums[mid] < target:
+                lo = mid + 1
+            else:
+                hi = mid - 1
+        return -1
+  tests:
+    - {name: case 1, input: [[-1,0,3,5,9,12], 9], expected: 4}
+    - {name: case 2, input: [[-1,0,3,5,9,12], 2], expected: -1}
+    - {name: case 3, input: [[-1,0,3,5,9,12], 12], expected: 5}
+
+- id: nc-search-2d-matrix
+  title: Search a 2D Matrix
+  difficulty: medium
+  pattern: binary-search
+  category: Binary Search
+  lists: [neetcode150]
+  func_name: search_matrix
+  prompt: |
+    Search a 2D Matrix
+
+    Given an m x n integer matrix where each row is sorted and the first integer of
+    each row is greater than the last integer of the previous row, return True if
+    target exists in the matrix, else False.
+
+    Examples:
+      search_matrix([[1,3,5,7],[10,11,16,20],[23,30,34,60]], 3) -> True
+      search_matrix([[1,3,5,7],[10,11,16,20],[23,30,34,60]], 13) -> False
+  starter: |
+    def search_matrix(matrix, target):
+        pass  # write your solution; delete this line
+  solution: |
+    def search_matrix(matrix, target):
+        m, n = len(matrix), len(matrix[0])
+        lo, hi = 0, m * n - 1
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            val = matrix[mid // n][mid % n]
+            if val == target:
+                return True
+            elif val < target:
+                lo = mid + 1
+            else:
+                hi = mid - 1
+        return False
+  tests:
+    - {name: case 1, input: [[[1,3,5,7],[10,11,16,20],[23,30,34,60]], 3], expected: true}
+    - {name: case 2, input: [[[1,3,5,7],[10,11,16,20],[23,30,34,60]], 13], expected: false}
+    - {name: case 3, input: [[[1,3,5,7],[10,11,16,20],[23,30,34,60]], 60], expected: true}
+
+- id: nc-koko-bananas
+  title: Koko Eating Bananas
+  difficulty: medium
+  pattern: binary-search
+  category: Binary Search
+  lists: [neetcode150]
+  func_name: min_eating_speed
+  prompt: |
+    Koko Eating Bananas
+
+    Koko has piles of bananas and h hours before the guards return. Each hour she
+    chooses one pile and eats up to k bananas from it; she cannot eat from two piles
+    in one hour. Return the minimum integer k such that she can finish all piles
+    within h hours.
+
+    Examples:
+      min_eating_speed([3,6,7,11], 8) -> 4
+      min_eating_speed([30,11,23,4,20], 5) -> 30
+  starter: |
+    def min_eating_speed(piles, h):
+        pass  # write your solution; delete this line
+  solution: |
+    def min_eating_speed(piles, h):
+        import math
+        lo, hi = 1, max(piles)
+        ans = hi
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            hours = sum(math.ceil(p / mid) for p in piles)
+            if hours <= h:
+                ans = mid
+                hi = mid - 1
+            else:
+                lo = mid + 1
+        return ans
+  tests:
+    - {name: case 1, input: [[3,6,7,11], 8], expected: 4}
+    - {name: case 2, input: [[30,11,23,4,20], 5], expected: 30}
+    - {name: case 3, input: [[30,11,23,4,20], 6], expected: 23}
+
+- id: nc-find-min-rotated
+  title: Find Minimum in Rotated Sorted Array
+  difficulty: medium
+  pattern: binary-search
+  category: Binary Search
+  lists: [neetcode150, blind75]
+  func_name: find_min
+  prompt: |
+    Find Minimum in Rotated Sorted Array
+
+    Given a sorted array that has been rotated between 1 and n times, find and
+    return the minimum element. Assume all elements are unique.
+
+    Examples:
+      find_min([3,4,5,1,2]) -> 1
+      find_min([4,5,6,7,0,1,2]) -> 0
+  starter: |
+    def find_min(nums):
+        pass  # write your solution; delete this line
+  solution: |
+    def find_min(nums):
+        lo, hi = 0, len(nums) - 1
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if nums[mid] > nums[hi]:
+                lo = mid + 1
+            else:
+                hi = mid
+        return nums[lo]
+  tests:
+    - {name: case 1, input: [[3,4,5,1,2]], expected: 1}
+    - {name: case 2, input: [[4,5,6,7,0,1,2]], expected: 0}
+    - {name: case 3, input: [[11,13,15,17]], expected: 11}
+
+- id: nc-search-rotated
+  title: Search in Rotated Sorted Array
+  difficulty: medium
+  pattern: binary-search
+  category: Binary Search
+  lists: [neetcode150, blind75]
+  func_name: search_rotated
+  prompt: |
+    Search in Rotated Sorted Array
+
+    Given a sorted array rotated at some unknown pivot and a target, return the
+    index of target if it exists, or -1 if it does not. All values are unique.
+
+    Examples:
+      search_rotated([4,5,6,7,0,1,2], 0) -> 4
+      search_rotated([4,5,6,7,0,1,2], 3) -> -1
+  starter: |
+    def search_rotated(nums, target):
+        pass  # write your solution; delete this line
+  solution: |
+    def search_rotated(nums, target):
+        lo, hi = 0, len(nums) - 1
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            if nums[mid] == target:
+                return mid
+            if nums[lo] <= nums[mid]:  # left half is sorted
+                if nums[lo] <= target < nums[mid]:
+                    hi = mid - 1
+                else:
+                    lo = mid + 1
+            else:  # right half is sorted
+                if nums[mid] < target <= nums[hi]:
+                    lo = mid + 1
+                else:
+                    hi = mid - 1
+        return -1
+  tests:
+    - {name: case 1, input: [[4,5,6,7,0,1,2], 0], expected: 4}
+    - {name: case 2, input: [[4,5,6,7,0,1,2], 3], expected: -1}
+    - {name: case 3, input: [[1], 0], expected: -1}
+
+- id: nc-median-two-sorted
+  title: Median of Two Sorted Arrays
+  difficulty: hard
+  pattern: binary-search
+  category: Binary Search
+  lists: [neetcode150]
+  func_name: find_median_sorted_arrays
+  prompt: |
+    Median of Two Sorted Arrays
+
+    Given two sorted arrays, return the median of the combined sorted array.
+    Aim for O(log(m+n)) time. All test cases use odd total length so the median
+    is an integer — return it as an int.
+
+    Examples:
+      find_median_sorted_arrays([1,3], [2]) -> 2
+      find_median_sorted_arrays([2], [1,3,4,5]) -> 3
+  starter: |
+    def find_median_sorted_arrays(nums1, nums2):
+        pass  # write your solution; delete this line
+  solution: |
+    def find_median_sorted_arrays(nums1, nums2):
+        # Binary search on the smaller array
+        if len(nums1) > len(nums2):
+            nums1, nums2 = nums2, nums1
+        m, n = len(nums1), len(nums2)
+        half = (m + n) // 2
+        lo, hi = 0, m
+        while True:
+            i = (lo + hi) // 2  # partition index in nums1
+            j = half - i        # partition index in nums2
+            left1  = nums1[i - 1] if i > 0 else float('-inf')
+            right1 = nums1[i]     if i < m else float('inf')
+            left2  = nums2[j - 1] if j > 0 else float('-inf')
+            right2 = nums2[j]     if j < n else float('inf')
+            if left1 <= right2 and left2 <= right1:
+                # correct partition
+                if (m + n) % 2 == 1:
+                    return int(min(right1, right2))
+                return int((max(left1, left2) + min(right1, right2)) / 2)
+            elif left1 > right2:
+                hi = i - 1
+            else:
+                lo = i + 1
+  tests:
+    - {name: case 1, input: [[1,3], [2]], expected: 2}
+    - {name: case 2, input: [[2], [1,3,4,5]], expected: 3}
+    - {name: case 3, input: [[1,2,3,4,5], [6,7,8,9]], expected: 5}

@@ -1,0 +1,285 @@
+lang: go
+group: Slices & Maps
+title: "Slices & Maps — internals, aliasing & concurrency"
+tag: E
+summary: |
+  Slices are Go's idiomatic sequence type. Internally a slice is a three-field
+  descriptor: (pointer to backing array, length, capacity). Slicing an existing slice
+  does not copy — the new slice descriptor points into the same backing array. Mutations
+  via one slice affect the other until a reallocation occurs.
+
+    d := []byte{'r', 'o', 'a', 'd'}
+    e := d[2:]      // e == ['a','d'], shares d's backing array
+    e[1] = 'm'
+    // d == ['r','o','a','m'] — d was modified through e!
+
+  append returns a new slice descriptor. If the backing array has spare capacity
+  (len < cap) it writes in-place and returns a header with the same array pointer but
+  incremented length — the original and the appended slice still share memory. If
+  capacity is exhausted, Go allocates a larger array and copies. Always assign the
+  result back: s = append(s, x). Discarding the return value is a bug.
+
+  The three-index slice expression s[low:high:max] sets the capacity of the new slice
+  to max-low, preventing the new slice from sharing elements beyond high with the
+  original. This is the idiomatic way to prevent accidental sharing after a sub-slice.
+
+  Use copy(dst, src) to produce a fully independent slice. copy returns the number of
+  elements copied (min of len(dst), len(src)).
+
+  Maps are hash tables. Key types must be comparable (== is defined): structs of
+  comparable fields work; slices, maps, and functions do not. Map iteration order is
+  deliberately randomised — Go shuffles it since 1.0 to prevent programs from depending
+  on it. Never assume sorted or stable order without an explicit sort step.
+
+  Reading a missing key returns the zero value for the value type — no panic, no error.
+  Use the two-value form to distinguish missing from zero: v, ok := m[k].
+
+  Writing to a nil map panics at runtime: "assignment to entry in nil map". A nil map
+  is safe to read (returns zero value) but not write. Always initialise with make or a
+  map literal before writing.
+
+  Concurrent access: concurrent reads of a map are safe; a concurrent read and write,
+  or two concurrent writes, is a data race. Use sync.RWMutex (allow multiple readers,
+  exclusive writer) or sync.Map (lock-free for mostly-read, append-only workloads).
+
+  Common gotchas:
+  - Writing to a nil map panics; reading returns zero silently.
+  - Slice aliasing after append within capacity: the "appended" slice and the original
+    share the backing array until a reallocation.
+  - Memory leak via sub-slice: a small slice of a large buffer keeps the entire buffer
+    alive. Fix: copy into a fresh slice of the needed length.
+  - Map iteration order is not stable — sort explicitly for deterministic output.
+exercises:
+  - prompt: |
+      The copy function below re-slices src instead of making an independent copy.
+      When the caller modifies the returned slice, src is also modified. Fix it using
+      the built-in copy so both slices are independent.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import "fmt"
+
+      func copySlice(src []int) []int {
+          return src[:] // this is just a re-slice — same backing array
+      }
+
+      func main() {
+          original := []int{1, 2, 3, 4, 5}
+          dup := copySlice(original)
+          dup[0] = 99
+          fmt.Println("original:", original) // want [1 2 3 4 5], gets [99 2 3 4 5]
+          fmt.Println("dup:     ", dup)
+      }
+    fixed_code: |
+      package main
+
+      import "fmt"
+
+      func copySlice(src []int) []int {
+          dst := make([]int, len(src))
+          copy(dst, src)
+          return dst
+      }
+
+      func main() {
+          original := []int{1, 2, 3, 4, 5}
+          dup := copySlice(original)
+          dup[0] = 99
+          fmt.Println("original:", original) // [1 2 3 4 5]
+          fmt.Println("dup:     ", dup)      // [99 2 3 4 5]
+      }
+    bug: |
+      src[:] creates a new slice header but the pointer field still points at the same
+      backing array as src. Modifying any element through dup modifies the same memory
+      as original. The built-in copy(dst, src) physically copies every element into a
+      freshly allocated array, making dup independent. Always use copy (or append to
+      an empty slice: dst := append([]int(nil), src...)) when you need a deep copy.
+    check: stdout
+    signal: "original: [1 2 3 4 5]"
+
+  - prompt: |
+      Two sub-slices are appended to independently, but they corrupt each other because
+      they share a backing array with spare capacity. Fix using the three-index slice
+      expression to cap each sub-slice at its length.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import "fmt"
+
+      func main() {
+          base := make([]int, 3, 6) // len=3, cap=6
+          base[0], base[1], base[2] = 1, 2, 3
+
+          a := base[:3]  // shares capacity 6 — can grow into base's spare capacity
+          b := base[:3]  // same backing array as a
+
+          a = append(a, 10) // writes into base[3]
+          b = append(b, 20) // overwrites base[3] — stomps a's appended element
+
+          fmt.Println("a:", a) // want [1 2 3 10], gets [1 2 3 20]
+          fmt.Println("b:", b)
+      }
+    fixed_code: |
+      package main
+
+      import "fmt"
+
+      func main() {
+          base := make([]int, 3, 6)
+          base[0], base[1], base[2] = 1, 2, 3
+
+          a := base[:3:3] // three-index: cap capped at 3 — append must allocate
+          b := base[:3:3] // same: b's append also allocates independently
+
+          a = append(a, 10)
+          b = append(b, 20)
+
+          fmt.Println("a:", a) // [1 2 3 10]
+          fmt.Println("b:", b) // [1 2 3 20]
+      }
+    bug: |
+      base[:3] has len=3 but cap=6 — there is room for three more elements before
+      reallocation. When append writes to a (base[3] = 10) and then b (base[3] = 20),
+      both writes land in the same memory location because a and b share the same
+      backing array. The three-index form base[:3:3] explicitly sets the capacity of
+      the sub-slice to 3, matching its length. The next append on either sub-slice is
+      forced to allocate a new array, making them independent.
+    check: stdout
+    signal: "a: [1 2 3 10]"
+
+  - prompt: |
+      The code writes to a map declared with var (nil map) and panics. Fix it so the
+      map is properly initialised before any writes.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import "fmt"
+
+      func wordCount(s string) map[string]int {
+          var counts map[string]int // nil map — writes will panic
+          for _, word := range s {
+              counts[string(word)]++ // panic: assignment to entry in nil map
+          }
+          return counts
+      }
+
+      func main() {
+          fmt.Println(wordCount("hello"))
+      }
+    fixed_code: |
+      package main
+
+      import "fmt"
+
+      func wordCount(s string) map[string]int {
+          counts := make(map[string]int)
+          for _, word := range s {
+              counts[string(word)]++
+          }
+          return counts
+      }
+
+      func main() {
+          fmt.Println(wordCount("hello"))
+      }
+    bug: |
+      var counts map[string]int declares a nil map. Reading a nil map is safe and
+      returns the zero value, but writing panics at runtime with "assignment to entry
+      in nil map". make(map[string]int) allocates and initialises the hash-table
+      internals, making the map ready for use. Alternatively, use a map literal:
+      counts := map[string]int{}.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Two goroutines read and write the same map without synchronisation. The race
+      detector fires. Fix it using sync.RWMutex so concurrent reads do not block each
+      other but writes are exclusive.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import (
+          "fmt"
+          "sync"
+      )
+
+      var cache = map[string]string{}
+
+      func get(key string) string {
+          return cache[key] // concurrent read — data race with set
+      }
+
+      func set(key, val string) {
+          cache[key] = val // concurrent write — data race
+      }
+
+      func main() {
+          var wg sync.WaitGroup
+          for i := 0; i < 10; i++ {
+              wg.Add(2)
+              go func(n int) {
+                  defer wg.Done()
+                  set(fmt.Sprintf("k%d", n), fmt.Sprintf("v%d", n))
+              }(i)
+              go func(n int) {
+                  defer wg.Done()
+                  _ = get(fmt.Sprintf("k%d", n))
+              }(i)
+          }
+          wg.Wait()
+          fmt.Println("done")
+      }
+    fixed_code: |
+      package main
+
+      import (
+          "fmt"
+          "sync"
+      )
+
+      var (
+          cache = map[string]string{}
+          mu    sync.RWMutex
+      )
+
+      func get(key string) string {
+          mu.RLock()
+          defer mu.RUnlock()
+          return cache[key]
+      }
+
+      func set(key, val string) {
+          mu.Lock()
+          defer mu.Unlock()
+          cache[key] = val
+      }
+
+      func main() {
+          var wg sync.WaitGroup
+          for i := 0; i < 10; i++ {
+              wg.Add(2)
+              go func(n int) {
+                  defer wg.Done()
+                  set(fmt.Sprintf("k%d", n), fmt.Sprintf("v%d", n))
+              }(i)
+              go func(n int) {
+                  defer wg.Done()
+                  _ = get(fmt.Sprintf("k%d", n))
+              }(i)
+          }
+          wg.Wait()
+          fmt.Println("done")
+      }
+    bug: |
+      Go maps are not safe for concurrent use. A concurrent read and write (or two
+      concurrent writes) is a data race — undefined behaviour that the race detector
+      (go run -race) catches at runtime. sync.RWMutex allows multiple simultaneous
+      readers (RLock/RUnlock) but exclusive write access (Lock/Unlock). For maps that
+      are read far more than written, RWMutex provides better throughput than a plain
+      Mutex. sync.Map is an alternative for append-only or mostly-read workloads.
+    check: stdout
+    signal: "done"

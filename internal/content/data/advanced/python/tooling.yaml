@@ -1,0 +1,50 @@
+lang: python
+group: Tooling
+title: "Tooling — ruff, black, pytest, mypy, pyright"
+tag: C
+summary: |
+  Modern Python development has consolidated around a small set of fast, opinionated
+  tools. Knowing which tool does what, and how they fit together, is table stakes for
+  any professional Python project.
+
+  Formatters:
+    - `black` — the opinionated, zero-config autoformatter. Enforces a consistent
+      style (88-char lines, double quotes, trailing commas). Running `black .` on
+      any Python project produces deterministic output — no style debates.
+    - `ruff --fix` — includes a black-compatible formatter (fast, Rust-based). For
+      new projects, `ruff format` can replace `black`.
+
+  Linters:
+    - `ruff` — Rust-based linter that replaces `flake8`, `isort`, `pyupgrade`,
+      and parts of `pylint`. Hundreds of rules selectable in `pyproject.toml`.
+      Typical config: `[tool.ruff] select = ["E", "F", "I", "UP"]`.
+    - `flake8` — the older standard linter; still widely used but slower.
+
+  Type checkers:
+    - `mypy` — the reference type checker. Run with `--strict` for maximum coverage.
+      Integrates with `pre-commit` and CI. Slow on large codebases without caching.
+    - `pyright` — Microsoft's type checker; used by Pylance (VSCode extension).
+      Faster than mypy; stricter in some edge cases. `basedpyright` is a popular
+      community fork with additional strictness settings.
+
+  Testing:
+    - `pytest` — the de facto test framework for Python. Key features:
+      - Plain `assert` rewriting (no `assertEqual` boilerplate)
+      - Fixtures (`@pytest.fixture`) for shared setup/teardown
+      - `@pytest.mark.parametrize` for data-driven tests
+      - Plugin ecosystem: `pytest-cov` (coverage), `pytest-asyncio` (async tests),
+        `pytest-mock` (mocking), `pytest-xdist` (parallel tests)
+    - Prefer `pytest` over `unittest` for all new projects.
+
+  Pre-commit:
+    - `pre-commit` — framework for running linters and formatters as Git hooks.
+      Define checks in `.pre-commit-config.yaml`; `pre-commit install` sets up hooks.
+      Typical hooks: `ruff`, `ruff-format`, `mypy`.
+
+  Build / packaging:
+    - `pyproject.toml` (PEP 517/518/621) — the single metadata file for project
+      name, version, dependencies, and tool configuration.
+    - `uv` — ultra-fast (Rust) package manager and project manager; `uv sync`,
+      `uv run`. Growing rapidly as a pip + virtualenv + poetry replacement.
+
+  No exercise — reading material only.

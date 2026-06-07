@@ -1,0 +1,195 @@
+lang: javascript
+group: Functions
+title: "Functions — HOF, closures, currying, arrow vs regular"
+tag: E
+summary: |
+  Functions in JS are first-class values: they can be assigned to variables, passed as
+  arguments, returned from other functions, and stored in objects. This makes higher-order
+  programming idiomatic rather than bolted-on.
+
+  Arrow functions (ES6+): shorter syntax and lexically bound `this` (inherited from the
+  enclosing scope at definition time, not the call site). Arrow functions cannot be used
+  as constructors, have no `arguments` object, and cannot be generators.
+
+  Higher-order functions: the array methods `map`, `filter`, `reduce`, `flatMap`, `find`,
+  `every`, `some` all accept callbacks. These compose well and replace most imperative
+  loops for data transformation.
+
+  Callbacks: the original async mechanism. Nested callbacks create "callback hell" — deep
+  indentation with error handling scattered across multiple levels. Now largely replaced
+  by Promises and `async`/`await`.
+
+  Currying transforms a function of `n` arguments into a chain of single-argument
+  functions. Partial application pre-fills some arguments. Both patterns exploit closures
+  to create more specific functions from general ones.
+
+  Rest parameters and spread: `function f(...args)` collects remaining arguments into a
+  real Array (unlike the legacy `arguments` object). `f(...arr)` spreads an iterable into
+  individual arguments.
+
+  Gotchas: `arguments` is not available in arrow functions — use rest parameters.
+  `Array.prototype.reduce` with no initial value throws on an empty array. Named function
+  expressions: the name is only visible inside the body, not the outer scope. `fn.length`
+  counts declared parameters but not rest parameters or parameters with defaults.
+exercises:
+  - prompt: |
+      Predict the output. Inside the object method, a regular function callback and an
+      arrow callback behave differently for `this`. Explain each result.
+    kind: predict-output
+    broken_code: |
+      const timer = {
+        name: "my timer",
+
+        startRegular() {
+          setTimeout(function () {
+            console.log("regular:", this.name);
+          }, 0);
+        },
+
+        startArrow() {
+          setTimeout(() => {
+            console.log("arrow:", this.name);
+          }, 0);
+        },
+      };
+
+      timer.startRegular();
+      timer.startArrow();
+    fixed_code: |
+      // The arrow version is the correct pattern for callbacks that need the method's this.
+      const timer = {
+        name: "my timer",
+
+        startArrow() {
+          setTimeout(() => {
+            console.log("arrow:", this.name);
+          }, 0);
+        },
+      };
+
+      timer.startArrow();
+    bug: |
+      The regular function callback loses `this` — it is called by `setTimeout` with no
+      object context, so in non-strict mode `this` is `globalThis` (which has no `name`
+      property), producing `undefined`. The arrow callback has no own `this`; it inherits
+      `this` from `startArrow`'s lexical scope, which is `timer`, so `this.name` is
+      `"my timer"`. Arrow functions are the idiomatic fix for callbacks that need the
+      enclosing `this`.
+    check: stdout
+    signal: "regular: undefined\narrow: my timer"
+
+  - prompt: |
+      Rewrite this nested callback chain using `async`/`await`. Then add proper error
+      handling for each step.
+    kind: fix-it
+    broken_code: |
+      function loadUserOrder(userId, callback) {
+        fetchUser(userId, function (err, user) {
+          if (err) return callback(err);
+          fetchOrder(user.latestOrderId, function (err, order) {
+            if (err) return callback(err);
+            fetchProduct(order.productId, function (err, product) {
+              if (err) return callback(err);
+              callback(null, product.name);
+            });
+          });
+        });
+      }
+    fixed_code: |
+      async function loadUserOrder(userId) {
+        const user = await fetchUser(userId);
+        const order = await fetchOrder(user.latestOrderId);
+        const product = await fetchProduct(order.productId);
+        return product.name;
+      }
+
+      // Usage:
+      // loadUserOrder(42).then(console.log).catch(console.error);
+    bug: |
+      Each nested callback manually threads an `err` parameter and returns early on
+      failure — error handling is duplicated at every level. `async`/`await` collapses
+      the three levels into sequential lines that read like synchronous code. A single
+      `try/catch` around the `await` calls (or a `.catch()` on the returned Promise)
+      handles all errors in one place.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Implement `map` and `filter` each using only `Array.prototype.reduce`. Then explain
+      what happens if you call `reduce` on an empty array with no initial value.
+    kind: fix-it
+    broken_code: |
+      // Stub implementations — both crash or return wrong results.
+      function myMap(arr, fn) {
+        return arr.reduce(fn);
+      }
+
+      function myFilter(arr, pred) {
+        return arr.reduce(pred);
+      }
+
+      console.log(myMap([1, 2, 3], (x) => x * 2).join(", "));
+      console.log(myFilter([1, 2, 3, 4], (x) => x % 2 === 0).join(", "));
+    fixed_code: |
+      function myMap(arr, fn) {
+        return arr.reduce((acc, val, i) => {
+          acc.push(fn(val, i, arr));
+          return acc;
+        }, []);
+      }
+
+      function myFilter(arr, pred) {
+        return arr.reduce((acc, val, i) => {
+          if (pred(val, i, arr)) acc.push(val);
+          return acc;
+        }, []);
+      }
+
+      console.log(myMap([1, 2, 3], (x) => x * 2).join(", "));
+      console.log(myFilter([1, 2, 3, 4], (x) => x % 2 === 0).join(", "));
+    bug: |
+      The broken stubs pass the transformation function directly as the `reduce` callback
+      — wrong signature. `reduce`'s callback receives `(accumulator, currentValue, index,
+      array)`, not just the element. Both need an empty array `[]` as the initial
+      accumulator so the result is always an array (without it, `reduce` on an empty input
+      throws `TypeError: Reduce of empty array with no initial value`).
+    check: stdout
+    signal: "2, 4, 6\n2, 4"
+
+  - prompt: |
+      Write a `curry(fn)` utility so that a curried binary function can be called either
+      as `add(1)(2)` or `add(1, 2)`. Verify with the examples below.
+    kind: fix-it
+    broken_code: |
+      function curry(fn) {
+        return function (...args) {
+          return fn(...args); // ignores arity — always calls immediately
+        };
+      }
+
+      const add = curry((a, b) => a + b);
+      console.log(add(1)(2)); // should be 3 but throws — can't call a number
+      console.log(add(1, 2)); // 3 (works by accident)
+    fixed_code: |
+      function curry(fn) {
+        return function curried(...args) {
+          if (args.length >= fn.length) {
+            return fn(...args);
+          }
+          return function (...moreArgs) {
+            return curried(...args, ...moreArgs);
+          };
+        };
+      }
+
+      const add = curry((a, b) => a + b);
+      console.log(add(1)(2)); // 3
+      console.log(add(1, 2)); // 3
+    bug: |
+      The broken version always applies the function immediately regardless of how many
+      arguments were supplied. The fix checks `args.length >= fn.length` — if there are
+      enough arguments, call `fn`; otherwise return a new function that accumulates the
+      rest. Note: `fn.length` is `0` for functions that use rest parameters or parameter
+      defaults, so this arity-based curry only works for fixed-arity functions.
+    check: stdout
+    signal: "3\n3"

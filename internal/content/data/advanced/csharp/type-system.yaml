@@ -1,0 +1,225 @@
+lang: csharp
+group: Type System
+title: "Type System — generics, nullable reference types, and variance"
+tag: E
+summary: |
+  C#'s type system layers several powerful features on top of classic OOP generics.
+
+  Generics are reified at runtime (unlike Java's type erasure). Type constraints
+  (where T : IComparable<T>, where T : new(), where T : struct, where T : notnull)
+  let the compiler enforce capabilities, enabling type-safe generic algorithms without
+  reflection. Covariance (out T) and contravariance (in T) are explicit on
+  interface/delegate type parameters.
+
+  Nullable reference types (NRT) — enabled by default in .NET 6+ projects — annotate
+  whether a reference can be null. T means non-nullable (must be initialised); T? means
+  nullable (must be null-checked before use). This is a static-analysis feature only:
+  both compile to the same T at runtime. The null-forgiving operator (!) suppresses
+  warnings where you know better than the compiler.
+
+  var does not mean dynamic; it is compile-time type inference. The variable is still
+  strongly typed.
+
+  Common mistakes:
+  - var x = null is a compile error because the type cannot be inferred.
+  - NRT annotations have no runtime enforcement: a library compiled without NRT enabled
+    can still return null to your NRT-enabled code; ! does not add a null check.
+  - Type erasure does not happen in C# — typeof(List<int>) != typeof(List<string>) —
+    so runtime generic reflection works but surprises Java developers.
+exercises:
+  - prompt: |
+      This class has three NRT problems: a non-nullable field left uninitialised, a
+      nullable string dereferenced without a check, and a ! that hides a real null risk.
+      Fix the first two correctly; explain why the third is dangerous and refactor it.
+    kind: fix-it
+    broken_code: |
+      #nullable enable
+
+      public class UserService
+      {
+          // Warning CS8618: non-nullable field must contain a non-null value
+          private string _connectionString;
+
+          public UserService() { }   // _connectionString never assigned
+
+          public string GetDisplayName(string? rawName)
+          {
+              // Warning CS8602: dereference of a possibly null reference
+              return rawName.Trim();
+          }
+
+          public string LookupEmail(string userId)
+          {
+              // ! suppresses warning but the legacy library really can return null
+              return LegacyDirectory.FindEmail(userId)!;
+          }
+
+          // Stub — imagine this is a pre-NRT assembly
+          static class LegacyDirectory
+          {
+              public static string? FindEmail(string id) => null;
+          }
+      }
+    fixed_code: |
+      #nullable enable
+
+      public class UserService
+      {
+          private readonly string _connectionString;
+
+          // Fix 1: initialise in constructor
+          public UserService(string connectionString)
+          {
+              _connectionString = connectionString;
+          }
+
+          public string GetDisplayName(string? rawName)
+          {
+              // Fix 2: null-check before use
+              return rawName?.Trim() ?? "(unknown)";
+          }
+
+          public string LookupEmail(string userId)
+          {
+              // Fix 3: proper guard — ! does NOT add a runtime check
+              var email = LegacyDirectory.FindEmail(userId);
+              if (email is not null)
+                  return email;
+              throw new InvalidOperationException($"No email for user {userId}.");
+          }
+
+          static class LegacyDirectory
+          {
+              public static string? FindEmail(string id) => null;
+          }
+      }
+    bug: |
+      ! (null-forgiving) silences the static analyser but does NOT insert a runtime
+      null check. Code from pre-NRT or NRT-disabled assemblies can return null
+      regardless of annotations. Using is not null or ?. is always safer; reserve !
+      for situations where you have absolute certainty and can document why.
+    check: none
+    signal: ""
+
+  - prompt: |
+      The generic Repository<T> needs to (a) create instances of T without a factory,
+      (b) call .CompareTo() on T, and (c) accept only reference types. Write the correct
+      where clause(s) and explain what compile error you get without each constraint.
+    kind: fix-it
+    broken_code: |
+      public class Repository<T>
+      {
+          public T CreateDefault()
+          {
+              // Error: T might not have a parameterless constructor
+              return new T();
+          }
+
+          public int Compare(T a, T b)
+          {
+              // Error: T does not contain a definition for CompareTo
+              return a.CompareTo(b);
+          }
+
+          public void RequireReference(T item)
+          {
+              // We want a compile error if T is a value type — but currently
+              // there is no enforcement.
+          }
+      }
+    fixed_code: |
+      public class Repository<T>
+          where T : class,            // (c) reference types only
+                    IComparable<T>,   // (b) CompareTo is available
+                    new()             // (a) parameterless constructor exists
+      {
+          public T CreateDefault()
+              => new T();
+
+          public int Compare(T a, T b)
+              => a.CompareTo(b);
+
+          public void RequireReference(T item)
+          {
+              // T is guaranteed to be a reference type here
+          }
+      }
+    bug: |
+      Without new(): "Cannot create an instance of the variable type T because it
+      does not have the new() constraint."
+      Without IComparable<T>: "T does not contain a definition for CompareTo."
+      Without class: struct types would be accepted — combining struct and class is
+      a compile error; use one or the other.
+    check: none
+    signal: ""
+
+  - prompt: |
+      The first assignment compiles; the second does not. Explain the variance rule
+      that permits one and forbids the other, and why the restriction on IList<T> is
+      necessary for type safety.
+    kind: spot-the-bug
+    broken_code: |
+      IEnumerable<string> strings = new List<string> { "hello" };
+
+      // This compiles — IEnumerable<T> is covariant (out T)
+      IEnumerable<object> objects = strings;
+
+      List<string> stringList = new List<string> { "hello" };
+
+      // CS0266 — cannot implicitly convert IList<string> to IList<object>
+      IList<object> objectList = stringList;
+    fixed_code: |
+      // IEnumerable<T> is declared as IEnumerable<out T> — covariant.
+      // You can only READ from it (no Add), so widening is safe.
+      IEnumerable<object> objects = strings;   // OK
+
+      // IList<T> is invariant — it has both read (indexer) and write (Add).
+      // If allowed, you could do: objectList.Add(42) — an int into a List<string>!
+      // The compiler forbids the assignment to prevent this corruption.
+
+      // Safe alternative: widen to a read-only interface.
+      IReadOnlyList<object> readOnly = stringList;   // OK — covariant
+    bug: |
+      IList<T> is invariant because it supports both reads (covariant position) and
+      writes (contravariant position). Allowing IList<string> -> IList<object> would
+      let callers add arbitrary objects, corrupting the strongly-typed list. Only
+      purely read-only collection interfaces (IEnumerable<out T>, IReadOnlyList<out T>)
+      are covariant.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Write a generic method FirstOrDefault<T> that returns T? correctly for both
+      reference types (string?) and value types (int?). Explain why T? means different
+      things depending on whether T is constrained to class or struct.
+    kind: fix-it
+    broken_code: |
+      // This compiles but the annotation is wrong for value types:
+      // For T = int, T? should be Nullable<int>, not just int.
+      public static T FirstOrDefault<T>(IEnumerable<T> source)
+      {
+          foreach (var item in source)
+              return item;
+          return default!;   // wrong: for string this should be null (T?), not default!
+      }
+    fixed_code: |
+      // Correct annotation: [return: MaybeNull] or the T? form with
+      // the right constraints. The idiomatic BCL-style approach:
+      public static T? FirstOrDefault<T>(IEnumerable<T> source)
+      {
+          foreach (var item in source)
+              return item;
+          return default;   // null for reference types; default(T) for value types
+      }
+
+      // Usage:
+      string?  s = FirstOrDefault(new[] { "hello" });   // T = string  → string?
+      int?     n = FirstOrDefault(new[] { 1, 2, 3 });   // T = int     → Nullable<int>
+    bug: |
+      In unconstrained generics, T? means "nullable counterpart of T." For reference
+      types this is the NRT annotation T? (same CLR type, nullable annotation only).
+      For value types it becomes Nullable<T> — a different CLR struct that adds a
+      HasValue flag. Using default instead of default! is correct: for reference types
+      default is null; for value types it is the zero value (or null if T is Nullable<T>).
+    check: none
+    signal: ""

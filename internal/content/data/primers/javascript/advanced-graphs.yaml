@@ -1,0 +1,151 @@
+- category: 'Advanced Graphs'
+  lang: javascript
+  title: 'Advanced Graphs — JavaScript refresher'
+  summary: |
+    Advanced graph algorithms handle weighted edges, shortest paths, minimum spanning
+    trees, and strongly connected components.
+
+    Key algorithms:
+      - Dijkstra: single-source shortest path in non-negative weighted graphs. O((V+E) log V)
+        with a priority queue (min-heap).
+      - Bellman-Ford: handles negative weights; detects negative cycles. O(V * E).
+      - Floyd-Warshall: all-pairs shortest paths. O(V^3), fine for small V.
+      - Union-Find (DSU): efficiently tracks connected components; nearly O(1) per op.
+      - Topological sort: linear ordering of a DAG (Kahn's BFS or DFS + stack).
+
+    JavaScript notes:
+      - No built-in priority queue — use the MinHeap class or sorted-array fallback.
+      - Represent weighted graphs as Map<node, Array<[neighbor, weight]>>.
+      - Union-Find uses plain arrays for parent[] and rank[].
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'weighted adjacency list (Map of [neighbor, weight] pairs)'
+          code: |
+            const graph = new Map();
+            graph.set(u, [...(graph.get(u)??[]), [v, w]]);
+        - label: 'distance array for Dijkstra (Infinity = not yet reached)'
+          code: |
+            const dist = new Array(n).fill(Infinity);
+            dist[src] = 0;
+        - label: 'Union-Find (DSU) arrays'
+          code: |
+            const parent = Array.from({length: n}, (_, i) => i);
+            const rank = new Array(n).fill(0);
+    - title: Basic operations
+      ops:
+        - label: 'DSU find with path compression'
+          code: |
+            function find(x) {
+              if (parent[x] !== x) parent[x] = find(parent[x]);
+              return parent[x];
+            }
+        - label: 'DSU union by rank'
+          code: |
+            function union(x, y) {
+                const rx = find(x), ry = find(y);
+                if (rx === ry) return false;
+                if (rank[rx] < rank[ry]) parent[rx] = ry;
+                else if (rank[rx] > rank[ry]) parent[ry] = rx;
+                else {
+                    parent[ry] = rx;
+                    rank[rx]++;
+                }
+                return true;
+            }
+        - label: 'relax an edge in Dijkstra'
+          code: |
+            if (dist[u] + w < dist[v]) {
+              dist[v] = dist[u] + w;
+              heap.push([dist[v], v]);
+            }
+    - title: Iteration & loops
+      ops:
+        - label: "Dijkstra's algorithm (min-heap required)"
+          code: |
+            const dist = new Array(n).fill(Infinity);
+            dist[src] = 0;
+            const heap = new MinHeap();   // stores [cost, node]
+            heap.push([0, src]);
+            while (heap.size() > 0) {
+                const [cost, u] = heap.pop();
+                if (cost > dist[u]) continue;
+                for (const [v, w] of (graph.get(u) ?? [])) {
+                    if (dist[u] + w < dist[v]) {
+                        dist[v] = dist[u] + w;
+                        heap.push([dist[v], v]);
+                    }
+                }
+            }
+        - label: 'Bellman-Ford (relax all edges V-1 times)'
+          code: |
+            const dist = new Array(n).fill(Infinity);
+            dist[src] = 0;
+            for (let i = 0; i < n - 1; i++) {
+                for (const [u, v, w] of edges) {
+                    if (dist[u] !== Infinity && dist[u] + w < dist[v]) dist[v] = dist[u] + w;
+                }
+            }
+        - label: 'Floyd-Warshall (all-pairs)'
+          code: |
+            const dp = Array.from({length: n}, (_, i) => Array.from({length: n}, (_, j) => i === j ? 0 : Infinity));
+            for (const [u, v, w] of edges) dp[u][v] = w;
+            for (let k = 0; k < n; k++)
+                for (let i = 0; i < n; i++)
+                    for (let j = 0; j < n; j++)
+                        dp[i][j] = Math.min(dp[i][j], dp[i][k] + dp[k][j]);
+    - title: Special operations (advanced graphs)
+      ops:
+        - label: "Kahn's topological sort (BFS, track in-degrees)"
+          code: |
+            const inDeg = new Array(n).fill(0);
+            for (const [u, v] of edges) inDeg[v]++;
+            const queue = [];
+            let head = 0;
+            for (let i = 0; i < n; i++) if (inDeg[i] === 0) queue.push(i);
+            const order = [];
+            while (head < queue.length) {
+                const u = queue[head++];
+                order.push(u);
+                for (const v of (graph.get(u) ?? [])) {
+                    if (--inDeg[v] === 0) queue.push(v);
+                }
+            }
+            return order.length === n ? order : [];   // empty = cycle detected
+        - label: 'count connected components with DSU'
+          code: |
+            let components = n;
+            for (const [u, v] of edges) {
+              if (union(u, v)) components--;
+            }
+            return components;
+        - label: 'detect negative cycle (Bellman-Ford extra pass)'
+          code: |
+            for (const [u,v,w] of edges) {
+              if (dist[u] !== Infinity && dist[u]+w < dist[v]) return true;
+            }
+            return false;
+  example: |
+    Worked example — find the cheapest flight with at most k stops (modified Bellman-Ford):
+
+      Relax edges exactly k+1 times (each pass extends paths by one hop). Use a copy of
+      the distance array each round so only paths of exactly that length are extended —
+      this prevents chaining multiple hops in a single pass.
+
+        function findCheapestPrice(n, flights, src, dst, k) {
+            let dist = new Array(n).fill(Infinity);
+            dist[src] = 0;
+            for (let i = 0; i <= k; i++) {
+                const next = [...dist];
+                for (const [u, v, w] of flights) {
+                    if (dist[u] !== Infinity && dist[u] + w < next[v]) {
+                        next[v] = dist[u] + w;
+                    }
+                }
+                dist = next;
+            }
+            return dist[dst] === Infinity ? -1 : dist[dst];
+        }
+
+    Takeaway: copy the dist array each Bellman-Ford round when limiting hops — this
+    enforces exactly one new edge per iteration and prevents multi-hop shortcuts.
