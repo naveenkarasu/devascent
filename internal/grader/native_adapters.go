@@ -125,8 +125,12 @@ func nativeAdapters() map[string]langAdapter {
 			lang: "typescript", file: "main.ts",
 			// --target es2017 so modern built-ins (Set, Map, Object.entries, …) are in
 			// lib; bare tsc defaults to ES5, where `new Set()` is "Cannot find name 'Set'".
+			// --strict false PINNED: TypeScript 6.0 made strict the default, which
+			// rejects the harness driver (untyped __out/__run) and loosely-typed
+			// player code on every grade. The function-call grading contract is
+			// non-strict; strictness stays explicit in the compiles check below.
 			runCmds: func(r runner) [][]string {
-				return [][]string{{r.resolve("tsc"), "--target", "es2017", "main.ts"}, {r.resolve("node"), "main.js"}}
+				return [][]string{{r.resolve("tsc"), "--strict", "false", "--target", "es2017", "main.ts"}, {r.resolve("node"), "main.js"}}
 			},
 			testsDriver: func(req GradeRequest) (string, error) {
 				return BuildTSDriver(req.Source, req.FuncName, req.Tests, req.Shape)
