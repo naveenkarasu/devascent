@@ -40,35 +40,64 @@ exercises:
       longer needs try/catch or throws.
     kind: implement
     broken_code: |
-      // Checked exception propagates — caller is forced to handle it:
-      static String readFile(String path) throws IOException {
-          return Files.readString(Path.of(path));
-      }
+      import java.io.*;
+      import java.nio.file.*;
 
-      // Call site must declare or catch:
-      static void process(String path) throws IOException {
-          String content = readFile(path);
-          System.out.println(content.length());
+      public class Main {
+          // Checked exception propagates — caller is forced to handle it:
+          static String readFile(String path) throws IOException {
+              return Files.readString(Path.of(path));
+          }
+
+          // Call site must declare or catch:
+          static void process(String path) throws IOException {
+              String content = readFile(path);
+              System.out.println(content.length());
+          }
+
+          public static void main(String[] args) {
+              // TODO: wrap the checked IOException in an unchecked FileReadException
+              // so process() needs no throws/try-catch. Print the preserved cause type.
+              try {
+                  process("/no/such/file.txt");
+              } catch (IOException e) {
+                  System.out.println("cause: " + e.getClass().getSimpleName());
+              }
+          }
       }
     fixed_code: |
-      class FileReadException extends RuntimeException {
-          FileReadException(String message, Throwable cause) {
-              super(message, cause);   // preserve original cause — crucial for debugging
-          }
-      }
+      import java.io.*;
+      import java.nio.file.*;
 
-      static String readFile(String path) {
-          try {
-              return Files.readString(Path.of(path));
-          } catch (IOException e) {
-              throw new FileReadException("Failed to read: " + path, e);
+      public class Main {
+          static class FileReadException extends RuntimeException {
+              FileReadException(String message, Throwable cause) {
+                  super(message, cause);   // preserve original cause — crucial for debugging
+              }
           }
-      }
 
-      // No throws declaration needed; original IOException is in the cause chain:
-      static void process(String path) {
-          String content = readFile(path);
-          System.out.println(content.length());
+          static String readFile(String path) {
+              try {
+                  return Files.readString(Path.of(path));
+              } catch (IOException e) {
+                  throw new FileReadException("Failed to read: " + path, e);
+              }
+          }
+
+          // No throws declaration needed; original IOException is in the cause chain:
+          static void process(String path) {
+              String content = readFile(path);
+              System.out.println(content.length());
+          }
+
+          public static void main(String[] args) {
+              try {
+                  process("/no/such/file.txt");
+              } catch (FileReadException e) {
+                  // The original checked IOException is preserved as the cause:
+                  System.out.println("cause: " + e.getCause().getClass().getSimpleName());
+              }
+          }
       }
     bug: |
       Calling super(message) without the cause argument drops the original IOException
@@ -76,8 +105,8 @@ exercises:
       cause. Always preserve the cause: super(message, cause). The trade-off vs checked:
       the compiler no longer forces callers to handle it, which is a deliberate design
       choice when the caller has no realistic recovery action.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "cause: NoSuchFileException"
 
   - prompt: |
       The catch block below swallows the exception silently. Identify why this hides
@@ -85,31 +114,48 @@ exercises:
       exception with the original cause preserved.
     kind: fix-it
     broken_code: |
-      static int parseId(String raw) {
-          try {
-              return Integer.parseInt(raw);
-          } catch (NumberFormatException e) {
-              // silently ignored — caller gets 0 and has no idea why
-              return 0;
+      public class Main {
+          static int parseId(String raw) {
+              try {
+                  return Integer.parseInt(raw);
+              } catch (NumberFormatException e) {
+                  // silently ignored — caller gets 0 and has no idea why
+                  return 0;
+              }
+          }
+
+          public static void main(String[] args) {
+              System.out.println(parseId("42"));
+              // TODO: bad input should NOT silently return 0 — surface it.
+              System.out.println(parseId("oops"));
           }
       }
     fixed_code: |
-      class InvalidIdException extends RuntimeException {
-          InvalidIdException(String message, Throwable cause) {
-              super(message, cause);
+      public class Main {
+          static class InvalidIdException extends RuntimeException {
+              InvalidIdException(String message, Throwable cause) {
+                  super(message, cause);
+              }
           }
-      }
 
-      static int parseId(String raw) {
-          try {
-              return Integer.parseInt(raw);
-          } catch (NumberFormatException e) {
-              // Option A: log and rethrow as domain exception
-              System.err.println("[WARN] Invalid ID input: " + raw);
-              throw new InvalidIdException("Cannot parse ID from: " + raw, e);
-              // Option B (if 0 is a valid sentinel): at minimum log
-              //   System.err.println("parseId received non-numeric input: " + raw);
-              //   return 0;
+          static int parseId(String raw) {
+              try {
+                  return Integer.parseInt(raw);
+              } catch (NumberFormatException e) {
+                  // Log (to stderr) and rethrow as a domain exception with the cause:
+                  System.err.println("[WARN] Invalid ID input: " + raw);
+                  throw new InvalidIdException("Cannot parse ID from: " + raw, e);
+              }
+          }
+
+          public static void main(String[] args) {
+              System.out.println(parseId("42"));
+              try {
+                  parseId("oops");
+              } catch (InvalidIdException e) {
+                  // Caller now learns the failure instead of getting a silent 0:
+                  System.out.println("rejected: " + e.getCause().getClass().getSimpleName());
+              }
           }
       }
     bug: |
@@ -118,8 +164,8 @@ exercises:
       in batch processing where one bad record can corrupt an entire run without any
       log entry pointing to the cause. If returning a sentinel value (like 0) is
       intentional, at minimum log the anomaly so it shows up in monitoring.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "42\nrejected: NumberFormatException"
 
   - prompt: |
       The method below opens a Connection and a PreparedStatement in sequential
@@ -128,29 +174,79 @@ exercises:
       that an exception from close() does not overwrite the primary exception.
     kind: fix-it
     broken_code: |
-      static void runQuery(DataSource ds, String sql) throws SQLException {
-          Connection conn = ds.getConnection();
-          try {
-              PreparedStatement stmt = conn.prepareStatement(sql);
-              try {
-                  stmt.execute();
-              } finally {
-                  stmt.close();   // if this throws, it OVERWRITES the body exception
+      public class Main {
+          // Stand-in resources (a real version would use java.sql.Connection / Statement):
+          static class Connection implements AutoCloseable {
+              public void close() { System.out.println("close conn"); }
+          }
+          static class Statement implements AutoCloseable {
+              void execute() { throw new RuntimeException("query failed"); }
+              public void close() {
+                  System.out.println("close stmt");
+                  throw new RuntimeException("close failed");
               }
-          } finally {
-              conn.close();
+          }
+
+          static void runQuery() {
+              Connection conn = new Connection();
+              try {
+                  Statement stmt = new Statement();
+                  try {
+                      stmt.execute();
+                  } finally {
+                      stmt.close();   // if this throws, it OVERWRITES the body exception
+                  }
+              } finally {
+                  conn.close();
+              }
+          }
+
+          public static void main(String[] args) {
+              try {
+                  runQuery();
+              } catch (RuntimeException e) {
+                  System.out.println("primary: " + e.getMessage());
+                  for (Throwable s : e.getSuppressed()) {
+                      System.out.println("suppressed: " + s.getMessage());
+                  }
+              }
           }
       }
     fixed_code: |
-      static void runQuery(DataSource ds, String sql) throws SQLException {
-          // Resources are closed in reverse declaration order: stmt first, then conn.
-          // If stmt.execute() throws AND stmt.close() also throws, the close exception
-          // is attached as a suppressed exception — the original is not lost.
-          try (Connection conn = ds.getConnection();
-               PreparedStatement stmt = conn.prepareStatement(sql)) {
-              stmt.execute();
+      public class Main {
+          // Stand-in resources (a real version would use java.sql.Connection / Statement):
+          static class Connection implements AutoCloseable {
+              public void close() { System.out.println("close conn"); }
           }
-          // Both resources are automatically closed here, in reverse order.
+          static class Statement implements AutoCloseable {
+              void execute() { throw new RuntimeException("query failed"); }
+              public void close() {
+                  System.out.println("close stmt");
+                  throw new RuntimeException("close failed");
+              }
+          }
+
+          static void runQuery() {
+              // Resources are closed in reverse declaration order: stmt first, then conn.
+              // If stmt.execute() throws AND stmt.close() also throws, the close exception
+              // is attached as a suppressed exception — the original is not lost.
+              try (Connection conn = new Connection();
+                   Statement stmt = new Statement()) {
+                  stmt.execute();
+              }
+              // Both resources are automatically closed here, in reverse order.
+          }
+
+          public static void main(String[] args) {
+              try {
+                  runQuery();
+              } catch (RuntimeException e) {
+                  System.out.println("primary: " + e.getMessage());
+                  for (Throwable s : e.getSuppressed()) {
+                      System.out.println("suppressed: " + s.getMessage());
+                  }
+              }
+          }
       }
     bug: |
       With manual try/finally, if close() throws an exception it propagates and
@@ -159,8 +255,8 @@ exercises:
       to the primary exception via Throwable.addSuppressed(), so both are visible.
       Resources are closed in reverse declaration order (last declared = first closed),
       which is the correct dependency order (statement before connection).
-    check: none
-    signal: ""
+    check: stdout
+    signal: "close stmt\nclose conn\nprimary: query failed\nsuppressed: close failed"
 
   - prompt: |
       A stream pipeline needs to call a method that throws a checked exception.
@@ -170,44 +266,66 @@ exercises:
       checked exception in a RuntimeException, then use it in the pipeline.
     kind: implement
     broken_code: |
-      // This does NOT compile — Function.apply cannot throw IOException:
-      static String parseJson(String raw) throws IOException {
+      import java.io.*;
+      import java.util.*;
+      import java.util.function.*;
+
+      public class Main {
           // simulated; real code would call Jackson etc.
-          if (raw.isBlank()) throw new IOException("Empty input");
-          return raw.trim();
-      }
+          static String parseJson(String raw) throws IOException {
+              if (raw.isBlank()) throw new IOException("Empty input");
+              return raw.trim();
+          }
 
-      List<String> inputs = List.of("{}", "  ", "{\"a\":1}");
-      List<String> results = inputs.stream()
-          .map(s -> parseJson(s))   // compile error: unhandled IOException
-          .toList();
+          public static void main(String[] args) {
+              List<String> inputs = List.of("{}", "  ", "{\"a\":1}");
+              // TODO: Function.apply cannot throw IOException — this does NOT compile:
+              List<String> results = inputs.stream()
+                  .map(s -> parseJson(s))   // compile error: unhandled IOException
+                  .toList();
+              System.out.println(results);
+          }
+      }
     fixed_code: |
-      @FunctionalInterface
-      interface ThrowingFunction<T, R> {
-          R apply(T t) throws Exception;
-      }
+      import java.io.*;
+      import java.util.*;
+      import java.util.function.*;
 
-      static <T, R> Function<T, R> wrap(ThrowingFunction<T, R> f) {
-          return t -> {
-              try {
-                  return f.apply(t);
-              } catch (RuntimeException e) {
-                  throw e;   // pass unchecked exceptions through unchanged
-              } catch (Exception e) {
-                  throw new RuntimeException(e);   // wrap checked exception
+      public class Main {
+          @FunctionalInterface
+          interface ThrowingFunction<T, R> {
+              R apply(T t) throws Exception;
+          }
+
+          static <T, R> Function<T, R> wrap(ThrowingFunction<T, R> f) {
+              return t -> {
+                  try {
+                      return f.apply(t);
+                  } catch (RuntimeException e) {
+                      throw e;   // pass unchecked exceptions through unchanged
+                  } catch (Exception e) {
+                      throw new RuntimeException(e);   // wrap checked exception
+                  }
+              };
+          }
+
+          static String parseJson(String raw) throws IOException {
+              if (raw.isBlank()) throw new IOException("Empty input");
+              return raw.trim();
+          }
+
+          public static void main(String[] args) {
+              List<String> inputs = List.of("{}", "  ", "{\"a\":1}");
+              for (String in : inputs) {
+                  try {
+                      System.out.println(wrap((String s) -> parseJson(s)).apply(in));
+                  } catch (RuntimeException e) {
+                      // checked IOException surfaced as an unchecked wrapper:
+                      System.out.println("wrapped: " + e.getCause().getClass().getSimpleName());
+                  }
               }
-          };
+          }
       }
-
-      static String parseJson(String raw) throws IOException {
-          if (raw.isBlank()) throw new IOException("Empty input");
-          return raw.trim();
-      }
-
-      List<String> inputs = List.of("{}", "  ", "{\"a\":1}");
-      List<String> results = inputs.stream()
-          .map(wrap(s -> parseJson(s)))
-          .toList();
     bug: |
       The java.util.function interfaces (Function, Predicate, etc.) declare no checked
       exceptions in their abstract method signature, so the compiler rejects any lambda
@@ -216,5 +334,5 @@ exercises:
       converts it to a standard Function by catching and re-wrapping at the boundary.
       This is a common real-world pattern; libraries like Lombok (@SneakyThrows) and
       Vavr provide their own variants.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "{}\nwrapped: IOException\n{\"a\":1}"

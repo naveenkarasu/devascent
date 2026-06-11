@@ -297,7 +297,16 @@ exercises:
       }
 
       func main() {
-          if err := process("go.mod", "go.sum"); err != nil {
+          dir, _ := os.MkdirTemp("", "defertest")
+          defer os.RemoveAll(dir)
+          orig, _ := os.Getwd()
+          os.Chdir(dir)
+          defer os.Chdir(orig)
+
+          os.WriteFile("a.txt", []byte("a"), 0644)
+          os.WriteFile("b.txt", []byte("b"), 0644)
+
+          if err := process("a.txt", "b.txt"); err != nil {
               fmt.Println("error:", err)
           }
       }
@@ -307,8 +316,8 @@ exercises:
       then f1.Close(). Without the second defer, f2 leaks its file descriptor. The
       idiomatic rule: defer Close (or any cleanup) immediately after the successful
       acquisition, before any code that might return early.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "processing a.txt and b.txt"
 
   - prompt: |
       Wrap the panicking handler function with a recover-based middleware. The middleware
@@ -378,5 +387,5 @@ exercises:
       captures the named return variable err; when recover returns a non-nil value, the
       closure sets err to a new error. Because Go evaluates named returns before deferred
       functions run, the caller receives ("", <error>) instead of a crash.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "processed: hello <nil>\n empty input not allowed"

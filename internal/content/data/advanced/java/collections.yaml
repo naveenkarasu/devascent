@@ -41,33 +41,45 @@ exercises:
       Print the sorted names in the format "Last, First".
     kind: implement
     broken_code: |
-      record Person(String lastName, String firstName) {}
+      import java.util.*;
 
-      List<Person> people = new ArrayList<>(List.of(
-          new Person("Smith",  "Bob"),
-          new Person("Jones",  "Alice"),
-          new Person("Smith",  "Alice"),
-          new Person("Jones",  "Charlie")
-      ));
+      public class Main {
+          record Person(String lastName, String firstName) {}
 
-      // TODO: sort by lastName then firstName
-      people.sort(/* ??? */);
-      people.forEach(p -> System.out.println(p.lastName() + ", " + p.firstName()));
+          public static void main(String[] args) {
+              List<Person> people = new ArrayList<>(List.of(
+                  new Person("Smith",  "Bob"),
+                  new Person("Jones",  "Alice"),
+                  new Person("Smith",  "Alice"),
+                  new Person("Jones",  "Charlie")
+              ));
+
+              // TODO: sort by lastName then firstName
+              people.sort(/* ??? */);
+              people.forEach(p -> System.out.println(p.lastName() + ", " + p.firstName()));
+          }
+      }
     fixed_code: |
-      record Person(String lastName, String firstName) {}
+      import java.util.*;
 
-      List<Person> people = new ArrayList<>(List.of(
-          new Person("Smith",  "Bob"),
-          new Person("Jones",  "Alice"),
-          new Person("Smith",  "Alice"),
-          new Person("Jones",  "Charlie")
-      ));
+      public class Main {
+          record Person(String lastName, String firstName) {}
 
-      people.sort(
-          Comparator.comparing(Person::lastName)
-                    .thenComparing(Person::firstName)
-      );
-      people.forEach(p -> System.out.println(p.lastName() + ", " + p.firstName()));
+          public static void main(String[] args) {
+              List<Person> people = new ArrayList<>(List.of(
+                  new Person("Smith",  "Bob"),
+                  new Person("Jones",  "Alice"),
+                  new Person("Smith",  "Alice"),
+                  new Person("Jones",  "Charlie")
+              ));
+
+              people.sort(
+                  Comparator.comparing(Person::lastName)
+                            .thenComparing(Person::firstName)
+              );
+              people.forEach(p -> System.out.println(p.lastName() + ", " + p.firstName()));
+          }
+      }
     bug: |
       Hand-written comparators using ternary/integer subtraction are error-prone
       (integer overflow, sign errors). Comparator.comparing() with method references
@@ -83,43 +95,64 @@ exercises:
       by name as a tiebreaker. Verify with a sorted list printout.
     kind: implement
     broken_code: |
-      class Task {
-          int priority;
-          String name;
-          Task(int priority, String name) {
-              this.priority = priority;
-              this.name = name;
+      import java.util.*;
+
+      public class Main {
+          static class Task {
+              int priority;
+              String name;
+              Task(int priority, String name) {
+                  this.priority = priority;
+                  this.name = name;
+              }
+              // TODO: implement Comparable<Task> (priority asc, then name)
           }
-          // TODO: implement Comparable<Task>
+
+          public static void main(String[] args) {
+              List<Task> tasks = new ArrayList<>(List.of(
+                  new Task(2, "Deploy"),
+                  new Task(1, "Write tests"),
+                  new Task(2, "Review PR"),
+                  new Task(1, "Fix bug")
+              ));
+              Collections.sort(tasks);   // won't compile until Task is Comparable
+              tasks.forEach(System.out::println);
+          }
       }
     fixed_code: |
-      class Task implements Comparable<Task> {
-          final int priority;
-          final String name;
+      import java.util.*;
 
-          Task(int priority, String name) {
-              this.priority = priority;
-              this.name = name;
+      public class Main {
+          static class Task implements Comparable<Task> {
+              final int priority;
+              final String name;
+
+              Task(int priority, String name) {
+                  this.priority = priority;
+                  this.name = name;
+              }
+
+              @Override
+              public int compareTo(Task other) {
+                  int cmp = Integer.compare(this.priority, other.priority);
+                  if (cmp != 0) return cmp;
+                  return this.name.compareTo(other.name);
+              }
+
+              @Override public String toString() { return priority + ":" + name; }
           }
 
-          @Override
-          public int compareTo(Task other) {
-              int cmp = Integer.compare(this.priority, other.priority);
-              if (cmp != 0) return cmp;
-              return this.name.compareTo(other.name);
+          public static void main(String[] args) {
+              List<Task> tasks = new ArrayList<>(List.of(
+                  new Task(2, "Deploy"),
+                  new Task(1, "Write tests"),
+                  new Task(2, "Review PR"),
+                  new Task(1, "Fix bug")
+              ));
+              Collections.sort(tasks);
+              tasks.forEach(System.out::println);
           }
-
-          @Override public String toString() { return priority + ":" + name; }
       }
-
-      List<Task> tasks = new ArrayList<>(List.of(
-          new Task(2, "Deploy"),
-          new Task(1, "Write tests"),
-          new Task(2, "Review PR"),
-          new Task(1, "Fix bug")
-      ));
-      Collections.sort(tasks);
-      tasks.forEach(System.out::println);
     bug: |
       Using subtraction (this.priority - other.priority) as a compareTo return value
       is a classic bug: it overflows for large negative values. Integer.compare() is
@@ -131,28 +164,44 @@ exercises:
 
   - prompt: |
       Count word frequencies in the sentence below using a HashMap<String, Integer>,
-      then print the top-3 most frequent words (word: count) sorted by count descending.
+      then print the top-3 most frequent words (word: count) sorted by count
+      descending, breaking ties alphabetically so the order is deterministic.
       Use getOrDefault() or computeIfAbsent() — avoid raw get/put pairs with null checks.
     kind: implement
     broken_code: |
-      String sentence = "to be or not to be that is the question to be";
-      Map<String, Integer> freq = new HashMap<>();
+      import java.util.*;
+      import java.util.stream.*;
 
-      // TODO: count frequencies without raw null-check pattern
-      // TODO: print top-3 words by frequency
-    fixed_code: |
-      String sentence = "to be or not to be that is the question to be";
-      Map<String, Integer> freq = new HashMap<>();
+      public class Main {
+          public static void main(String[] args) {
+              String sentence = "to be or not to be that is the question to be";
+              Map<String, Integer> freq = new HashMap<>();
 
-      for (String word : sentence.split(" ")) {
-          freq.merge(word, 1, Integer::sum);
-          // or: freq.put(word, freq.getOrDefault(word, 0) + 1);
+              // TODO: count frequencies without raw null-check pattern
+              // TODO: print top-3 words by count desc, ties broken alphabetically
+          }
       }
+    fixed_code: |
+      import java.util.*;
+      import java.util.stream.*;
 
-      freq.entrySet().stream()
-          .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-          .limit(3)
-          .forEach(e -> System.out.println(e.getKey() + ": " + e.getValue()));
+      public class Main {
+          public static void main(String[] args) {
+              String sentence = "to be or not to be that is the question to be";
+              Map<String, Integer> freq = new HashMap<>();
+
+              for (String word : sentence.split(" ")) {
+                  freq.merge(word, 1, Integer::sum);
+                  // or: freq.put(word, freq.getOrDefault(word, 0) + 1);
+              }
+
+              freq.entrySet().stream()
+                  .sorted(Map.Entry.<String, Integer>comparingByValue().reversed()
+                          .thenComparing(Map.Entry.comparingByKey()))
+                  .limit(3)
+                  .forEach(e -> System.out.println(e.getKey() + ": " + e.getValue()));
+          }
+      }
     bug: |
       The naive pattern `Integer count = map.get(word); if (count == null) count = 0;
       map.put(word, count + 1);` works but is verbose and error-prone. map.merge(key,
@@ -161,7 +210,7 @@ exercises:
       acceptable. computeIfAbsent() is best when the default value is expensive to
       construct (e.g., a new list).
     check: stdout
-    signal: "to: 3\nbe: 3"
+    signal: "be: 3\nto: 3\nis: 1"
 
   - prompt: |
       For each of these three scenarios, choose the most appropriate collection type

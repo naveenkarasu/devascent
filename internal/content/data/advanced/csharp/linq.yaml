@@ -66,17 +66,14 @@ exercises:
 
       // Deferred proof: add to source before enumeration
       orders.Add(new("D", 300));
-      foreach (var id in query)
-          Console.Write(id + " ");
       // Prints: A C D  (D is included — query re-reads the list)
-      Console.WriteLine();
+      Console.WriteLine(string.Join(" ", query));
 
       // Immediate execution snapshot — D was already in the list at ToList() time
       var snapshot = query.ToList();
       orders.Add(new("E", 400));
-      foreach (var id in snapshot)
-          Console.Write(id + " ");
       // Prints: A C D  (E is NOT included — snapshot was taken at ToList())
+      Console.WriteLine(string.Join(" ", snapshot));
 
       record Order(string Id, decimal Amount);
     bug: |
@@ -84,8 +81,8 @@ exercises:
       enumerated. This is a feature (live view) but also a trap: enumerating twice
       runs the pipeline twice, which is expensive or side-effecting for remote sources.
       ToList() / ToArray() materialises to a fixed snapshot and prevents re-enumeration.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "A C D\nA C D"
 
   - prompt: |
       The method below enumerates numbers twice: once for Count() and once for foreach.
@@ -107,6 +104,8 @@ exercises:
           Console.WriteLine($"Count={count}, Sum={sum}");
       }
     fixed_code: |
+      PrintStats(new[] { 1, 2, 3 });   // Count=3, Sum=6
+
       static void PrintStats(IEnumerable<int> numbers)
       {
           // Materialise once — only one enumeration of the source
@@ -123,14 +122,17 @@ exercises:
       sources (DB, HTTP, file) it issues two round trips and may return different data.
       The fix is to call .ToList() or .ToArray() before any multi-use, then work with
       the materialised collection.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "Count=3, Sum=6"
 
   - prompt: |
       Rewrite each query-syntax expression in method syntax. For the third one, explain
       why 'let' has no direct method equivalent and how to replicate it.
     kind: fix-it
     broken_code: |
+      List<Order>    orders    = [];
+      List<Customer> customers = [];
+
       // (1) Simple join
       var joined =
           from o in orders
@@ -152,9 +154,19 @@ exercises:
 
       record Order(string Id, string CustomerId, string Status, decimal Amount);
       record Customer(string Id, string Name);
-      List<Order>    orders    = [];
-      List<Customer> customers = [];
     fixed_code: |
+      List<Order> orders =
+      [
+          new("A", "C1", "Open",   300m),
+          new("B", "C2", "Closed", 100m),
+          new("C", "C1", "Open",   400m),
+      ];
+      List<Customer> customers =
+      [
+          new("C1", "Alice"),
+          new("C2", "Bob"),
+      ];
+
       // (1) Join
       var joined = orders
           .Join(customers,
@@ -173,17 +185,23 @@ exercises:
           .Where(x => x.Tax > 50)
           .Select(x => new { x.Id, x.Tax });
 
+      // Deterministic output (OrderBy before printing — GroupBy order is unstable)
+      foreach (var j in joined.OrderBy(j => j.Id))
+          Console.WriteLine($"join {j.Id}->{j.Name}");
+      foreach (var g in grouped.OrderBy(g => g.Status))
+          Console.WriteLine($"group {g.Status}={g.Total}");
+      foreach (var w in withTax.OrderBy(w => w.Id))
+          Console.WriteLine($"tax {w.Id}");
+
       record Order(string Id, string CustomerId, string Status, decimal Amount);
       record Customer(string Id, string Name);
-      List<Order>    orders    = [];
-      List<Customer> customers = [];
     bug: |
       let introduces a named intermediate binding inside query syntax. Method syntax
       has no let keyword; you replicate it with a chained Select that projects an
       anonymous type carrying both the original item and the derived value. The second
       Select then picks the final shape.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "join A->Alice\njoin B->Bob\njoin C->Alice\ngroup Closed=100\ngroup Open=700\ntax A\ntax C"
 
   - prompt: |
       The async LINQ expression below passes a lazy sequence directly to Task.WhenAll.
@@ -205,6 +223,9 @@ exercises:
 
       record User(int Id);
     fixed_code: |
+      var users = await FetchAllAsync(new[] { 1, 2, 3 });
+      Console.WriteLine(string.Join(",", users.Select(u => u.Id)));   // 1,2,3
+
       static async Task<User[]> FetchAllAsync(IEnumerable<int> userIds)
       {
           // Materialise first: all tasks are created (and started) immediately.
@@ -223,5 +244,5 @@ exercises:
       correct for hot-path Task methods, it serialises task creation and is a latent
       correctness bug for any generator that has side effects or limited concurrency.
       Always materialise before passing to Task.WhenAll.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "1,2,3"

@@ -49,42 +49,68 @@ exercises:
       does not fix the race.
     kind: fix-it
     broken_code: |
-      class Counter {
-          private int count = 0;
-          void increment() { count++; }   // not atomic: read-modify-write race
-          int get() { return count; }
-      }
+      import java.util.*;
 
-      Counter counter = new Counter();
-      List<Thread> threads = new ArrayList<>();
-      for (int i = 0; i < 10; i++) {
-          threads.add(Thread.ofPlatform().start(() -> {
-              for (int j = 0; j < 100; j++) counter.increment();
-          }));
+      public class Main {
+          static class Counter {
+              private int count = 0;
+              void increment() { count++; }   // not atomic: read-modify-write race
+              int get() { return count; }
+          }
+
+          public static void main(String[] args) throws InterruptedException {
+              Counter counter = new Counter();
+              List<Thread> threads = new ArrayList<>();
+              for (int i = 0; i < 10; i++) {
+                  threads.add(new Thread(() -> {
+                      for (int j = 0; j < 100; j++) counter.increment();
+                  }));
+              }
+              for (Thread t : threads) t.start();
+              for (Thread t : threads) t.join();
+              System.out.println(counter.get());   // often < 1000
+          }
       }
-      for (Thread t : threads) t.join();
-      System.out.println(counter.get());   // often < 1000
     fixed_code: |
-      // (a) synchronized — simplest mutual exclusion:
-      class SyncCounter {
-          private int count = 0;
-          synchronized void increment() { count++; }
-          synchronized int get() { return count; }
-      }
+      import java.util.*;
+      import java.util.concurrent.atomic.*;
 
-      // (b) AtomicInteger — lock-free CAS; preferred for simple counters:
-      class AtomicCounter {
-          private final AtomicInteger count = new AtomicInteger(0);
-          void increment() { count.incrementAndGet(); }
-          int get() { return count.get(); }
-      }
+      public class Main {
+          // (a) synchronized — simplest mutual exclusion:
+          static class SyncCounter {
+              private int count = 0;
+              synchronized void increment() { count++; }
+              synchronized int get() { return count; }
+          }
 
-      // volatile alone does NOT fix the race:
-      // count++ compiles to: read count → add 1 → write count (three steps).
-      // volatile guarantees the write is visible to other threads immediately,
-      // but another thread can still read the old value between the read and write,
-      // causing lost increments. AtomicInteger uses CPU-level compareAndSet to make
-      // the entire read-modify-write indivisible.
+          // (b) AtomicInteger — lock-free CAS; preferred for simple counters:
+          static class AtomicCounter {
+              private final AtomicInteger count = new AtomicInteger(0);
+              void increment() { count.incrementAndGet(); }
+              int get() { return count.get(); }
+          }
+
+          public static void main(String[] args) throws InterruptedException {
+              // Using AtomicInteger for a lock-free, always-correct result:
+              AtomicCounter counter = new AtomicCounter();
+              List<Thread> threads = new ArrayList<>();
+              for (int i = 0; i < 10; i++) {
+                  threads.add(new Thread(() -> {
+                      for (int j = 0; j < 100; j++) counter.increment();
+                  }));
+              }
+              for (Thread t : threads) t.start();
+              for (Thread t : threads) t.join();
+              System.out.println(counter.get());   // always 1000
+
+              // volatile alone does NOT fix the race:
+              // count++ compiles to: read count → add 1 → write count (three steps).
+              // volatile guarantees the write is visible to other threads immediately,
+              // but another thread can still read the old value between the read and write,
+              // causing lost increments. AtomicInteger uses CPU-level compareAndSet to make
+              // the entire read-modify-write indivisible.
+          }
+      }
     bug: |
       count++ is not atomic: it is a read-modify-write sequence. Two threads can both
       read the same value, both compute +1, and both write the same result — losing one
@@ -101,41 +127,64 @@ exercises:
       versus collecting futures first, then joining.
     kind: implement
     broken_code: |
-      ExecutorService pool = Executors.newFixedThreadPool(4);
-      List<String> results = new ArrayList<>();
+      import java.util.*;
+      import java.util.concurrent.*;
 
-      for (int i = 0; i < 20; i++) {
-          final int taskId = i;
-          // BUG: get() blocks immediately — tasks run one-at-a-time despite the pool
-          Future<String> f = pool.submit(() -> parseFile(taskId));
-          results.add(f.get());   // blocks here until task finishes
-      }
-      pool.shutdown();
-    fixed_code: |
-      ExecutorService pool = Executors.newFixedThreadPool(4);
-      List<Future<String>> futures = new ArrayList<>();
+      public class Main {
+          static String parseFile(int id) { return "file-" + id; }
 
-      // Submit ALL tasks first — they queue and run in parallel:
-      for (int i = 0; i < 20; i++) {
-          final int taskId = i;
-          futures.add(pool.submit(() -> parseFile(taskId)));
-      }
+          public static void main(String[] args) throws Exception {
+              ExecutorService pool = Executors.newFixedThreadPool(4);
+              List<String> results = new ArrayList<>();
 
-      // Then collect results — actual parallelism happened above:
-      List<String> results = new ArrayList<>();
-      for (Future<String> f : futures) {
-          try {
-              results.add(f.get());
-          } catch (ExecutionException e) {
-              System.err.println("Task failed: " + e.getCause().getMessage());
-          } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
-              break;
+              for (int i = 0; i < 20; i++) {
+                  final int taskId = i;
+                  // BUG: get() blocks immediately — tasks run one-at-a-time despite the pool
+                  Future<String> f = pool.submit(() -> parseFile(taskId));
+                  results.add(f.get());   // blocks here until task finishes
+              }
+              pool.shutdown();
+              System.out.println(results.size());
+              System.out.println(results.get(0) + "," + results.get(19));
           }
       }
+    fixed_code: |
+      import java.util.*;
+      import java.util.concurrent.*;
 
-      pool.shutdown();
-      pool.awaitTermination(30, TimeUnit.SECONDS);
+      public class Main {
+          static String parseFile(int id) { return "file-" + id; }
+
+          public static void main(String[] args) throws Exception {
+              ExecutorService pool = Executors.newFixedThreadPool(4);
+              List<Future<String>> futures = new ArrayList<>();
+
+              // Submit ALL tasks first — they queue and run in parallel:
+              for (int i = 0; i < 20; i++) {
+                  final int taskId = i;
+                  futures.add(pool.submit(() -> parseFile(taskId)));
+              }
+
+              // Then collect results — actual parallelism happened above.
+              // Iterating the futures list keeps results in submission order (deterministic):
+              List<String> results = new ArrayList<>();
+              for (Future<String> f : futures) {
+                  try {
+                      results.add(f.get());
+                  } catch (ExecutionException e) {
+                      System.err.println("Task failed: " + e.getCause().getMessage());
+                  } catch (InterruptedException e) {
+                      Thread.currentThread().interrupt();
+                      break;
+                  }
+              }
+
+              pool.shutdown();
+              pool.awaitTermination(30, TimeUnit.SECONDS);
+              System.out.println(results.size());
+              System.out.println(results.get(0) + "," + results.get(19));
+          }
+      }
     bug: |
       Calling future.get() immediately after each submit() blocks the calling thread
       until that task finishes — tasks run serially despite the pool. The fix: submit
@@ -143,8 +192,8 @@ exercises:
       results. Also important: failing to call shutdown() keeps the JVM alive
       indefinitely; shutdownNow() cancels queued tasks aggressively, so use shutdown()
       + awaitTermination() for a graceful drain.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "20\nfile-0,file-19"
 
   - prompt: |
       Build a CompletableFuture pipeline that fetches a user record and their order
@@ -153,32 +202,56 @@ exercises:
       initial tasks so they run in parallel.
     kind: implement
     broken_code: |
-      // Sequential (slow) version — second call blocks until first completes:
-      static String buildDashboard(int userId) {
-          String user   = fetchUser(userId);    // blocking
-          List<String> orders = fetchOrders(userId);  // waits for fetchUser
-          return "User: " + user + ", Orders: " + orders.size();
+      import java.util.*;
+      import java.util.concurrent.*;
+
+      public class Main {
+          static String fetchUser(int userId) { return "Ada"; }
+          static List<String> fetchOrders(int userId) { return List.of("o1", "o2", "o3"); }
+
+          // Sequential (slow) version — second call blocks until first completes:
+          static String buildDashboard(int userId) {
+              String user   = fetchUser(userId);    // blocking
+              List<String> orders = fetchOrders(userId);  // waits for fetchUser
+              return "User: " + user + ", Orders: " + orders.size();
+          }
+
+          public static void main(String[] args) {
+              System.out.println(buildDashboard(1));
+          }
       }
     fixed_code: |
-      static CompletableFuture<String> buildDashboard(int userId) {
-          CompletableFuture<String> userFuture =
-              CompletableFuture.supplyAsync(() -> fetchUser(userId));
+      import java.util.*;
+      import java.util.concurrent.*;
 
-          CompletableFuture<List<String>> orderFuture =
-              CompletableFuture.supplyAsync(() -> fetchOrders(userId));
+      public class Main {
+          static String fetchUser(int userId) { return "Ada"; }
+          static List<String> fetchOrders(int userId) { return List.of("o1", "o2", "o3"); }
 
-          return userFuture
-              .thenCombine(orderFuture,
-                  (user, orders) -> "User: " + user + ", Orders: " + orders.size())
-              .exceptionally(ex -> "Error loading dashboard: " + ex.getMessage());
+          static CompletableFuture<String> buildDashboard(int userId) {
+              CompletableFuture<String> userFuture =
+                  CompletableFuture.supplyAsync(() -> fetchUser(userId));
+
+              CompletableFuture<List<String>> orderFuture =
+                  CompletableFuture.supplyAsync(() -> fetchOrders(userId));
+
+              return userFuture
+                  .thenCombine(orderFuture,
+                      (user, orders) -> "User: " + user + ", Orders: " + orders.size())
+                  .exceptionally(ex -> "Error loading dashboard: " + ex.getMessage());
+          }
+
+          // thenApply  — synchronous transform (runs in completing thread)
+          // thenCompose — for when the mapper itself returns a CompletableFuture
+          //               (avoids CompletableFuture<CompletableFuture<T>>)
+          // thenCombine — merges two independent futures when both complete
+          // allOf       — returns CompletableFuture<Void>; results retrieved from
+          //               original futures separately (NOT from the allOf future)
+
+          public static void main(String[] args) {
+              System.out.println(buildDashboard(1).join());
+          }
       }
-
-      // thenApply  — synchronous transform (runs in completing thread)
-      // thenCompose — for when the mapper itself returns a CompletableFuture
-      //               (avoids CompletableFuture<CompletableFuture<T>>)
-      // thenCombine — merges two independent futures when both complete
-      // allOf       — returns CompletableFuture<Void>; results retrieved from
-      //               original futures separately (NOT from the allOf future)
     bug: |
       The sequential version blocks the calling thread twice. supplyAsync submits both
       tasks to the common ForkJoinPool simultaneously — they run in parallel. thenCombine
@@ -186,8 +259,8 @@ exercises:
       futures but returns CompletableFuture<Void> — the actual results must be extracted
       from the original future references; this surprises many developers who expect
       allOf to carry the results.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "User: Ada, Orders: 3"
 
   - prompt: |
       Take the FixedThreadPool(4) solution from the executor exercise and swap it to
@@ -196,41 +269,68 @@ exercises:
       from virtual threads and which does not.
     kind: implement
     broken_code: |
-      // Platform thread pool — limited to 4 concurrent tasks even if all are blocked on I/O:
-      ExecutorService pool = Executors.newFixedThreadPool(4);
-      for (int i = 0; i < 20; i++) {
-          final int id = i;
-          pool.submit(() -> {
-              String result = callExternalApi(id);   // blocking I/O, ~200ms
-              return result;
-          });
-      }
-      pool.shutdown();
-    fixed_code: |
-      // Virtual thread executor — JVM creates one lightweight virtual thread per task:
-      try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
-          for (int i = 0; i < 20; i++) {
-              final int id = i;
-              pool.submit(() -> {
-                  // When callExternalApi blocks on I/O, the virtual thread is parked
-                  // and the carrier platform thread is freed to run another virtual thread.
-                  String result = callExternalApi(id);
-                  return result;
-              });
+      import java.util.*;
+      import java.util.concurrent.*;
+      import java.util.concurrent.atomic.*;
+
+      public class Main {
+          static String callExternalApi(int id) { return "resp-" + id; }
+
+          public static void main(String[] args) throws Exception {
+              AtomicInteger done = new AtomicInteger();
+              // Platform thread pool — limited to 4 concurrent tasks even if all are blocked on I/O:
+              ExecutorService pool = Executors.newFixedThreadPool(4);
+              for (int i = 0; i < 20; i++) {
+                  final int id = i;
+                  pool.submit(() -> {
+                      String result = callExternalApi(id);   // blocking I/O, ~200ms
+                      done.incrementAndGet();
+                      return result;
+                  });
+              }
+              pool.shutdown();
+              pool.awaitTermination(30, TimeUnit.SECONDS);
+              System.out.println("completed: " + done.get());
           }
-      }   // try-with-resources calls shutdown() and awaits termination automatically
+      }
+    fixed_code: |
+      import java.util.*;
+      import java.util.concurrent.*;
+      import java.util.concurrent.atomic.*;
 
-      // PINNING: if the task used synchronized instead of ReentrantLock on a hot path:
-      //   synchronized (sharedLock) {
-      //       callExternalApi(id);   // virtual thread PINNED to carrier during block
-      //   }
-      // The carrier platform thread cannot be shared with other virtual threads while
-      // the virtual thread holds the monitor — neutralises the scaling benefit.
-      // Fix: replace synchronized with ReentrantLock in virtual-thread-heavy code.
+      public class Main {
+          static String callExternalApi(int id) { return "resp-" + id; }
 
-      // CPU-BOUND tasks: virtual threads do NOT help.
-      //   10 virtual threads crunching numbers still contend for 10 CPU cores.
-      //   A FixedThreadPool(Runtime.getRuntime().availableProcessors()) is better there.
+          public static void main(String[] args) {
+              AtomicInteger done = new AtomicInteger();
+              // Virtual thread executor — JVM creates one lightweight virtual thread per task:
+              try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
+                  for (int i = 0; i < 20; i++) {
+                      final int id = i;
+                      pool.submit(() -> {
+                          // When callExternalApi blocks on I/O, the virtual thread is parked
+                          // and the carrier platform thread is freed to run another virtual thread.
+                          String result = callExternalApi(id);
+                          done.incrementAndGet();
+                          return result;
+                      });
+                  }
+              }   // try-with-resources calls shutdown() and awaits termination automatically
+
+              // PINNING: if the task used synchronized instead of ReentrantLock on a hot path:
+              //   synchronized (sharedLock) {
+              //       callExternalApi(id);   // virtual thread PINNED to carrier during block
+              //   }
+              // The carrier platform thread cannot be shared with other virtual threads while
+              // the virtual thread holds the monitor — neutralises the scaling benefit.
+              // Fix: replace synchronized with ReentrantLock in virtual-thread-heavy code.
+
+              // CPU-BOUND tasks: virtual threads do NOT help.
+              //   10 virtual threads crunching numbers still contend for 10 CPU cores.
+              //   A FixedThreadPool(Runtime.getRuntime().availableProcessors()) is better there.
+              System.out.println("completed: " + done.get());
+          }
+      }
     bug: |
       Virtual threads are cheap to create (JVM-managed, not OS threads), so a
       thread-per-task model scales to millions of blocking I/O tasks. The two caveats:
@@ -239,5 +339,5 @@ exercises:
       is held and the scalability benefit is lost. Use ReentrantLock instead.
       (2) CPU-bound work is not improved: virtual threads still need CPU time, and the
       JVM cannot parallelise beyond the number of available cores.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "completed: 20"

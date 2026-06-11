@@ -84,8 +84,8 @@ exercises:
       and `item` holds the last element — both accessible outside the loop body.
       `const`/`let` are block-scoped: they do not exist outside the block where declared,
       making these bugs into `ReferenceError`s instead of silent surprises.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "20"
 
   - prompt: |
       Each snippet has a floating-point precision issue. Identify the problem in each and
@@ -126,8 +126,8 @@ exercises:
       smallest unit, divide at display) for money; `Math.round` to snap to a known
       precision. `toFixed` returns a string and its rounding is implementation-defined for
       edge cases — never use it as the basis for further numeric computation.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "true\n1.10\ntrue"
 
   - prompt: |
       Predict the output of each `+` expression. Pay special attention to the order of
@@ -190,4 +190,4 @@ exercises:
       check: it returns `false` for `NaN`, `Infinity`, non-numeric strings, and empty
       strings.
     check: stdout
-    signal: "true\nfalse"
+    signal: "true\nfalse\ntrue\ntrue\nfalse\ntrue"

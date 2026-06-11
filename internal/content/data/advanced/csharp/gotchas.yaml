@@ -64,6 +64,8 @@ exercises:
 
           Console.WriteLine($"Sum = {sum}");
       }
+
+      AppendAll();
     bug: |
       ArrayList is a pre-generic collection that stores everything as object. Every
       int added is boxed (value copied to a new heap object); every int read is unboxed
@@ -71,8 +73,8 @@ exercises:
       allocations and 10 000 GC-visible objects. The fix is always to use generic
       collections (List<int>, Dictionary<K,V>, etc.) which store value types directly
       without boxing.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "Sum = 49995000"
 
   - prompt: |
       Reproduce the classic async deadlock: an async method awaits a Task; the caller
@@ -108,18 +110,27 @@ exercises:
       }
 
       // Fix B: async all the way — never block; await in the caller too.
-      static async Task BlockingCallerFixed()
+      static async Task<string> BlockingCallerFixed()
       {
-          var result = await GetDataAsync();
-          Console.WriteLine(result);
+          return await GetDataAsync();
       }
 
       // Fix C: hop to thread pool to avoid the context (use only when A/B are not
       // possible, e.g., legacy synchronous entry point).
-      static void LegacyCaller()
+      static string LegacyCaller()
       {
-          var result = Task.Run(() => GetDataAsync()).Result;
-          Console.WriteLine(result);
+          return Task.Run(() => GetDataAsync()).Result;
+      }
+
+      // Each of the three fixes yields the same result with no deadlock.
+      Console.WriteLine(await GetDataAsyncFixed());   // Fix A
+      Console.WriteLine(await BlockingCallerFixed()); // Fix B
+      Console.WriteLine(LegacyCaller());              // Fix C
+
+      static async Task<string> GetDataAsync()
+      {
+          await Task.Delay(100);
+          return "data";
       }
     bug: |
       .Result / .Wait() block the current thread. If that thread holds a
@@ -128,8 +139,8 @@ exercises:
       Neither side can proceed: deadlock. Fix A (ConfigureAwait(false)) is preferred
       in library code. Fix B (async all the way) is the correct app-code approach.
       Fix C (Task.Run) is a last resort for legacy entry points.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "data\ndata\ndata"
 
   - prompt: |
       Predict the output of three equality comparisons and explain which equality
@@ -154,29 +165,31 @@ exercises:
       object b2 = 42;
       Console.WriteLine(b1 == b2);                 // ???
     fixed_code: |
-      // (1) string: True, False
-      // string overloads == for content equality; ReferenceEquals shows they are
-      // different heap objects (no interning for new string(...)).
+      // (1) string: content equality via overloaded ==; distinct heap objects.
+      string s1 = "hello";
+      string s2 = new string("hello".ToCharArray());
       Console.WriteLine(s1 == s2);                // True
       Console.WriteLine(ReferenceEquals(s1, s2)); // False
 
-      // (2) record: True, False
-      // record class synthesises == using value equality (all property comparisons).
-      // They are different objects on the heap.
+      // (2) record: synthesised value equality; distinct heap objects.
+      var p1 = new Person("Alice", 30);
+      var p2 = new Person("Alice", 30);
       Console.WriteLine(p1 == p2);                // True
       Console.WriteLine(ReferenceEquals(p1, p2)); // False
 
-      // (3) boxed int: False (!)
-      // b1 and b2 are separately boxed heap objects. object == is reference equality
-      // (not overloaded for int). Two different boxes holding 42 are not the same ref.
+      // (3) boxed int: object == is reference equality — separate boxes differ.
+      object b1 = 42;
+      object b2 = 42;
       Console.WriteLine(b1 == b2);                // False
+
+      record Person(string Name, int Age);
     bug: |
       string overloads == for content; record synthesises == for value equality;
       boxed int == (as object) compares reference — surprising and always false for
       separately boxed values. For boxed value equality, use b1.Equals(b2) or
       EqualityComparer<object>.Default.Equals(b1, b2).
-    check: none
-    signal: ""
+    check: stdout
+    signal: "True\nFalse\nTrue\nFalse\nFalse"
 
   - prompt: |
       A method is annotated to return a non-nullable string but sometimes returns null
@@ -209,11 +222,8 @@ exercises:
     fixed_code: |
       #nullable enable
 
-      static class LegacyLib
-      {
-          public static string FindName(int id)
-              => id == 0 ? null! : $"User_{id}";
-      }
+      PrintName(1);    // USER_1
+      PrintName(0);    // (no name)
 
       static void PrintName(int id)
       {
@@ -226,13 +236,16 @@ exercises:
               Console.WriteLine("(no name)");
       }
 
-      PrintName(1);    // USER_1
-      PrintName(0);    // (no name)
+      static class LegacyLib
+      {
+          public static string FindName(int id)
+              => id == 0 ? null! : $"User_{id}";
+      }
     bug: |
       NRT is a compile-time static-analysis feature only — no runtime enforcement
       exists. ! (null-forgiving) tells the compiler "I know this is not null" but
       adds no null check. Code from pre-NRT or NRT-disabled assemblies can return
       null regardless of annotations. Always treat return values from such libraries
       as nullable (string?) and guard with is not null, ?., or ?? before use.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "USER_1\n(no name)"

@@ -33,10 +33,18 @@ exercises:
       fn longest(x: &str, y: &str) -> &str {
           if x.len() > y.len() { x } else { y }
       }
+
+      fn main() {
+          println!("{}", longest("hello", "hi"));
+      }
     fixed_code: |
       // 'a means: the returned reference lives at least as long as the shorter of x and y.
       fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
           if x.len() > y.len() { x } else { y }
+      }
+
+      fn main() {
+          println!("{}", longest("hello", "hi"));
       }
     bug: |
       The return type is &str but the compiler does not know whether it is derived from
@@ -150,6 +158,8 @@ exercises:
       fn choose(a: &str, b: &str, use_a: bool) -> &str {
           if use_a { a } else { b }
       }
+
+      fn main() {}
     fixed_code: |
       // A — elision is sufficient (rule 2: single input ref → output inherits it)
       fn first_char<'a>(s: &'a str) -> &'a str {
@@ -170,6 +180,8 @@ exercises:
       fn choose<'a>(a: &'a str, b: &'a str, use_a: bool) -> &'a str {
           if use_a { a } else { b }
       }
+
+      fn main() {}
     bug: |
       Signature C does not compile without explicit annotations because elision cannot
       determine which input the return value is derived from. A and B are handled by

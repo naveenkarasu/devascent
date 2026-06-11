@@ -53,6 +53,16 @@ exercises:
               value = self.current
               self.current -= 1
               return value
+
+      import itertools
+      # Use islice to avoid hanging — the real bug is that StopIteration is never raised
+      c = Countdown(4)
+      try:
+          result = list(itertools.islice(c, 10))
+          # Without fix: islice stops but iterator is not exhausted — next() still works
+          print(next(c))   # still yields past 0 in broken version
+      except StopIteration:
+          print("StopIteration raised correctly")
     fixed_code: |
       class Countdown:
           def __init__(self, start):
@@ -67,14 +77,22 @@ exercises:
               value = self.current
               self.current -= 1
               return value
+
+      import itertools
+      c = Countdown(4)
+      try:
+          result = list(itertools.islice(c, 10))
+          print(next(c))
+      except StopIteration:
+          print("StopIteration raised correctly")
     bug: |
       `__next__` decrements and returns `self.current` unconditionally — it never
       raises `StopIteration`, so the iterator never terminates. A `for` loop relies
       on `StopIteration` to know when to stop; without it the loop runs forever.
       The fix checks `self.current < 0` before yielding and raises `StopIteration`
       when exhausted.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "StopIteration raised correctly"
 
   - prompt: |
       `first_long_words(lines, min_len, n)` should return the first `n` words
@@ -134,15 +152,25 @@ exercises:
       def gen_squares(n):
           # Bug: returns a list, not a generator
           return [x * x for x in range(n)]
+
+      import types
+      g = gen_squares(5)
+      print(isinstance(g, types.GeneratorType))
+      print(list(g))
     fixed_code: |
       def gen_squares(n):
           for x in range(n):
               yield x * x
+
+      import types
+      g = gen_squares(5)
+      print(isinstance(g, types.GeneratorType))
+      print(list(g))
     bug: |
       A function with a plain `return` is a regular function that returns a list.
       It is NOT a generator — calling `gen_squares(5)` immediately computes and
       materialises all values. Adding `yield` makes the function a generator
       function: `gen_squares(5)` returns a lazy generator object; values are
       computed one at a time as the caller advances the iterator.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "True\n[0, 1, 4, 9, 16]"

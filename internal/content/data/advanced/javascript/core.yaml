@@ -59,7 +59,7 @@ exercises:
       so every callback logs 3. `let` creates a new binding per iteration, so each
       closure captures its own copy of `i`.
     check: stdout
-    signal: "3\n3\n3"
+    signal: "0\n1\n2"
 
   - prompt: |
       `greet` is extracted from `user` and passed to `setTimeout`. Predict what it logs,
@@ -123,8 +123,8 @@ exercises:
       Any read or write inside the TDZ throws. With `var`, the equivalent code would log
       `undefined` silently because `var` is hoisted with an initial value of `undefined`.
       The fix is to declare before use.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "10"
 
   - prompt: |
       Trace the prototype chain of `dog` by hand, then verify with `Object.getPrototypeOf`.

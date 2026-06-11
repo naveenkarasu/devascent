@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"devascent/internal/content"
+	"devascent/internal/engine"
 	"devascent/internal/grader"
 	"devascent/internal/save"
 	"devascent/internal/toolchain"
@@ -39,12 +40,12 @@ const (
 	screenInstallHelp
 )
 
-// Step 0 completion milestone (scaled from the gate spec's shapes — count +
-// coverage + difficulty floor; tunable). NOT the literal 49/75 Blind-75 gate.
+// Step 0 completion milestone targets — aliased from internal/engine (the
+// authoritative definitions now live there with the bench-math functions).
 const (
-	step0BankTarget = 15 // distinct problems banked
-	step0CatTarget  = 6  // distinct categories covered
-	step0HardTarget = 2  // hard problems solved
+	step0BankTarget = engine.Step0BankTarget // distinct problems banked
+	step0CatTarget  = engine.Step0CatTarget  // distinct categories covered
+	step0HardTarget = engine.Step0HardTarget // hard problems solved
 )
 
 type taskCtx int
@@ -208,7 +209,9 @@ func New() Model {
 	for _, p := range cat.Problems {
 		m.probByID[p.ID] = p
 	}
-	if s, err := save.Load(); err == nil && s != nil && s.Stage != "" {
+	// Resume the most recently played language slot (single-language players get
+	// exactly the old behavior; multi-language players resume the last one).
+	if s, err := save.LoadLatest(); err == nil && s != nil && s.Stage != "" {
 		m.resume = s // offer resume for any prior run (incl. a finished one → its end screen)
 	}
 	return m
@@ -886,21 +889,7 @@ func specMatch(ans string, sp *content.Spec) bool {
 	if sp == nil {
 		return true
 	}
-	low := strings.ToLower(ans)
-	for _, group := range sp.Required {
-		hit := false
-		for _, syn := range strings.Split(group, "|") {
-			syn = strings.TrimSpace(strings.ToLower(syn))
-			if syn != "" && strings.Contains(low, syn) {
-				hit = true
-				break
-			}
-		}
-		if !hit {
-			return false
-		}
-	}
-	return true
+	return engine.SpecMatch(ans, sp.Required)
 }
 
 // devMatch grades a typed command against a DevTask: PASS if the first token is
@@ -908,40 +897,7 @@ func specMatch(ans string, sp *content.Spec) bool {
 // equals an Accept form. Lenient on args/quoting so correct answers aren't
 // false-rejected (this is a checker, not a shell).
 func devMatch(ans string, t content.DevTask) bool {
-	norm := func(s string) string { return strings.Join(strings.Fields(strings.ToLower(s)), " ") }
-	toks := strings.Fields(strings.ToLower(ans))
-	if len(toks) > 0 {
-		has := func(tok string) bool {
-			for _, x := range toks {
-				if x == tok {
-					return true
-				}
-			}
-			return false
-		}
-		for _, c := range t.Commands {
-			if toks[0] != strings.ToLower(strings.TrimSpace(c)) {
-				continue
-			}
-			ok := true
-			for _, fl := range t.Flags {
-				if !has(strings.ToLower(strings.TrimSpace(fl))) {
-					ok = false
-					break
-				}
-			}
-			if ok {
-				return true
-			}
-		}
-	}
-	a := norm(ans)
-	for _, acc := range t.Accept {
-		if a == norm(acc) {
-			return true
-		}
-	}
-	return false
+	return engine.DevMatch(ans, t.Commands, t.Flags, t.Accept)
 }
 
 // ── Diagnostic engine (7-item ladder, 3 signals, one early-exit) ─────────────
@@ -1164,38 +1120,12 @@ func (m Model) scoreDiag(passed bool) (tea.Model, tea.Cmd) {
 //
 // Bands: ≥80% → bench (aced) · 40–79% → dev-literacy brush-up · <40% → tutorial.
 func (m Model) route() (tea.Model, tea.Cmd) {
-	total := len(m.diag)
-	if total == 0 {
-		total = 1
-	}
 	passed := m.codingOK + m.machineOK + m.specOK
 	m.intakePassed = passed
-	pct := float64(passed) / float64(total)
-
-	var place string
-	switch {
-	case pct >= 0.8:
-		place = "test-out"
-	case pct >= 0.4:
-		place = "dev-literacy"
-	default:
-		place = "tutorial-full"
-	}
-	// Band clamp: difficulty was set by self-report, so clamp the outcome to stay
-	// coherent (acing EASY ≠ bench-ready; a regular coder shouldn't be dropped
-	// into beginner tutorial lesson 1).
-	switch m.level {
-	case "never":
-		place = "tutorial-full"
-	case "regularly":
-		if place == "tutorial-full" {
-			place = "dev-literacy"
-		}
-	}
-	m.placement = place
+	m.placement = engine.Place(passed, len(m.diag), m.level)
 	m.ctx = ctxNone
 	m.task = nil
-	if place == "test-out" {
+	if m.placement == "test-out" {
 		m.screen = screenTestOut // aced screen (kept)
 	} else {
 		m.screen = screenResults // suggestion + accept/redo
@@ -1425,38 +1355,21 @@ func (m *Model) enterProblem() {
 	m.status = "Press [e] to write your code, [r] to run, [s] to skip. " + editorHint(m.editorChoice)
 }
 
-// gradingAvailable reports whether DevAscent has a function-call grader for a
-// language (so the bench / Entrance Test / lessons can grade in it). Widens as
-// per-language harnesses land (Python + Go today).
+// gradingAvailable / applyLangStarter delegate the language dispatch to
+// internal/engine. applyLangStarter keeps the Model-coupled guard and only
+// overwrites the starter when engine generates one (ok), so python and
+// reference-only languages keep their authored starter. pySource (may be "")
+// gives generated stubs nicer parameter names.
 func gradingAvailable(lang string) bool {
-	switch lang {
-	case "python", "go", "csharp", "javascript", "typescript", "java", "rust":
-		return true
-	}
-	return false
+	return engine.GradingAvailable(lang)
 }
 
-// applyLangStarter regenerates the current code task's starter in the session
-// language when DevAscent generates one (e.g. Go infers a typed stub). Python and
-// reference-only languages keep the authored starter. pySource (may be "") gives
-// the Go stub nicer parameter names.
 func (m *Model) applyLangStarter(pySource string) {
 	if m.task == nil || m.task.funcName == "" {
 		return
 	}
-	switch m.lang {
-	case "go":
-		m.task.code = grader.GoStarter(m.task.funcName, pySource, m.task.tests, m.task.shape)
-	case "csharp":
-		m.task.code = grader.CSharpStarter(m.task.funcName, pySource, m.task.tests, m.task.shape)
-	case "javascript":
-		m.task.code = grader.JSStarter(m.task.funcName, pySource, m.task.tests, m.task.shape)
-	case "typescript":
-		m.task.code = grader.TSStarter(m.task.funcName, pySource, m.task.tests, m.task.shape)
-	case "java":
-		m.task.code = grader.JavaStarter(m.task.funcName, pySource, m.task.tests, m.task.shape)
-	case "rust":
-		m.task.code = grader.RustStarter(m.task.funcName, pySource, m.task.tests, m.task.shape)
+	if code, ok := engine.Starter(m.lang, m.task.funcName, pySource, m.task.tests, m.task.shape); ok {
+		m.task.code = code
 	}
 }
 
@@ -1489,61 +1402,19 @@ func (m Model) benchNext(solved bool) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// benchStats counts distinct banked problems, categories covered, and hards.
+// benchStats / step0Met / step0Profile delegate to internal/engine (the bench
+// math is UI-neutral and shared with the GUI); these wrappers keep the Model
+// receiver so call sites and tests are unchanged.
 func (m Model) benchStats() (banked, cats, hard int) {
-	seenCat := map[string]bool{}
-	for id := range m.solvedSet {
-		p, ok := m.probByID[id]
-		if !ok {
-			continue
-		}
-		banked++
-		if p.Category != "" && !seenCat[p.Category] {
-			seenCat[p.Category] = true
-			cats++
-		}
-		if p.Difficulty == "hard" {
-			hard++
-		}
-	}
-	return
+	return engine.BenchStats(m.solvedSet, m.probByID)
 }
 
 func (m Model) step0Met() bool {
-	b, c, h := m.benchStats()
-	return b >= step0BankTarget && c >= step0CatTarget && h >= step0HardTarget
+	return engine.Step0Met(m.solvedSet, m.probByID)
 }
 
-// step0Profile computes the competency summary shown at completion. Problem-
-// Solving and Language Proficiency are computed; Code Quality and Speed need
-// write-ups/timing (not built) and are reported as pending.
 func (m Model) step0Profile() (problemSolving, langProf int, track string) {
-	b, c, h := m.benchStats()
-	totalCats := map[string]bool{}
-	for _, p := range m.cat.Problems {
-		if p.Category != "" {
-			totalCats[p.Category] = true
-		}
-	}
-	clamp := func(f float64) float64 {
-		if f > 1 {
-			return 1
-		}
-		return f
-	}
-	bankRatio := clamp(float64(b) / 25.0)
-	hardCov := clamp(float64(h) / 5.0)
-	catBreadth := 0.0
-	if len(totalCats) > 0 {
-		catBreadth = float64(c) / float64(len(totalCats))
-	}
-	problemSolving = int(100 * (0.5*bankRatio + 0.3*hardCov + 0.2*catBreadth))
-	langProf = int(clamp(float64(b)/25.0) * 100)
-	track = "startup (provisional)"
-	if b >= 25 && h >= 4 {
-		track = "FAANG (provisional)"
-	}
-	return
+	return engine.Step0Profile(m.solvedSet, m.probByID, m.cat.Problems)
 }
 
 func (m Model) startTutorial() (tea.Model, tea.Cmd) {
@@ -1627,7 +1498,7 @@ func (m Model) currentState() save.State {
 func (m Model) persist() {
 	switch m.screen {
 	case screenDiagnostic, screenTestOut, screenResults, screenDevLiteracy, screenLesson, screenHandoff, screenBench, screenStep0Complete:
-		_ = save.Save(m.currentState())
+		_ = save.SaveLang(m.lang, m.currentState())
 	}
 }
 

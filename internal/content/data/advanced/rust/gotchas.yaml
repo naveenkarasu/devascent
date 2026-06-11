@@ -59,37 +59,53 @@ exercises:
     check: compile-error
     signal: "E0382"
   - prompt: |
-      Two Rc-wrapped nodes form a cycle: each points to the other. Identify why neither
-      node is ever dropped, then fix b's reference to a using Rc::downgrade so the cycle
-      is broken.
+      Two Rc-wrapped nodes form a cycle: each points to the other. A Drop impl prints
+      when each node is freed, but the program prints nothing — neither node is dropped.
+      Identify why, then fix b's reference to a using Rc::downgrade so the cycle is
+      broken and both nodes are dropped (printing "dropping a" then "dropping b").
     kind: spot-the-bug
     broken_code: |
       use std::rc::Rc;
       use std::cell::RefCell;
 
       struct Node {
+          name: &'static str,
           next: Option<Rc<RefCell<Node>>>,
       }
 
+      impl Drop for Node {
+          fn drop(&mut self) {
+              println!("dropping {}", self.name);
+          }
+      }
+
       fn main() {
-          let a = Rc::new(RefCell::new(Node { next: None }));
-          let b = Rc::new(RefCell::new(Node { next: Some(Rc::clone(&a)) }));
+          let a = Rc::new(RefCell::new(Node { name: "a", next: None }));
+          let b = Rc::new(RefCell::new(Node { name: "b", next: Some(Rc::clone(&a)) }));
           // Creates a cycle: a → b → a → ...
           a.borrow_mut().next = Some(Rc::clone(&b));
-          // Neither a nor b will ever be dropped — memory leak
+          // Neither a nor b will ever be dropped — memory leak (Drop never runs)
       }
     fixed_code: |
       use std::rc::{Rc, Weak};
       use std::cell::RefCell;
 
       struct Node {
+          name: &'static str,
           next: Option<Rc<RefCell<Node>>>,
           prev: Option<Weak<RefCell<Node>>>,   // weak back-reference — does not affect count
       }
 
+      impl Drop for Node {
+          fn drop(&mut self) {
+              println!("dropping {}", self.name);
+          }
+      }
+
       fn main() {
-          let a = Rc::new(RefCell::new(Node { next: None, prev: None }));
+          let a = Rc::new(RefCell::new(Node { name: "a", next: None, prev: None }));
           let b = Rc::new(RefCell::new(Node {
+              name: "b",
               next: None,
               prev: Some(Rc::downgrade(&a)),   // weak reference — count stays at 1
           }));
@@ -101,12 +117,14 @@ exercises:
     bug: |
       a holds an Rc to b (strong count 2 from the variable + a.next), and b holds an Rc
       to a (strong count 2). When both variables go out of scope the counts drop to 1 —
-      never to 0 — so neither value is ever dropped. This is a memory leak that Rust's
-      ownership system cannot prevent, because Rc cycles are logically valid programs.
-      Rc::downgrade creates a Weak<T> reference that does not increment the strong count,
-      breaking the cycle so normal drop behaviour resumes.
-    check: none
-    signal: ""
+      never to 0 — so neither value is ever dropped: the Drop impl never runs and the
+      program prints nothing. This is a memory leak that Rust's ownership system cannot
+      prevent, because Rc cycles are logically valid programs. Rc::downgrade creates a
+      Weak<T> reference that does not increment the strong count, breaking the cycle so
+      normal drop behaviour resumes — both nodes are freed and "dropping a"/"dropping b"
+      print.
+    check: stdout
+    signal: "dropping a\ndropping b"
   - prompt: |
       A Vec is borrowed immutably to get first, then mutated via push while the borrow is
       still live. The fix does not require restructuring the data — only reordering the

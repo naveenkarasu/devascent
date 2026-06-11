@@ -10,6 +10,10 @@
 # Local player save data (when DEVASCENT_SAVE_DIR points into the repo)
 /.devascent-save/
 
+# Internal-only docs — design specs, research, scratch notes. NOT for the public repo.
+/docs/
+/claudedocs/
+
 # OS
 .DS_Store
 Thumbs.db

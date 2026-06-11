@@ -29,11 +29,11 @@ exercises:
       through. Refactor to accept `unknown` and add narrowing so it compiles safely.
     kind: fix-it
     broken_code: |
-      function parseConfig(raw: any) {
-        return raw.timeout * 1000;
+      function parseConfig(raw: unknown): number {
+        return raw.timeout * 1000; // error: 'raw' is of type 'unknown'
       }
 
-      parseConfig(null); // no error, but crashes at runtime
+      parseConfig(null); // would crash at runtime
     fixed_code: |
       function parseConfig(raw: unknown): number {
         if (
@@ -47,9 +47,10 @@ exercises:
         throw new TypeError("Invalid config: expected { timeout: number }");
       }
     bug: |
-      `any` allows property access without any check — `raw.timeout` compiles even if
-      `raw` is null. Changing to `unknown` makes every operation on the value a
-      compile error until the type is narrowed. The narrowing chain (typeof object,
+      Switching the parameter to `unknown` (the safe type for untrusted input) makes
+      every operation on the value a compile error until the type is narrowed — so the
+      un-narrowed `raw.timeout` is rejected. With `any` the same access compiles even
+      when `raw` is null, hiding the runtime crash. The narrowing chain (typeof object,
       !== null, in check, typeof number) guides TS to accept the multiplication.
     check: compiles
     signal: ""
@@ -58,12 +59,12 @@ exercises:
       does not propagate.
     kind: fix-it
     broken_code: |
-      function parseJSON(s: string): any {
+      function parseJSON(s: string): unknown {
         return JSON.parse(s);
       }
 
-      function getTimeout(cfg: any): number {
-        return cfg.timeout;
+      function getTimeout(cfg: unknown): number {
+        return cfg.timeout; // error: 'cfg' is of type 'unknown'
       }
 
       function multiply(n: number): number {
@@ -94,11 +95,12 @@ exercises:
 
       const result = multiply(getTimeout(parseJSON('{"timeout":5}')));
     bug: |
-      `JSON.parse` returns `any`, so every downstream function that accepts the result
-      also types its parameter as `any` — each propagating the lack of type-safety.
-      Annotating `parseJSON` to return `unknown` forces `getTimeout` to accept
-      `unknown`, which in turn forces explicit narrowing. The `multiply` call then
-      receives a properly typed `number`.
+      `JSON.parse` returns `any`. The first fix step — annotating `parseJSON` to return
+      `unknown` — stops the any erosion but exposes the next hole: `getTimeout` now
+      receives `unknown`, so its un-narrowed `cfg.timeout` is a compile error. Adding
+      explicit narrowing closes that hole; `multiply` then receives a properly typed
+      `number`. (With the original `any` chain, none of these accesses errored — the
+      lack of safety propagated silently.)
     check: compiles
     signal: ""
   - prompt: |
@@ -107,9 +109,14 @@ exercises:
       appears at the right site.
     kind: fix-it
     broken_code: |
+      function assertNever(x: never): never {
+        throw new Error(`Unhandled action type: ${JSON.stringify(x)}`);
+      }
+
       type Action =
         | { type: "increment" }
-        | { type: "decrement" };
+        | { type: "decrement" }
+        | { type: "reset" };   // new member added to the union
 
       function handle(a: Action): string {
         switch (a.type) {
@@ -117,8 +124,10 @@ exercises:
             return "+1";
           case "decrement":
             return "-1";
+          // "reset" case is missing — the exhaustiveness guard catches it
+          default:
+            return assertNever(a); // error: { type: "reset" } is not assignable to 'never'
         }
-        // TS might not warn if a new member is added
       }
     fixed_code: |
       function assertNever(x: never): never {
@@ -128,7 +137,7 @@ exercises:
       type Action =
         | { type: "increment" }
         | { type: "decrement" }
-        | { type: "reset" };   // new member — intentionally not handled
+        | { type: "reset" };
 
       function handle(a: Action): string {
         switch (a.type) {
@@ -136,17 +145,20 @@ exercises:
             return "+1";
           case "decrement":
             return "-1";
+          case "reset":
+            return "0";
           default:
-            return assertNever(a); // compile error: Action with type "reset" is not never
+            return assertNever(a); // all members handled — `a` is `never` here
         }
       }
     bug: |
-      Without the `assertNever` call, adding a new union member produces no compile
-      error — the function silently falls off the switch and returns `undefined`.
       Calling `assertNever(a)` in the default branch forces TS to verify that `a` is
-      `never` there. When `"reset"` is added but not handled, `a` is narrowed to
-      `{ type: "reset" }` at the default — not `never` — so the compiler rejects the
-      call with a clear error pointing to this exact line.
+      `never` there. When `"reset"` is added to the union but no `case "reset"` handles
+      it, `a` is narrowed to `{ type: "reset" }` at the default — not `never` — so the
+      compiler rejects the call with a clear error pointing to this exact line. Adding
+      the missing case makes the value `never` at the default again, and the code
+      compiles. This is how the `never` guard turns a silent fall-through into a
+      compile-time exhaustiveness check.
     check: compiles
     signal: ""
   - prompt: |
@@ -174,13 +186,18 @@ exercises:
       if (isConfig(parsed)) {
         console.log(parsed.port.toFixed()); // safe — port is verified at runtime
       } else {
-        throw new TypeError("Invalid config");
+        // The guard prevented the crash: report the invalid shape instead of
+        // dereferencing an undefined `port` like the broken cast version does.
+        console.log("Invalid config");
       }
     bug: |
       `as { port: number }` is a type assertion — it tells TS to trust the developer,
       but performs zero runtime validation. `JSON.parse("{}")` returns an empty object
       at runtime, so `config.port` is `undefined` even though TS believes it is
-      `number`. A type guard validates the shape at runtime before narrowing the type,
-      closing the gap between the compile-time belief and the runtime reality.
-    check: none
-    signal: ""
+      `number` — the broken code throws a `TypeError` when it calls `.toFixed()`. A type
+      guard validates the shape at runtime before narrowing the type, closing the gap
+      between the compile-time belief and the runtime reality: the fixed code takes the
+      safe `else` branch and reports the problem instead of crashing.
+    check: stdout
+    signal: |
+      Invalid config

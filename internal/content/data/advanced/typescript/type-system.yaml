@@ -90,10 +90,12 @@ exercises:
       No `as` casts allowed — use full narrowing on the discriminant field.
     kind: fix-it
     broken_code: |
-      type Result<T> = { ok: boolean; value?: T; error?: string };
+      type Result<T> =
+        | { ok: true; value: T }
+        | { ok: false; error: string };
 
       function getOrThrow<T>(r: Result<T>): T {
-        return r.value as T;
+        return r.value; // error: 'value' does not exist on the { ok: false } arm
       }
     fixed_code: |
       type Result<T> =
@@ -107,11 +109,13 @@ exercises:
         throw new Error(r.error);
       }
     bug: |
-      The original type uses optional fields and an `as` cast, which lets invalid
-      states through (ok: true with no value, ok: false with a value). A proper
-      discriminated union makes each arm mutually exclusive — TS narrows on `r.ok`
-      and knows `r.value` is definitely present in the true branch, eliminating the
-      need for any cast.
+      With a proper discriminated union, `value` only exists on the `{ ok: true }` arm,
+      so accessing `r.value` without first narrowing on the `r.ok` discriminant is a
+      compile error — the property is absent on the `{ ok: false }` arm. Narrowing with
+      `if (r.ok)` makes TS treat `r` as the success arm, where `value` is definitely
+      present, eliminating the need for any `as` cast. (The original loose shape
+      `{ ok: boolean; value?: T; error?: string }` with an `as` cast hid this by letting
+      invalid states — ok: true with no value, ok: false with a value — slip through.)
     check: compiles
     signal: ""
   - prompt: |

@@ -63,6 +63,9 @@ exercises:
     fixed_code: |
       #nullable enable
 
+      var svc = new UserService("Server=.;Database=app");
+      Console.WriteLine(svc.GetDisplayName(null));   // (unknown)
+
       public class UserService
       {
           private readonly string _connectionString;
@@ -98,8 +101,8 @@ exercises:
       null check. Code from pre-NRT or NRT-disabled assemblies can return null
       regardless of annotations. Using is not null or ?. is always safer; reserve !
       for situations where you have absolute certainty and can document why.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "(unknown)"
 
   - prompt: |
       The generic Repository<T> needs to (a) create instances of T without a factory,
@@ -107,6 +110,8 @@ exercises:
       where clause(s) and explain what compile error you get without each constraint.
     kind: fix-it
     broken_code: |
+      Console.WriteLine("ok");   // entry point — the type errors below still break the build
+
       public class Repository<T>
       {
           public T CreateDefault()
@@ -128,6 +133,10 @@ exercises:
           }
       }
     fixed_code: |
+      // Entry point (OutputType=Exe needs a top-level statement). The constraints
+      // below are what make this file COMPILE.
+      Console.WriteLine("ok");
+
       public class Repository<T>
           where T : class,            // (c) reference types only
                     IComparable<T>,   // (b) CompareTo is available
@@ -150,7 +159,7 @@ exercises:
       Without IComparable<T>: "T does not contain a definition for CompareTo."
       Without class: struct types would be accepted — combining struct and class is
       a compile error; use one or the other.
-    check: none
+    check: compiles
     signal: ""
 
   - prompt: |
@@ -169,23 +178,31 @@ exercises:
       // CS0266 — cannot implicitly convert IList<string> to IList<object>
       IList<object> objectList = stringList;
     fixed_code: |
+      IEnumerable<string> strings    = new List<string> { "hello" };
+      List<string>        stringList = new List<string> { "hello" };
+
       // IEnumerable<T> is declared as IEnumerable<out T> — covariant.
       // You can only READ from it (no Add), so widening is safe.
       IEnumerable<object> objects = strings;   // OK
 
       // IList<T> is invariant — it has both read (indexer) and write (Add).
       // If allowed, you could do: objectList.Add(42) — an int into a List<string>!
-      // The compiler forbids the assignment to prevent this corruption.
+      // The compiler forbids the assignment to prevent this corruption — so we do
+      // NOT write `IList<object> objectList = stringList;` (that is CS0266).
 
       // Safe alternative: widen to a read-only interface.
       IReadOnlyList<object> readOnly = stringList;   // OK — covariant
+
+      // Touch the widened views so nothing is flagged as unused.
+      _ = objects;
+      _ = readOnly;
     bug: |
       IList<T> is invariant because it supports both reads (covariant position) and
       writes (contravariant position). Allowing IList<string> -> IList<object> would
       let callers add arbitrary objects, corrupting the strongly-typed list. Only
       purely read-only collection interfaces (IEnumerable<out T>, IReadOnlyList<out T>)
       are covariant.
-    check: none
+    check: compiles
     signal: ""
 
   - prompt: |
@@ -203,23 +220,27 @@ exercises:
           return default!;   // wrong: for string this should be null (T?), not default!
       }
     fixed_code: |
+      #nullable enable
+
+      // Usage:
+      string? s = FirstOrDefault(new[] { "hello" });   // T = string  → string?
+      int?    n = FirstOrDefault(new[] { 1, 2, 3 });   // T = int     → Nullable<int>
+      Console.WriteLine(s);            // hello
+      Console.WriteLine(n!.Value);     // 1
+
       // Correct annotation: [return: MaybeNull] or the T? form with
       // the right constraints. The idiomatic BCL-style approach:
-      public static T? FirstOrDefault<T>(IEnumerable<T> source)
+      static T? FirstOrDefault<T>(IEnumerable<T> source)
       {
           foreach (var item in source)
               return item;
           return default;   // null for reference types; default(T) for value types
       }
-
-      // Usage:
-      string?  s = FirstOrDefault(new[] { "hello" });   // T = string  → string?
-      int?     n = FirstOrDefault(new[] { 1, 2, 3 });   // T = int     → Nullable<int>
     bug: |
       In unconstrained generics, T? means "nullable counterpart of T." For reference
       types this is the NRT annotation T? (same CLR type, nullable annotation only).
       For value types it becomes Nullable<T> — a different CLR struct that adds a
       HasValue flag. Using default instead of default! is correct: for reference types
       default is null; for value types it is the zero value (or null if T is Nullable<T>).
-    check: none
-    signal: ""
+    check: stdout
+    signal: "hello\n1"

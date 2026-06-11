@@ -1,8 +1,10 @@
 # Architecture
 
-A map of how DevAscent fits together, for contributors. It's a single Go binary:
-a terminal UI, an embedded content catalog, and a grader that shells out to the
-player's own language toolchains.
+A map of how DevAscent fits together, for contributors. The core is a UI-agnostic
+Go engine — an embedded content catalog and a grader that shells out to the
+player's own language toolchains — with **two frontends over the same core**: a
+terminal app (single static binary) and a Wails desktop app. They share the
+grading, the content, and the save files.
 
 ## Packages
 
@@ -15,7 +17,14 @@ player's own language toolchains.
 - **`internal/grader`** — the `Grader` interface and its backends, plus one harness
   per language.
 - **`internal/toolchain`** — detects which language toolchains the player has.
-- **`internal/save`** — JSON save/resume in the per-OS config dir.
+- **`internal/save`** — JSON save/resume in the per-OS config dir; one slot per
+  language, shared by both frontends.
+- **`guiapi`** — the public facade the desktop app calls into (the GUI is a
+  separate Go module, so it can't import `internal/*`). Wraps content + engine +
+  grader + saves as stateful, JSON-friendly sessions.
+- **`devascent-gui/`** — the [Wails](https://wails.io) desktop app: a Go backend
+  binding `guiapi` to a Monaco-editor web frontend. Its own module
+  (`replace devascent => ../`), so the core stays CGO-free.
 
 ## Grading (Model A — function-call, LeetCode-style)
 

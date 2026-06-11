@@ -41,6 +41,10 @@ exercises:
               // East and West are not covered
           }
       }
+
+      fn main() {
+          println!("{}", describe(Direction::North));
+      }
     fixed_code: |
       enum Direction {
           North,
@@ -57,6 +61,10 @@ exercises:
               Direction::West => "left",
           }
       }
+
+      fn main() {
+          println!("{}", describe(Direction::North));
+      }
     bug: |
       Rust requires match to cover every possible variant at compile time. East and West
       are not handled, so E0004 fires. Adding explicit arms is preferred over _ because
@@ -66,9 +74,9 @@ exercises:
     check: compile-error
     signal: "E0004"
   - prompt: |
-      Write a process function that uses match to destructure all three Message variants
-      and print an appropriate message for each. Use struct-like destructuring for the
-      Move variant.
+      The process function matches all three Message variants, but the Move arm uses
+      tuple-style destructuring. Move is a struct-like variant, so it must be matched
+      with { x, y } instead. Fix the Move arm.
     kind: spot-the-bug
     broken_code: |
       enum Message {
@@ -78,10 +86,12 @@ exercises:
       }
 
       fn process(msg: Message) {
-          // TODO: match on msg and handle all three variants
-          // Move { x, y } -> print "moving to (x, y)"
-          // Write(text)   -> print the text
-          // Quit           -> print "quitting"
+          match msg {
+              // Move is a STRUCT variant — tuple syntax (x, y) does not apply to it
+              Message::Move(x, y) => println!("moving to ({x}, {y})"),
+              Message::Write(text) => println!("{text}"),
+              Message::Quit => println!("quitting"),
+          }
       }
 
       fn main() {
@@ -110,12 +120,13 @@ exercises:
           process(Message::Quit);
       }
     bug: |
-      The function body is empty so the match is missing entirely. The exercise
+      Move is a struct-like variant, so it must be destructured with { x, y }, not the
+      tuple syntax (x, y) — matching it with tuple syntax fires E0164. The exercise
       demonstrates inline destructuring: struct variants use { field } syntax, tuple
       variants use (binding) syntax, and unit variants match bare. All three must be
       covered for the match to compile.
-    check: none
-    signal: ""
+    check: compile-error
+    signal: "E0164"
   - prompt: |
       An existing codebase has a two-variant Status enum and a match on it. Add a
       Suspended variant, then fix every compiler error about non-exhaustive patterns.
@@ -124,6 +135,7 @@ exercises:
       enum Status {
           Active,
           Inactive,
+          Suspended,
       }
 
       fn describe_status(s: Status) -> &'static str {
@@ -138,6 +150,11 @@ exercises:
               Status::Active => true,
               Status::Inactive => false,
           }
+      }
+
+      fn main() {
+          println!("{}", describe_status(Status::Active));
+          println!("{}", is_billable(Status::Active));
       }
     fixed_code: |
       enum Status {
@@ -160,6 +177,11 @@ exercises:
               Status::Inactive => false,
               Status::Suspended => false,
           }
+      }
+
+      fn main() {
+          println!("{}", describe_status(Status::Active));
+          println!("{}", is_billable(Status::Active));
       }
     bug: |
       Adding Suspended causes E0004 at every match site that does not cover it. The

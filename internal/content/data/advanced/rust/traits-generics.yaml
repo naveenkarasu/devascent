@@ -98,6 +98,8 @@ exercises:
               Square { side: 3.0 }   // mismatched types — each arm must return the same concrete type
           }
       }
+
+      fn main() {}
     fixed_code: |
       trait Shape {
           fn area(&self) -> f64;
@@ -127,6 +129,11 @@ exercises:
           } else {
               Box::new(Square { side: 3.0 })
           }
+      }
+
+      fn main() {
+          let shape = make_shape(true);
+          println!("{}", shape.area());
       }
     bug: |
       impl Trait in return position requires every return branch to return the exact same

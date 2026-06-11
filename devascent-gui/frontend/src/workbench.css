@@ -1,0 +1,681 @@
+/* Bench workbench — sidebar (problem list) + work area (prompt, editor, verdict).
+   All colors come from the theme vars in themes.css, so it recolors on switch. */
+
+.langsel {
+  background: var(--panel);
+  color: var(--textPrimary);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+}
+
+/* ── Top nav (Entrance Test / Tutorial / Bench) ─────────────── */
+.nav {
+  display: flex;
+  gap: 4px;
+  margin-left: 14px;
+}
+.nav button {
+  background: transparent;
+  color: var(--textSecondary);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 4px 11px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.nav button:hover {
+  background: var(--panel);
+}
+.nav button.on {
+  background: var(--panelStrong);
+  color: var(--textPrimary);
+  border-color: var(--borderSubtle);
+}
+
+.viewhost {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--canvas);
+}
+
+/* ── Centered intro/result cards (orientation) ──────────────── */
+.centerpane {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.card-lg {
+  max-width: 560px;
+  background: var(--base);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 12px;
+  padding: 26px 28px;
+}
+.h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  color: var(--textPrimary);
+}
+.lead {
+  color: var(--textSecondary);
+  font-size: 14px;
+  line-height: 21px;
+}
+.ask {
+  color: var(--textPrimary);
+  font-weight: 600;
+  margin-top: 18px;
+}
+.levelrow {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.bigscore {
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--blue);
+  margin: 6px 0;
+}
+
+/* ── Orientation item ───────────────────────────────────────── */
+.orient,
+.tutorial {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 18px 22px;
+}
+.oprogress,
+.tprogress {
+  color: var(--textMuted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 16px;
+}
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 12px;
+  background: var(--base);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 8px;
+  color: var(--textSecondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.choice:hover {
+  border-color: var(--blue);
+}
+.specinput {
+  margin: 4px 16px;
+  min-height: 110px;
+  padding: 10px 12px;
+  background: var(--base);
+  color: var(--textPrimary);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 8px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  resize: vertical;
+}
+.specinput:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+.editor.tall {
+  height: 300px;
+  min-height: 300px;
+  flex: none;
+  margin: 10px 16px;
+}
+
+/* ── Tutorial lesson stages ─────────────────────────────────── */
+.stages {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 10px;
+}
+.stage {
+  background: var(--base);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.stagehead {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--textPrimary);
+  margin-bottom: 8px;
+}
+.s-i_do {
+  color: var(--cyan);
+}
+.s-we_do {
+  color: var(--yellow);
+}
+.s-you_do {
+  color: var(--green);
+}
+.stagebody {
+  color: var(--textSecondary);
+  font-size: 13px;
+  line-height: 20px;
+  white-space: pre-wrap;
+}
+.tnav {
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+/* ── Tutorial stage stepper (Watch → Together → Your turn) ──── */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 4px 0 12px;
+  flex-wrap: wrap;
+}
+.stepchip {
+  background: var(--panel);
+  color: var(--textMuted);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 999px;
+  padding: 4px 13px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+}
+.stepchip.open {
+  color: var(--textSecondary);
+}
+.stepchip.cur {
+  background: var(--panelStrong);
+  color: var(--textPrimary);
+  border-color: var(--blue);
+}
+.stepchip.locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.steparrow {
+  color: var(--textMuted);
+  font-size: 11px;
+}
+
+/* ── Bench scorecard (banked vs Step 0 targets) ─────────────── */
+.scorecard {
+  margin: 10px 10px 0;
+  padding: 9px 11px;
+  background: var(--panel);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 8px;
+}
+.scrow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.scval {
+  color: var(--textPrimary);
+  font-weight: 700;
+  font-size: 14px;
+}
+.scmut {
+  color: var(--textMuted);
+  font-weight: 400;
+  font-size: 11px;
+}
+.sclabel {
+  color: var(--textMuted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 8px;
+}
+.scbar {
+  margin-top: 7px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--panelStrong);
+  overflow: hidden;
+}
+.scfill {
+  height: 100%;
+  background: var(--blue);
+  border-radius: 2px;
+  transition: width 0.25s ease;
+}
+.scmet {
+  margin-top: 6px;
+  color: var(--green);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.schint {
+  margin-top: 6px;
+  color: var(--textMuted);
+  font-size: 11px;
+}
+.prow .ptick {
+  width: 13px;
+  flex: none;
+  font-size: 11px;
+}
+.prow .ptick.on {
+  color: var(--green);
+}
+
+/* ── Filter chips (lists + difficulty) ──────────────────────── */
+.chiprow {
+  display: flex;
+  gap: 5px;
+  margin: 8px 10px 0;
+  flex-wrap: wrap;
+}
+.fchip {
+  background: var(--panel);
+  color: var(--textMuted);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  cursor: pointer;
+}
+.fchip:hover {
+  border-color: var(--borderStrong);
+}
+.fchip.on {
+  background: var(--panelStrong);
+  color: var(--textPrimary);
+  border-color: var(--borderStrong);
+}
+.fchip.d-easy.on {
+  color: var(--green);
+}
+.fchip.d-medium.on {
+  color: var(--yellow);
+}
+.fchip.d-hard.on {
+  color: var(--red);
+}
+
+/* ── Probhead extras + Learn drawer ─────────────────────────── */
+.probhead .spacer {
+  flex: 1;
+}
+.btn.small {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+.work {
+  position: relative;
+}
+.drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 430px;
+  max-width: 60%;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  background: var(--base);
+  border-left: 1px solid var(--borderStrong);
+  box-shadow: -14px 0 30px rgba(0, 0, 0, 0.35);
+}
+.drawer.hidden {
+  display: none;
+}
+.drawhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--borderSubtle);
+  font-weight: 600;
+  color: var(--textPrimary);
+}
+.drawbody {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 12px 14px 18px;
+}
+.psummary {
+  color: var(--textSecondary);
+  font-size: 13px;
+  line-height: 19px;
+  white-space: pre-wrap;
+  margin-bottom: 10px;
+}
+.psectitle {
+  color: var(--textPrimary);
+  font-weight: 600;
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 12px 0 6px;
+}
+.pop {
+  margin-bottom: 7px;
+}
+.poplabel {
+  color: var(--textMuted);
+  font-size: 12px;
+}
+.popcode {
+  margin: 2px 0 0;
+  padding: 6px 9px;
+  background: var(--canvas);
+  border-radius: 6px;
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+/* ── Home profile picker (one chip per language slot) ───────── */
+.profrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.proflabel {
+  color: var(--textMuted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.profchip {
+  background: var(--panel);
+  color: var(--textSecondary);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+}
+.profchip:hover {
+  border-color: var(--borderStrong);
+}
+.profchip.on {
+  background: var(--panelStrong);
+  color: var(--textPrimary);
+  border-color: var(--blue);
+}
+.profchip .b {
+  font-weight: 600;
+}
+.profchip .mut {
+  color: var(--textMuted);
+}
+
+/* ── Orientation per-signal chips ───────────────────────────── */
+.sigrow {
+  display: flex;
+  gap: 7px;
+  margin: 2px 0 8px;
+}
+.sigchip {
+  background: var(--panel);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 999px;
+  padding: 2px 10px;
+  color: var(--textSecondary);
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+}
+
+/* ── Dev-Literacy terminal (a checker styled as a transcript) ── */
+.devterm {
+  margin: 10px 16px;
+  padding: 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 21px;
+}
+.dline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.devinput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--textPrimary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  caret-color: var(--blue);
+}
+
+.bench {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 290px 1fr;
+  background: var(--canvas);
+}
+
+/* ── Sidebar ───────────────────────────────────────────── */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--borderSubtle);
+  background: var(--base);
+}
+.search {
+  margin: 10px;
+  padding: 7px 10px;
+  background: var(--panel);
+  color: var(--textPrimary);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 7px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+.search:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+.pcount {
+  padding: 0 12px 6px;
+  color: var(--textMuted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.plist {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 0 6px 10px;
+}
+.prow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.prow:hover {
+  background: var(--panel);
+}
+.prow.active {
+  background: var(--panelStrong);
+}
+.prow .ptitle {
+  flex: 1;
+  color: var(--textSecondary);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.prow.active .ptitle {
+  color: var(--textPrimary);
+}
+.pdiff {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--textMuted);
+}
+.d-easy {
+  color: var(--green);
+}
+.d-medium {
+  color: var(--yellow);
+}
+.d-hard {
+  color: var(--red);
+}
+
+/* ── Work area ─────────────────────────────────────────── */
+.work {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.probhead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px 8px;
+}
+.probhead .ptitle-h {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--textPrimary);
+}
+.tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--borderSubtle);
+  color: var(--textMuted);
+}
+.tag.cat {
+  color: var(--cyan);
+}
+.prompt-text {
+  margin: 0 16px 10px;
+  padding: 10px 12px;
+  max-height: 120px;
+  overflow-y: auto;
+  background: var(--base);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 8px;
+  color: var(--textSecondary);
+  font-size: 13px;
+  line-height: 19px;
+  white-space: pre-wrap;
+}
+.editor {
+  flex: 1 1 auto;
+  min-height: 160px;
+  margin: 0 16px;
+  border: 1px solid var(--borderSubtle);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.workbar {
+  display: flex;
+  gap: 10px;
+  padding: 10px 16px;
+}
+.verdict {
+  margin: 0 16px 14px;
+  padding: 10px 12px;
+  max-height: 26vh;
+  overflow-y: auto;
+  background: var(--base);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.vmuted {
+  color: var(--textMuted);
+}
+.vhead {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.vok {
+  color: var(--green);
+}
+.vfail {
+  color: var(--red);
+}
+.vpre {
+  margin: 4px 0 0;
+  padding: 8px;
+  background: var(--canvas);
+  border-radius: 6px;
+  color: var(--textSecondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+.clist {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.crow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+}
+.crow .cmark {
+  width: 14px;
+}
+.cok .cmark {
+  color: var(--green);
+}
+.cfail .cmark {
+  color: var(--red);
+}
+.crow .cname {
+  color: var(--textSecondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.cdetail {
+  color: var(--textMuted);
+  font-size: 12px;
+}
+.cdetail code {
+  color: var(--textSecondary);
+  font-family: var(--font-mono);
+}

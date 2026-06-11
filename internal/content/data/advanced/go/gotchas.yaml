@@ -111,8 +111,8 @@ exercises:
       safe and returns the zero value, but writes require the hash-table internals to be
       allocated. make(map[string]int) performs that allocation. A map literal
       map[string]int{} is equally correct.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "map[Alice:10]"
 
   - prompt: |
       Spot the bug: the caller expects modify not to change original, but both slices
@@ -159,4 +159,4 @@ exercises:
       into a fresh allocation first. copy(dst, src) copies min(len(dst), len(src))
       elements; the destination slice must be pre-allocated with make.
     check: stdout
-    signal: "original: [1 2 3]"
+    signal: "original: [1 2 3]\nchanged:  [999 2 3]"

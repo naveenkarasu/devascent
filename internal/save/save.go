@@ -1,16 +1,20 @@
 package save
 
-// Package save persists Step -1 progress as JSON (atomic writes) under the
-// per-OS user config dir, so a long run resumes across sessions.
+// Package save persists run progress as JSON (atomic writes) under the per-OS
+// user config dir. v3: ONE SLOT PER LANGUAGE (save-<lang>.json) so a player
+// trains multiple languages in parallel; the legacy single save.json is
+// migrated into its language's slot on first access. Shared by the TUI and
+// the GUI — neither forks the format.
 
 import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
-const SchemaVersion = 2
+const SchemaVersion = 3 // 3 = per-language slot files
 
 type State struct {
 	SchemaVersion int    `json:"schema_version"`
@@ -49,7 +53,17 @@ type State struct {
 	UpdatedAt string `json:"updated_at"`
 }
 
-// dir returns the directory that holds the save file.
+// Profile is the per-language slot summary shown by profile pickers.
+type Profile struct {
+	Lang      string `json:"lang"`
+	Stage     string `json:"stage"`
+	Placement string `json:"placement"`
+	Level     string `json:"level"`
+	Banked    int    `json:"banked"` // distinct problems banked
+	UpdatedAt string `json:"updatedAt"`
+}
+
+// dir returns the directory that holds the save files.
 // If DEVASCENT_SAVE_DIR is set, that value is used directly;
 // otherwise it falls back to os.UserConfigDir()/DevAscent.
 func dir() (string, error) {
@@ -63,22 +77,56 @@ func dir() (string, error) {
 	return filepath.Join(base, "DevAscent"), nil
 }
 
-// Path returns the full path to the save file.
-func Path() (string, error) {
+func normLang(lang string) string {
+	if lang == "" {
+		return "python"
+	}
+	return lang
+}
+
+// slotPath returns the save file for one language's slot.
+func slotPath(lang string) (string, error) {
 	d, err := dir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(d, "save.json"), nil
+	return filepath.Join(d, "save-"+normLang(lang)+".json"), nil
 }
 
-// Load reads and unmarshals the save file.
-// If the file does not exist, it returns (nil, nil).
-func Load() (*State, error) {
-	p, err := Path()
+// migrate moves a legacy single save.json (v2 and earlier) into its
+// language's slot. Idempotent; the slot wins if it already exists (the legacy
+// file is parked as save.json.bak so nothing is lost and migration stops
+// re-triggering).
+func migrate() error {
+	d, err := dir()
 	if err != nil {
-		return nil, err
+		return err
 	}
+	legacy := filepath.Join(d, "save.json")
+	data, err := os.ReadFile(legacy)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	var s State
+	if err := json.Unmarshal(data, &s); err != nil {
+		// Corrupt legacy file: park it; slots start fresh.
+		return os.Rename(legacy, legacy+".bak")
+	}
+	target, err := slotPath(s.Language)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(target); err == nil {
+		return os.Rename(legacy, legacy+".bak")
+	}
+	return os.Rename(legacy, target)
+}
+
+// readState unmarshals one slot file; (nil, nil) when absent.
+func readState(p string) (*State, error) {
 	data, err := os.ReadFile(p)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -93,8 +141,24 @@ func Load() (*State, error) {
 	return &s, nil
 }
 
-// Save persists s to disk using an atomic write (tmp file + rename).
-func Save(s State) error {
+// LoadLang reads the save slot for one language (migrating any legacy single
+// save first). Returns (nil, nil) when the slot doesn't exist.
+func LoadLang(lang string) (*State, error) {
+	if err := migrate(); err != nil {
+		return nil, err
+	}
+	p, err := slotPath(lang)
+	if err != nil {
+		return nil, err
+	}
+	return readState(p)
+}
+
+// SaveLang persists s into lang's slot using an atomic write. s.Language is
+// forced to the slot's language so a state can never land in the wrong slot.
+func SaveLang(lang string, s State) error {
+	lang = normLang(lang)
+	s.Language = lang
 	s.SchemaVersion = SchemaVersion
 	s.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
 
@@ -105,30 +169,84 @@ func Save(s State) error {
 	if err := os.MkdirAll(d, 0o755); err != nil {
 		return err
 	}
-
 	data, err := json.Marshal(s)
 	if err != nil {
 		return err
 	}
-
-	tmp := filepath.Join(d, "save.json.tmp")
+	tmp := filepath.Join(d, "save-"+lang+".json.tmp")
 	if err := os.WriteFile(tmp, data, 0o600); err != nil {
 		return err
 	}
-
-	final := filepath.Join(d, "save.json")
-	return os.Rename(tmp, final)
-}
-
-// Delete removes the save file. If the file does not exist, nil is returned.
-func Delete() error {
-	p, err := Path()
+	final, err := slotPath(lang)
 	if err != nil {
 		return err
 	}
-	err = os.Remove(p)
-	if err != nil && os.IsNotExist(err) {
-		return nil
+	return os.Rename(tmp, final)
+}
+
+// Profiles lists every language slot, most recently played first.
+func Profiles() ([]Profile, error) {
+	if err := migrate(); err != nil {
+		return nil, err
 	}
-	return err
+	d, err := dir()
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(d)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var out []Profile
+	for _, e := range entries {
+		name := e.Name()
+		if !strings.HasPrefix(name, "save-") || !strings.HasSuffix(name, ".json") {
+			continue
+		}
+		s, err := readState(filepath.Join(d, name))
+		if err != nil || s == nil {
+			continue // a corrupt slot shouldn't hide the others
+		}
+		lang := strings.TrimSuffix(strings.TrimPrefix(name, "save-"), ".json")
+		out = append(out, Profile{
+			Lang: lang, Stage: s.Stage, Placement: s.Placement, Level: s.Level,
+			Banked: len(s.SolvedIDs), UpdatedAt: s.UpdatedAt,
+		})
+	}
+	// most recent first (RFC3339 sorts lexicographically)
+	for i := 1; i < len(out); i++ {
+		for j := i; j > 0 && out[j].UpdatedAt > out[j-1].UpdatedAt; j-- {
+			out[j], out[j-1] = out[j-1], out[j]
+		}
+	}
+	return out, nil
+}
+
+// LoadLatest returns the most recently played slot (nil when no slot exists).
+// This is the TUI's resume entry: a single-language player gets exactly the
+// old behavior; a multi-language player resumes the last language they played.
+func LoadLatest() (*State, error) {
+	ps, err := Profiles()
+	if err != nil {
+		return nil, err
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+	return LoadLang(ps[0].Lang)
+}
+
+// DeleteLang removes one language's slot. Missing file returns nil.
+func DeleteLang(lang string) error {
+	p, err := slotPath(lang)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }

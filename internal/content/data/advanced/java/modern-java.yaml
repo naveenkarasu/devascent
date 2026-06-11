@@ -49,44 +49,57 @@ exercises:
       note that the accessor returns the internal copy (so no second wrapping is needed).
     kind: fix-it
     broken_code: |
-      class PersonDTO {
-          private final String name;
-          private final List<String> tags;
+      import java.util.*;
 
-          PersonDTO(String name, List<String> tags) {
-              if (name == null || name.isBlank()) throw new IllegalArgumentException("name required");
-              this.name = name;
-              this.tags = tags;   // stores the caller's list — mutable reference leak
+      public class Main {
+          static class PersonDTO {
+              private final String name;
+              private final List<String> tags;
+
+              PersonDTO(String name, List<String> tags) {
+                  if (name == null || name.isBlank()) throw new IllegalArgumentException("name required");
+                  this.name = name;
+                  this.tags = tags;   // stores the caller's list — mutable reference leak
+              }
+
+              String name() { return name; }
+              List<String> tags() { return tags; }   // exposes mutable list
           }
 
-          String name() { return name; }
-          List<String> tags() { return tags; }   // exposes mutable list
-
-          @Override public boolean equals(Object o) { /* boilerplate */ return false; }
-          @Override public int hashCode() { return 0; }
-          @Override public String toString() { return "PersonDTO[" + name + "]"; }
+          public static void main(String[] args) {
+              List<String> mutable = new ArrayList<>(List.of("a", "b"));
+              PersonDTO p = new PersonDTO("Alice", mutable);
+              mutable.add("c");                 // silently corrupts p.tags()!
+              System.out.println(p.tags());     // [a, b, c] — wrong
+          }
       }
     fixed_code: |
-      record PersonDTO(String name, List<String> tags) {
-          // Compact constructor: validate + defensive-copy in one place
-          PersonDTO {
-              if (name == null || name.isBlank())
-                  throw new IllegalArgumentException("name required");
-              // List.copyOf() creates an unmodifiable snapshot of the caller's list.
-              // The record accessor tags() returns this internal copy directly —
-              // because the copy is already unmodifiable, no further wrapping is needed.
-              // Using new ArrayList<>(tags) alone is NOT sufficient: the accessor
-              // would still return a mutable copy that callers could modify.
-              tags = List.copyOf(tags);
+      import java.util.*;
+
+      public class Main {
+          record PersonDTO(String name, List<String> tags) {
+              // Compact constructor: validate + defensive-copy in one place
+              PersonDTO {
+                  if (name == null || name.isBlank())
+                      throw new IllegalArgumentException("name required");
+                  // List.copyOf() creates an unmodifiable snapshot of the caller's list.
+                  // The record accessor tags() returns this internal copy directly —
+                  // because the copy is already unmodifiable, no further wrapping is needed.
+                  // Using new ArrayList<>(tags) alone is NOT sufficient: the accessor
+                  // would still return a mutable copy that callers could modify.
+                  tags = List.copyOf(tags);
+              }
+          }
+
+          public static void main(String[] args) {
+              // Proof of immutability:
+              List<String> mutable = new ArrayList<>(List.of("a", "b"));
+              PersonDTO p = new PersonDTO("Alice", mutable);
+              mutable.add("c");                   // does not affect p.tags()
+              // p.tags().add("x");               // throws UnsupportedOperationException
+              System.out.println(p.tags());       // [a, b]
           }
       }
-
-      // Proof of immutability:
-      List<String> mutable = new ArrayList<>(List.of("a", "b"));
-      PersonDTO p = new PersonDTO("Alice", mutable);
-      mutable.add("c");                   // does not affect p.tags()
-      // p.tags().add("x");               // throws UnsupportedOperationException
-      System.out.println(p.tags());       // [a, b]
     bug: |
       Records are shallowly immutable: the field reference is final, but the object
       the reference points to can still be mutated. Without defensive copying in the
@@ -107,48 +120,61 @@ exercises:
       permits list and observe the compile error that results.
     kind: implement
     broken_code: |
-      // Non-sealed hierarchy — switch cannot be exhaustive, default is required:
-      abstract class Shape {}
-      class Circle    extends Shape { double radius; Circle(double r)    { radius = r; } }
-      class Rectangle extends Shape { double w, h;  Rectangle(double w, double h) { this.w=w; this.h=h; } }
-      class Triangle  extends Shape { double base, height; Triangle(double b, double h) { base=b; height=h; } }
+      public class Main {
+          sealed interface Shape permits Circle, Rectangle, Triangle {}
 
-      static double area(Shape s) {
-          // forced to add default because compiler cannot verify exhaustiveness:
-          return switch (s) {
-              case Circle c    -> Math.PI * c.radius * c.radius;
-              case Rectangle r -> r.w * r.h;
-              case Triangle t  -> 0.5 * t.base * t.height;
-              default          -> throw new IllegalArgumentException("Unknown shape");
-          };
+          record Circle   (double radius)       implements Shape {}
+          record Rectangle(double w, double h)  implements Shape {}
+          record Triangle (double base, double height) implements Shape {}
+
+          static double area(Shape s) {
+              // BUG: the Triangle arm is missing AND there is no default, so the
+              // switch is not exhaustive over the sealed hierarchy — it will not compile:
+              return switch (s) {
+                  case Circle c    -> Math.PI * c.radius() * c.radius();
+                  case Rectangle r -> r.w() * r.h();
+              };
+          }
+
+          public static void main(String[] args) {
+              System.out.println(area(new Rectangle(3, 4)));
+          }
       }
     fixed_code: |
-      sealed interface Shape permits Circle, Rectangle, Triangle {}
+      public class Main {
+          sealed interface Shape permits Circle, Rectangle, Triangle {}
 
-      record Circle   (double radius)       implements Shape {}
-      record Rectangle(double w, double h)  implements Shape {}
-      record Triangle (double base, double height) implements Shape {}
+          record Circle   (double radius)       implements Shape {}
+          record Rectangle(double w, double h)  implements Shape {}
+          record Triangle (double base, double height) implements Shape {}
 
-      static double area(Shape s) {
-          // No default needed — compiler verifies all permits are covered:
-          return switch (s) {
-              case Circle c    -> Math.PI * c.radius() * c.radius();
-              case Rectangle r -> r.w() * r.h();
-              case Triangle t  -> 0.5 * t.base() * t.height();
-          };
+          static double area(Shape s) {
+              // No default needed — compiler verifies all permits are covered:
+              return switch (s) {
+                  case Circle c    -> Math.PI * c.radius() * c.radius();
+                  case Rectangle r -> r.w() * r.h();
+                  case Triangle t  -> 0.5 * t.base() * t.height();
+              };
+          }
+
+          // If a permitted subtype (e.g. Triangle) is dropped from the switch with no
+          // default, the switch is no longer exhaustive and the compiler reports:
+          // "the switch expression does not cover all possible input values" — the
+          // compiler enforces that new subtypes are handled everywhere.
+
+          public static void main(String[] args) {
+              System.out.println(area(new Rectangle(3, 4)));
+              System.out.println(area(new Triangle(6, 2)));
+          }
       }
-
-      // If Triangle is removed from permits, the switch is no longer exhaustive
-      // and the compiler reports: "the switch expression does not cover all possible
-      // input values" — the compiler enforces that new subtypes are handled everywhere.
     bug: |
       Without sealed, the compiler cannot know all subtypes of Shape at compile time,
       so a switch must include a default arm. With sealed + permits, the compiler
       knows exactly which subtypes exist and can verify the switch covers all of them.
       Removing a permits type without updating all switch sites produces a compile
       error — this is the explicit design contract sealed types provide.
-    check: none
-    signal: ""
+    check: compile-error
+    signal: "the switch expression does not cover all possible input values"
 
   - prompt: |
       Write a method classify(Object obj) using a pattern-matching switch that:
@@ -160,25 +186,37 @@ exercises:
       label ordering so the more specific guarded case comes first.
     kind: fix-it
     broken_code: |
-      static String classify(Object obj) {
-          return switch (obj) {
-              // BUG: the unguarded Integer case dominates the guarded one —
-              // the compiler reports a "dominates" error (or the guard is never reached)
-              case Integer i               -> "small integer";
-              case Integer i when i > 100  -> "large integer";   // unreachable
-              case String  s when s.chars().anyMatch(Character::isDigit) -> "has digit";
-              default                      -> "other";
-          };
+      public class Main {
+          static String classify(Object obj) {
+              return switch (obj) {
+                  // BUG: the unguarded Integer case dominates the guarded one —
+                  // the compiler reports a "dominates" error (or the guard is never reached)
+                  case Integer i               -> "small integer";
+                  case Integer i when i > 100  -> "large integer";   // unreachable
+                  case String  s when s.chars().anyMatch(Character::isDigit) -> "has digit";
+                  default                      -> "other";
+              };
+          }
+
+          public static void main(String[] args) {
+              System.out.println(classify(150));
+          }
       }
     fixed_code: |
-      static String classify(Object obj) {
-          return switch (obj) {
-              // More specific (guarded) case must come BEFORE the general case:
-              case Integer i when i > 100  -> "large integer";
-              case Integer i               -> "small integer";
-              case String  s when s.chars().anyMatch(Character::isDigit) -> "has digit";
-              default                      -> "other";
-          };
+      public class Main {
+          static String classify(Object obj) {
+              return switch (obj) {
+                  // More specific (guarded) case must come BEFORE the general case:
+                  case Integer i when i > 100  -> "large integer";
+                  case Integer i               -> "small integer";
+                  case String  s when s.chars().anyMatch(Character::isDigit) -> "has digit";
+                  default                      -> "other";
+              };
+          }
+
+          public static void main(String[] args) {
+              System.out.println(classify(150));
+          }
       }
     bug: |
       In a pattern-matching switch, a case label that is more general than a later
@@ -195,49 +233,42 @@ exercises:
       results from using var with a null initialiser.
     kind: explain-and-implement
     broken_code: |
-      // Verbose redundant type — same type on both sides:
-      HashMap<String, List<Integer>> groupedScores = new HashMap<String, List<Integer>>();
-
-      // Long but readable — method name makes the type obvious:
-      var result = compute();   // what type does compute() return? Unknown without IDE
-
-      // Loop variable — type is clear from context:
-      for (Iterator<String> it = list.iterator(); it.hasNext(); ) {
-          String item = it.next();
+      public class Main {
+          public static void main(String[] args) {
+              // Null initialiser — does not compile:
+              var name = null;   // error: cannot infer type for local variable name
+              System.out.println(name);
+          }
       }
-
-      // Numeric literal — misleading without the type:
-      var x = 42;               // int? long? double?
-
-      // Null initialiser — does not compile:
-      var name = null;
     fixed_code: |
-      // (a) GOOD uses of var — type is obvious from the right-hand side:
+      import java.util.*;
 
-      // 1. Long generic on both sides — var eliminates redundancy:
-      var groupedScores = new HashMap<String, List<Integer>>();
+      public class Main {
+          public static void main(String[] args) {
+              // (a) GOOD uses of var — type is obvious from the right-hand side:
 
-      // 2. Loop iteration variable — cleaner than repeating the element type:
-      for (var item : list) {
-          System.out.println(item);
+              // 1. Long generic on both sides — var eliminates redundancy:
+              var groupedScores = new HashMap<String, List<Integer>>();
+
+              // 2. Loop iteration variable — cleaner than repeating the element type:
+              List<String> list = List.of("alpha", "beta");
+              for (var item : list) {
+                  System.out.println(item);   // var is inferred as String here
+              }
+
+              // (b) BAD uses of var — type is not obvious:
+
+              // 1. Numeric literal — explicit type is clearer:
+              long timeout = 5_000L;    // explicit long, not int
+              // var timeout = 5_000L;  // technically works but hides the fact it's a long
+
+              // 2. Null initialiser — compile error if uncommented:
+              // var name = null;  // error: cannot infer type for local variable name
+              String name = null;   // must be explicit
+
+              System.out.println("groupedScores size: " + groupedScores.size() + ", timeout: " + timeout + ", name: " + name);
+          }
       }
-
-      // 3. Result of a constructor — type is right there:
-      var client = new HttpClient.Builder().connectTimeout(Duration.ofSeconds(5)).build();
-
-      // (b) BAD uses of var — type is not obvious:
-
-      // 1. Method return variable — you must look up the signature to know the type:
-      Map<String, List<Employee>> result = loadEmployeesByDept();   // explicit is clearer
-      // var result = loadEmployeesByDept();  // what does loadEmployeesByDept return?
-
-      // 2. Numeric literal — the type is ambiguous at a glance:
-      long timeout = 5_000L;    // explicit long, not int
-      // var timeout = 5_000L;  // technically works but hides the fact it's a long
-
-      // 3. Null initialiser — compile error: type cannot be inferred
-      // var name = null;  // error: cannot infer type for local variable name
-      String name = null;   // must be explicit
     bug: |
       var is local-variable type inference — the type is still static and checked at
       compile time; it is NOT dynamic typing. The guideline: use var when the type is

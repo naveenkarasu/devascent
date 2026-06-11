@@ -55,8 +55,8 @@ exercises:
       the adapter is built and immediately discarded. The compiler emits an
       unused_must_use warning (not an error code) to flag this. Adding .collect()
       forces evaluation and materialises the result into a Vec.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "[6, 8, 10]"
   - prompt: |
       The closure passed to sort_by_key tries to move seen out of itself. But
       sort_by_key requires FnMut — a closure that can be called multiple times. A
@@ -161,10 +161,11 @@ exercises:
           println!("sum = {sum}");   // sum = 40
       }
     bug: |
-      The Iterator impl is missing entirely. Providing type Item = u32 and implementing
-      next is all that is required — all other iterator adapter methods (zip, skip, map,
-      sum, etc.) are provided for free by the Iterator trait's default implementations.
-      The exercise demonstrates that a single next method unlocks the entire iterator
-      ecosystem.
-    check: none
-    signal: ""
+      The Iterator impl is missing entirely, so calling .zip/.skip/.sum on Counter fails
+      with E0599 ("Counter is not an iterator"). Providing type Item = u32 and
+      implementing next is all that is required — all other iterator adapter methods
+      (zip, skip, map, sum, etc.) are provided for free by the Iterator trait's default
+      implementations. The exercise demonstrates that a single next method unlocks the
+      entire iterator ecosystem.
+    check: compile-error
+    signal: "E0599"

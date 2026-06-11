@@ -52,6 +52,15 @@ exercises:
               self.area = math.pi * radius ** 2   # stale after radius changes
 
           # No validation — Circle(-1) is silently accepted
+
+      c = Circle(1)
+      print(round(c.area, 6))
+      c.radius = 2
+      print(round(c.area, 6))   # still shows old area!
+      try:
+          Circle(-1)
+      except ValueError as e:
+          print(f"ValueError: {e}")
     fixed_code: |
       import math
 
@@ -72,6 +81,15 @@ exercises:
           @property
           def area(self):
               return math.pi * self._radius ** 2
+
+      c = Circle(1)
+      print(round(c.area, 6))
+      c.radius = 2
+      print(round(c.area, 6))
+      try:
+          Circle(-1)
+      except ValueError as e:
+          print(f"ValueError: {e}")
     bug: |
       Two bugs: (1) `self.area` is computed once in `__init__` and cached as a
       plain attribute — it becomes stale if `radius` is later changed.
@@ -79,8 +97,8 @@ exercises:
       with a negative radius. Making `area` a `@property` ensures it is always
       fresh. Making `radius` a property with a setter that raises `ValueError` for
       negative values enforces the invariant at every assignment.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "3.141593\n12.566371\nValueError: Radius cannot be negative: -1"
 
   - prompt: |
       The `Money` class needs `__add__` to raise `TypeError` when currencies differ,
@@ -109,6 +127,12 @@ exercises:
           def __add__(self, other):
               # Bug: no currency check — silently adds mismatched currencies
               return Money(self.amount + other.amount, self.currency)
+
+      print(Money(10, "USD") + Money(5, "USD"))
+      try:
+          Money(10, "USD") + Money(5, "EUR")
+      except TypeError as e:
+          print(f"TypeError: {e}")
     fixed_code: |
       class Money:
           def __init__(self, amount, currency):
@@ -131,13 +155,19 @@ exercises:
                       f"Cannot add {self.currency} and {other.currency}"
                   )
               return Money(self.amount + other.amount, self.currency)
+
+      print(Money(10, "USD") + Money(5, "USD"))
+      try:
+          Money(10, "USD") + Money(5, "EUR")
+      except TypeError as e:
+          print(f"TypeError: {e}")
     bug: |
       `__add__` blindly sums `amount` and adopts `self.currency` regardless of
       `other.currency`. Adding USD and EUR silently produces a USD result with a
       nonsensical amount. The fix checks currencies first and raises `TypeError`
       with a descriptive message when they differ.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "Money(15, 'USD')\nTypeError: Cannot add USD and EUR"
 
   - prompt: |
       The `Point` dataclass should be frozen and use slots for memory efficiency,
@@ -158,6 +188,15 @@ exercises:
           # Unnecessary — dataclass generates __eq__ automatically
           def __eq__(self, other):
               return isinstance(other, Point) and self.x == other.x and self.y == other.y
+
+      p = Point(1.0, 2.0)
+      print(p)
+      print(p == Point(1.0, 2.0))
+      print(hash(p) == hash(Point(1.0, 2.0)))
+      try:
+          p.x = 99
+      except Exception as e:
+          print(type(e).__name__)
     fixed_code: |
       from dataclasses import dataclass
 
@@ -165,6 +204,15 @@ exercises:
       class Point:
           x: float
           y: float
+
+      p = Point(1.0, 2.0)
+      print(p)
+      print(p == Point(1.0, 2.0))
+      print(hash(p) == hash(Point(1.0, 2.0)))
+      try:
+          p.x = 99
+      except Exception as e:
+          print(type(e).__name__)
     bug: |
       Without `frozen=True`, `Point` instances are mutable — callers can do
       `p.x = 99`. Without `slots=True`, each instance carries a full `__dict__`,
@@ -172,5 +220,5 @@ exercises:
       duplicates what `@dataclass` already provides for free, and it does so without
       `__hash__`, making points unhashable. The fix adds both flags and removes the
       redundant method.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "Point(x=1.0, y=2.0)\nTrue\nTrue\nFrozenInstanceError"

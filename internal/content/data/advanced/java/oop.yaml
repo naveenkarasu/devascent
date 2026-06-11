@@ -39,6 +39,8 @@ exercises:
       any cast.
     kind: implement
     broken_code: |
+      import java.util.*;
+
       abstract class Animal {
           protected String name;
           Animal(String name) { this.name = name; }
@@ -54,7 +56,18 @@ exercises:
           Cat(String name) { super(name); }
           @Override public String speak() { return name + " says Meow"; }
       }
+
+      public class Main {
+          public static void main(String[] args) {
+              // TODO: a Robot has no name and cannot extend Animal — extract a
+              // Speakable interface so a List<Speakable> can hold Dog, Cat, and Robot.
+              List<Animal> things = List.of(new Dog("Rex"), new Cat("Whiskers"));
+              things.forEach(s -> System.out.println(s.speak()));
+          }
+      }
     fixed_code: |
+      import java.util.*;
+
       interface Speakable {
           String speak();
       }
@@ -78,16 +91,19 @@ exercises:
           @Override public String speak() { return "Beep boop"; }
       }
 
-      // Usage:
-      List<Speakable> things = List.of(new Dog("Rex"), new Cat("Whiskers"), new Robot());
-      things.forEach(s -> System.out.println(s.speak()));
+      public class Main {
+          public static void main(String[] args) {
+              List<Speakable> things = List.of(new Dog("Rex"), new Cat("Whiskers"), new Robot());
+              things.forEach(s -> System.out.println(s.speak()));
+          }
+      }
     bug: |
       The original design conflates "has shared name state" with "is a Speakable type".
       Robot cannot extend Animal because it has no name — proving the original abstract
       class was too wide. Extracting the interface lets unrelated types participate in
       the Speakable contract without inheriting unnecessary state.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "Rex says Woof\nWhiskers says Meow\nBeep boop"
 
   - prompt: |
       The code below casts a Shape reference to Circle before calling area(). Fix it
@@ -154,36 +170,50 @@ exercises:
       A provided unit test must still compile and pass.
     kind: fix-it
     broken_code: |
-      class BankAccount {
-          public double balance;   // mutable public field — encapsulation broken
+      public class Main {
+          static class BankAccount {
+              public double balance;   // mutable public field — encapsulation broken
 
-          BankAccount(double initial) {
-              this.balance = initial;
+              BankAccount(double initial) {
+                  this.balance = initial;
+              }
+          }
+
+          public static void main(String[] args) {
+              BankAccount account = new BankAccount(100);
+              // TODO: make balance private; route mutations through deposit()/withdraw().
+              account.balance += 50;   // direct mutation bypasses all invariants
+              System.out.println(account.balance);
           }
       }
-
-      // Test (must compile unchanged):
-      // account.getBalance() == 150.0 after deposit(50) on account(100)
     fixed_code: |
-      class BankAccount {
-          private double balance;
+      public class Main {
+          static class BankAccount {
+              private double balance;
 
-          BankAccount(double initial) {
-              if (initial < 0) throw new IllegalArgumentException("Initial balance cannot be negative");
-              this.balance = initial;
+              BankAccount(double initial) {
+                  if (initial < 0) throw new IllegalArgumentException("Initial balance cannot be negative");
+                  this.balance = initial;
+              }
+
+              public double getBalance() { return balance; }
+
+              public void deposit(double amount) {
+                  if (amount <= 0) throw new IllegalArgumentException("Deposit must be positive");
+                  balance += amount;
+              }
+
+              public void withdraw(double amount) {
+                  if (amount <= 0) throw new IllegalArgumentException("Withdrawal must be positive");
+                  if (amount > balance) throw new IllegalStateException("Insufficient funds");
+                  balance -= amount;
+              }
           }
 
-          public double getBalance() { return balance; }
-
-          public void deposit(double amount) {
-              if (amount <= 0) throw new IllegalArgumentException("Deposit must be positive");
-              balance += amount;
-          }
-
-          public void withdraw(double amount) {
-              if (amount <= 0) throw new IllegalArgumentException("Withdrawal must be positive");
-              if (amount > balance) throw new IllegalStateException("Insufficient funds");
-              balance -= amount;
+          public static void main(String[] args) {
+              BankAccount account = new BankAccount(100);
+              account.deposit(50);
+              System.out.println(account.getBalance());
           }
       }
     bug: |
@@ -192,8 +222,8 @@ exercises:
       through deposit/withdraw, where validation can be enforced. Note: if balance were
       a mutable object (e.g., a List), returning it directly from the getter would
       still break encapsulation — defensive copying would be required there too.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "150.0"
 
   - prompt: |
       Two interfaces both declare default String describe(). The class below fails to

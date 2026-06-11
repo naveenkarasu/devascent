@@ -197,14 +197,27 @@ func (pythonAdapter) grade(req GradeRequest, r runner) (Verdict, error) {
 
 // ---- shared check interpreters (reused by future language adapters) --------
 
-// stdoutVerdict compares captured stdout to the expected Signal (trimmed).
+// normalizeNL normalizes line endings (Windows CRLF / lone CR → LF) and trims
+// surrounding whitespace, so stdout comparison is platform-independent — e.g.
+// Java's System.out.println emits \r\n on Windows but the authored signal uses
+// \n. Without this, correct multi-line programs fail only on Windows (and only
+// for real Windows players, never on Linux CI).
+func normalizeNL(s string) string {
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+	return strings.TrimSpace(s)
+}
+
+// stdoutVerdict compares captured stdout to the expected Signal (line-ending
+// normalized and trimmed).
 func stdoutVerdict(o execOut, want string) Verdict {
 	if o.exit != 0 && strings.TrimSpace(o.stdout) == "" {
 		return Verdict{Err: firstNonEmpty(firstLine(o.stderr), "program exited "+strconv.Itoa(o.exit))}
 	}
-	got := strings.TrimSpace(o.stdout)
-	pass := got == strings.TrimSpace(want)
-	return Verdict{Passed: pass, Results: []CaseResult{{Name: "stdout", Passed: pass, Got: got, Expected: strings.TrimSpace(want)}}}
+	got := normalizeNL(o.stdout)
+	want = normalizeNL(want)
+	pass := got == want
+	return Verdict{Passed: pass, Results: []CaseResult{{Name: "stdout", Passed: pass, Got: got, Expected: want}}}
 }
 
 // compilesVerdict passes iff compilation succeeded (exit 0).

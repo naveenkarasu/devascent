@@ -181,8 +181,8 @@ exercises:
       explicit case in the type switch — Go checks interface satisfaction in type-switch
       cases at runtime safely, with no panic. The two-value assertion form (s, ok :=
       i.(Shape)) is the safe alternative when you cannot use a type switch.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "int: 42\nstring: hello\nbytes: hi\nshape with area 78.54\nunknown type"
 
   - prompt: |
       Add the compile-time interface guard idiom so the program will not compile unless

@@ -53,19 +53,29 @@ exercises:
           result = func(*args)      # kwargs are dropped!
           print(f"  -> {result!r}")
           return result
+
+      def greet(name, greeting="Hello"):
+          return f"{greeting}, {name}!"
+
+      log_call(greet, "Alice", greeting="Hi")
     fixed_code: |
       def log_call(func, *args, **kwargs):
           print(f"Calling {func.__name__}")
           result = func(*args, **kwargs)
           print(f"  -> {result!r}")
           return result
+
+      def greet(name, greeting="Hello"):
+          return f"{greeting}, {name}!"
+
+      log_call(greet, "Alice", greeting="Hi")
     bug: |
       `func(*args)` discards `kwargs` entirely. Any keyword argument passed to
       `log_call` is collected into `**kwargs` but never forwarded. The fix is
       `func(*args, **kwargs)`, which unpacks and forwards both positional and
       keyword arguments verbatim.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "Calling greet\n  -> 'Hi, Alice!'"
 
   - prompt: |
       `make_multiplier(factor)` is a decorator factory: the returned decorator
@@ -92,6 +102,9 @@ exercises:
       @make_multiplier(3)
       def double(x):
           return x * 2
+
+      print(double(4))
+      print(double.__name__)
     fixed_code: |
       import functools
 
@@ -107,6 +120,9 @@ exercises:
       @make_multiplier(3)
       def double(x):
           return x * 2
+
+      print(double(4))
+      print(double.__name__)
     bug: |
       Two bugs: (1) the wrapper multiplies the input arguments rather than the
       return value — `make_multiplier(3)` applied to `double(4)` should give
@@ -114,5 +130,5 @@ exercises:
       other functions). (2) Missing `@functools.wraps(func)` means `double.__name__`
       becomes `"wrapper"` instead of `"double"`, breaking introspection and stack
       traces.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "24\ndouble"

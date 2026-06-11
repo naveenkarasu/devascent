@@ -143,7 +143,7 @@ exercises:
       empty requires var zero T — Go has no generic "zero literal"; this is the
       idiomatic pattern.
     check: stdout
-    signal: "12"
+    signal: "12\nhello world"
 
   - prompt: |
       Implement generic Filter and Map functions and chain them to keep only even numbers
@@ -274,4 +274,4 @@ exercises:
       Without ~ the constraint would require the exact predeclared types and reject
       Celsius. The return type T ensures Sum([]Celsius{...}) returns Celsius, not int.
     check: stdout
-    signal: "6"
+    signal: "6\n600\n60"

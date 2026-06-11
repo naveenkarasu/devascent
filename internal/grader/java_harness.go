@@ -2,6 +2,7 @@ package grader
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -56,9 +57,60 @@ func javaLiteral(t gtype, v any) string {
 			parts[i] = javaLiteral(deref(t.elem), e)
 		}
 		return "new " + javaTypeStr(t) + "{" + strings.Join(parts, ", ") + "}"
+	case "any":
+		return javaAny(v)
 	default:
 		return "null"
 	}
+}
+
+// javaAny renders a heterogeneous (interface{}) value as a Java Object literal —
+// the analogue of goAny. Without this, op-list/design inputs and mixed/null or
+// map returns all collapsed to the literal null (false passes). Boxed numerics
+// are Long/Double so deepEquals/.equals match the player's boxed returns.
+func javaAny(v any) string {
+	switch x := v.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return strconv.FormatBool(x)
+	case int, int64, int32:
+		return goScalar(x) + "L"
+	case float64:
+		if x == float64(int64(x)) {
+			return strconv.FormatInt(int64(x), 10) + "L"
+		}
+		return strconv.FormatFloat(x, 'g', -1, 64) + "d"
+	case string:
+		return strconv.Quote(x)
+	case []any:
+		parts := make([]string, len(x))
+		for i, e := range x {
+			parts[i] = javaAny(e)
+		}
+		return "new Object[]{" + strings.Join(parts, ", ") + "}"
+	case map[string]any:
+		return javaMapLit(x)
+	default:
+		return "null"
+	}
+}
+
+// javaMapLit emits a deterministic LinkedHashMap literal (keys sorted) for a
+// dict/map return value.
+func javaMapLit(m map[string]any) string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	b.WriteString("new java.util.LinkedHashMap<String,Object>(){{")
+	for _, k := range keys {
+		b.WriteString("put(" + strconv.Quote(k) + ", " + javaAny(m[k]) + ");")
+	}
+	b.WriteString("}}")
+	return b.String()
 }
 
 func javaNodeBuildLit(shapeKind string, v any) string {
@@ -158,10 +210,15 @@ func javaCompare(ret gtype, got, exp string, isList, isTree bool) string {
 	case "string":
 		return exp + ".equals(" + got + ")"
 	case "slice":
-		if deref(ret.elem).kind == "slice" {
+		ek := deref(ret.elem).kind
+		if ek == "slice" || ek == "any" {
 			return "java.util.Arrays.deepEquals(" + got + ", " + exp + ")"
 		}
 		return "java.util.Arrays.equals(" + got + ", " + exp + ")"
+	case "any":
+		// Object return (op-list result, map, boxed scalar, nested array):
+		// deepEquals handles arrays deeply and falls back to .equals otherwise.
+		return "java.util.Objects.deepEquals(" + got + ", " + exp + ")"
 	default:
 		return "String.valueOf(" + got + ").equals(String.valueOf(" + exp + "))"
 	}

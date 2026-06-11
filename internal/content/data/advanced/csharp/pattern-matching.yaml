@@ -54,11 +54,9 @@ exercises:
       // through to the throw at runtime.
       class Pentagon : Shape { public double Side; }
     fixed_code: |
-      abstract class Shape { }
-      class Circle    : Shape { public double Radius;  }
-      class Rectangle : Shape { public double W, H;   }
-      class Triangle  : Shape { public double Base, Height; }
-      class Pentagon  : Shape { public double Side;   }
+      // Integer-valued shapes keep the output culture-independent.
+      Console.WriteLine(Area(new Rectangle { W = 3, H = 4 }));      // 12
+      Console.WriteLine(Area(new Triangle  { Base = 4, Height = 5 })); // 10
 
       static double Area(Shape s) => s switch
       {
@@ -70,14 +68,20 @@ exercises:
           // Without any _ arm, a Pentagon would throw SwitchExpressionException at runtime.
           _            => throw new NotSupportedException(s.GetType().Name),
       };
+
+      abstract class Shape { }
+      class Circle    : Shape { public double Radius = 0; }
+      class Rectangle : Shape { public double W, H;   }
+      class Triangle  : Shape { public double Base, Height; }
+      class Pentagon  : Shape { public double Side = 0; }
     bug: |
       Switch expressions generate CS8509 (non-exhaustive) when the compiler can prove
       a possible input has no matching arm. Adding a new derived type without updating
       the switch is caught by the warning. Without a _ arm, an unmatched input throws
       SwitchExpressionException at runtime. Always include a _ arm (or ensure the
       compiler can prove exhaustiveness via a sealed hierarchy).
-    check: none
-    signal: ""
+    check: stdout
+    signal: "12\n10"
 
   - prompt: |
       Write GetDiscount(Order o) using a switch expression that combines property
@@ -104,17 +108,20 @@ exercises:
               return 0m;
       }
     fixed_code: |
-      enum OrderStatus { Pending, Active, Completed }
+      var vipCustomers = new HashSet<string> { "C001", "C002" };
 
-      record Order(OrderStatus Status, decimal Total, string CustomerId);
+      // Print discount as an integer percentage to keep output culture-independent.
+      Console.WriteLine((int)(GetDiscount(new(OrderStatus.Active, 800m, "C001")) * 100)); // 20 (VIP)
+      Console.WriteLine((int)(GetDiscount(new(OrderStatus.Active, 800m, "C999")) * 100)); // 10
+      Console.WriteLine((int)(GetDiscount(new(OrderStatus.Active, 100m, "C999")) * 100)); // 5
+      Console.WriteLine((int)(GetDiscount(new(OrderStatus.Pending, 800m, "C001")) * 100)); // 0
 
-      static readonly HashSet<string> VipCustomers = ["C001", "C002"];
-
-      static decimal GetDiscount(Order o) => o switch
+      // Local function (non-static so it can capture vipCustomers).
+      decimal GetDiscount(Order o) => o switch
       {
           // VIP check via 'when' guard (fires AFTER property pattern succeeds)
           { Status: OrderStatus.Active, Total: >= 500 }
-              when VipCustomers.Contains(o.CustomerId) => 0.20m,
+              when vipCustomers.Contains(o.CustomerId) => 0.20m,
 
           { Status: OrderStatus.Active, Total: >= 500 } => 0.10m,
 
@@ -122,13 +129,17 @@ exercises:
 
           _ => 0m,
       };
+
+      enum OrderStatus { Pending, Active, Completed }
+
+      record Order(OrderStatus Status, decimal Total, string CustomerId);
     bug: |
       when guards fire only AFTER the preceding pattern matches. The VIP arm must
       appear BEFORE the plain-Active-500 arm — otherwise the latter matches first and
       the VIP arm is unreachable (CS8510 unreachable pattern warning). Property
       patterns are tested left-to-right; place the most specific (guarded) arm first.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "20\n10\n5\n0"
 
   - prompt: |
       Write a switch expression with list patterns that identifies five array shapes:
@@ -171,5 +182,5 @@ exercises:
       matches zero or more elements; [0, ..] means "starts with 0, followed by
       anything." Arm order matters: a more specific pattern must precede a more general
       one to avoid unreachable-pattern warnings.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "empty\nsingle: 42\nstarts with zero\nends with minus-one\nother"

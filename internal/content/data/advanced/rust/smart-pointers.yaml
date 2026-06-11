@@ -121,6 +121,8 @@ exercises:
               self.messages.push(msg.to_string());   // cannot mutate through &self
           }
       }
+
+      fn main() {}
     fixed_code: |
       use std::cell::RefCell;
 
@@ -146,6 +148,13 @@ exercises:
           fn log(&self, msg: &str) {
               self.messages.borrow_mut().push(msg.to_string());
           }
+      }
+
+      fn main() {
+          let logger = MockLogger::new();
+          logger.log("first");
+          logger.log("second");
+          println!("{:?}", logger.logged());
       }
     bug: |
       The trait signature requires &self (immutable receiver) but the implementation

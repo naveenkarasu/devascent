@@ -52,6 +52,10 @@ exercises:
       p.Move(10, 20);
       Console.WriteLine($"{p.X}, {p.Y}");   // prints 1, 2 — not 11, 22
     fixed_code: |
+      var p = new Point { X = 1, Y = 2 };
+      p = p.Move(10, 20);
+      Console.WriteLine($"{p.X}, {p.Y}");   // 11, 22
+
       public struct Point
       {
           public int X;
@@ -61,17 +65,13 @@ exercises:
           public Point Move(int dx, int dy)
               => this with { X = X + dx, Y = Y + dy };
       }
-
-      var p = new Point { X = 1, Y = 2 };
-      p = p.Move(10, 20);
-      Console.WriteLine($"{p.X}, {p.Y}");   // 11, 22
     bug: |
       Structs are value types: p.Move(10, 20) operates on a COPY of p. The copy is
       mutated and immediately discarded; the original p is unchanged. Either return
       a new struct (with-expression) or pass the struct by ref if in-place mutation
       is required (ref Point p).
-    check: none
-    signal: ""
+    check: stdout
+    signal: "11, 22"
 
   - prompt: |
       The runtime is emitting unexpected copies inside ProcessAll(). The struct Vector3
@@ -97,6 +97,14 @@ exercises:
           Console.WriteLine(v.Length());
       }
     fixed_code: |
+      var v = new Vector3 { X = 3, Y = 4, Z = 0 };
+      ProcessAll(in v);   // 5
+
+      static void ProcessAll(in Vector3 v)
+      {
+          Console.WriteLine(v.Length());   // no hidden copy
+      }
+
       public struct Vector3
       {
           public float X, Y, Z;
@@ -106,19 +114,14 @@ exercises:
           public readonly float Length()
               => MathF.Sqrt(X * X + Y * Y + Z * Z);
       }
-
-      static void ProcessAll(in Vector3 v)
-      {
-          Console.WriteLine(v.Length());   // no hidden copy
-      }
     bug: |
       When a struct is in a readonly location (in parameter, readonly field, ref
       readonly), the compiler must guarantee the struct is never mutated. If a called
       method is NOT marked readonly, the compiler cannot prove it is safe, so it
       silently makes a defensive copy of the entire struct before each such call.
       The fix is to mark the non-mutating method (or the whole struct) readonly.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "5"
 
   - prompt: |
       Two code snippets look identical except one uses a struct and one uses a class.
@@ -141,23 +144,32 @@ exercises:
       b2.X = 99;
       Console.WriteLine($"B: {b1.X}");   // ???
     fixed_code: |
-      // Snippet A — struct: prints 1
-      // a2 is an independent copy; mutating a2 does not affect a1.
+      // Snippet A — struct: a2 is an independent copy; mutating a2 does not affect a1.
+      var a1 = new SPoint { X = 1, Y = 2 };
+      var a2 = a1;          // value copy
+      a2.X = 99;
+      Console.WriteLine($"A: {a1.X}");   // 1
 
-      // Snippet B — class: prints 99
-      // b1 and b2 point to the same heap object; mutating through b2 is
-      // visible through b1.
+      // Snippet B — class: b1 and b2 point to the same heap object; mutating
+      // through b2 is visible through b1.
+      var b1 = new CPoint { X = 1, Y = 2 };
+      var b2 = b1;          // reference copy
+      b2.X = 99;
+      Console.WriteLine($"B: {b1.X}");   // 99
 
       // For structs, use 'ref' if you need to share/mutate:
       ref var a3 = ref a1;
       a3.X = 99;
       Console.WriteLine($"A with ref: {a1.X}");   // 99
+
+      struct SPoint { public int X; public int Y; }
+      class  CPoint { public int X; public int Y; }
     bug: |
       Struct assignment copies all fields — a2 is a completely independent value.
       Class assignment copies the reference — b1 and b2 alias the same object.
       This distinction is the heart of C# value vs reference semantics.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "A: 1\nB: 99\nA with ref: 99"
 
   - prompt: |
       Convert the record class Person to a readonly record struct. List exactly what
@@ -175,15 +187,17 @@ exercises:
       Console.WriteLine(p1 == p2);           // false
       Console.WriteLine(ReferenceEquals(p1, p2));   // true for class, always
     fixed_code: |
-      // readonly record struct — value type, stack/inline, same value equality
-      public readonly record struct Person(string Name, int Age);
-
       var p1 = new Person("Alice", 30);
       var p2 = p1 with { Age = 31 };
+      var p3 = new Person("Alice", 30);
 
-      Console.WriteLine(p1 == p2);                 // false
-      Console.WriteLine(ReferenceEquals(p1, p2));  // always false — structs box
-                                                   // separately for ReferenceEquals
+      Console.WriteLine(p1 == p2);   // False — Age differs
+      Console.WriteLine(p1 == p3);   // True  — synthesised value equality, same fields
+      // (ReferenceEquals on a record struct is always false — both operands box
+      //  to separate heap objects; see the bug note below.)
+
+      // readonly record struct — value type, stack/inline, same value equality
+      public readonly record struct Person(string Name, int Age);
 
       // Choose record struct when:
       //   - The type is small (2–4 fields, ≤16 bytes recommended).
@@ -199,5 +213,5 @@ exercises:
       after boxing a struct; with-expressions work identically; value equality is
       synthesised for both. record struct fields are mutable unless the struct is
       readonly — add readonly to prevent accidental mutation.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "False\nTrue"

@@ -96,7 +96,7 @@ exercises:
       freshly allocated array, making dup independent. Always use copy (or append to
       an empty slice: dst := append([]int(nil), src...)) when you need a deep copy.
     check: stdout
-    signal: "original: [1 2 3 4 5]"
+    signal: "original: [1 2 3 4 5]\ndup:      [99 2 3 4 5]"
 
   - prompt: |
       Two sub-slices are appended to independently, but they corrupt each other because
@@ -147,7 +147,7 @@ exercises:
       the sub-slice to 3, matching its length. The next append on either sub-slice is
       forced to allocate a new array, making them independent.
     check: stdout
-    signal: "a: [1 2 3 10]"
+    signal: "a: [1 2 3 10]\nb: [1 2 3 20]"
 
   - prompt: |
       The code writes to a map declared with var (nil map) and panics. Fix it so the
@@ -191,8 +191,8 @@ exercises:
       in nil map". make(map[string]int) allocates and initialises the hash-table
       internals, making the map ready for use. Alternatively, use a map literal:
       counts := map[string]int{}.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "map[e:1 h:1 l:2 o:1]"
 
   - prompt: |
       Two goroutines read and write the same map without synchronisation. The race

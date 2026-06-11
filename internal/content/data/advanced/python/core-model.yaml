@@ -108,16 +108,30 @@ exercises:
       def safe_add(a, b):
           # No type guard — crashes with an unhelpful message on mixed types
           return a + b
+
+      print(safe_add(3, 4))
+      print(safe_add("hello", " world"))
+      try:
+          safe_add("3", 4)
+      except TypeError as e:
+          print(f"TypeError: {e}")
     fixed_code: |
       def safe_add(a, b):
           if type(a) != type(b):
               raise TypeError("Both arguments must be the same type")
           return a + b
+
+      print(safe_add(3, 4))
+      print(safe_add("hello", " world"))
+      try:
+          safe_add("3", 4)
+      except TypeError as e:
+          print(f"TypeError: {e}")
     bug: |
       Without a type guard, `safe_add("3", 4)` lets Python attempt `"3" + 4`,
       which raises a `TypeError` from the `+` operator with a message that
       references the operator rather than the caller's intent. Checking
       `type(a) != type(b)` first and raising our own `TypeError` gives a
       clear, actionable error message.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "7\nhello world\nTypeError: Both arguments must be the same type"

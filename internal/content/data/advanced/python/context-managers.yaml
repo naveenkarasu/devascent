@@ -54,6 +54,16 @@ exercises:
               if exc_type is not None:
                   print(f"Suppressed: {exc_val}", file=sys.stderr)
               return True   # Bug: suppresses EVERYTHING, even unexpected errors
+
+      with suppress_and_log(ValueError):
+          raise ValueError("bad input")
+      print("after ValueError block")
+
+      try:
+          with suppress_and_log(ValueError):
+              raise RuntimeError("unexpected")
+      except RuntimeError as e:
+          print(f"propagated: {e}")
     fixed_code: |
       import sys
 
@@ -69,14 +79,25 @@ exercises:
                   print(f"Suppressed: {exc_val}", file=sys.stderr)
                   return True   # suppress only the specified types
               return False      # re-raise everything else
+
+      # ValueError is suppressed; RuntimeError propagates
+      with suppress_and_log(ValueError):
+          raise ValueError("bad input")
+      print("after ValueError block")
+
+      try:
+          with suppress_and_log(ValueError):
+              raise RuntimeError("unexpected")
+      except RuntimeError as e:
+          print(f"propagated: {e}")
     bug: |
       Returning `True` unconditionally suppresses every exception, including
       `KeyboardInterrupt`, `SystemExit`, and unexpected runtime errors — masking
       real bugs silently. The fix checks `issubclass(exc_type, self.exc_types)`
       before suppressing, and returns `False` for all other exception types so
       they propagate normally.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "after ValueError block\npropagated: unexpected"
 
   - prompt: |
       The `timer_cm` context manager (using `@contextlib.contextmanager`) is

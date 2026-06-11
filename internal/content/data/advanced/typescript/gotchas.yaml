@@ -29,6 +29,9 @@ exercises:
       union type.
     kind: fix-it
     broken_code: |
+      type Equal<X, Y> =
+        (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? true : false;
+
       const DIRECTIONS = ["north", "south", "east", "west"];
       type Direction = typeof DIRECTIONS[number]; // string — too wide
 
@@ -36,8 +39,14 @@ exercises:
         console.log(`Moving ${d}`);
       }
 
-      move("up"); // should error, but doesn't
+      move("up"); // accepted, because Direction is just `string`
+
+      // Direction should be the literal union, but it widened to `string`:
+      const _check: Equal<Direction, "north" | "south" | "east" | "west"> = true;
     fixed_code: |
+      type Equal<X, Y> =
+        (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? true : false;
+
       const DIRECTIONS = ["north", "south", "east", "west"] as const;
       type Direction = (typeof DIRECTIONS)[number]; // "north" | "south" | "east" | "west"
 
@@ -47,12 +56,15 @@ exercises:
 
       move("north"); // OK
       // move("up"); // error: Argument of type '"up"' is not assignable to parameter of type 'Direction'
+
+      const _check: Equal<Direction, "north" | "south" | "east" | "west"> = true;
     bug: |
       Without `as const`, TS widens the array literal to `string[]` — all elements
-      lose their literal types. `typeof DIRECTIONS[number]` then evaluates to
-      `string`, so any string passes the function. Adding `as const` freezes the
-      inferred type to the exact tuple `readonly ["north", "south", "east", "west"]`,
-      and the indexed access type correctly resolves to the literal union.
+      lose their literal types. `typeof DIRECTIONS[number]` then evaluates to `string`,
+      so any string passes the function and the `Equal` assertion (which expects the
+      literal union) fails to compile. Adding `as const` freezes the inferred type to
+      the exact tuple `readonly ["north", "south", "east", "west"]`, and the indexed
+      access type correctly resolves to the literal union.
     check: compiles
     signal: ""
   - prompt: |
@@ -79,15 +91,20 @@ exercises:
       if (hasPort(parsed)) {
         console.log(parsed.port.toFixed(0));
       } else {
-        throw new TypeError("Config missing required 'port' field");
+        // The guard prevented the crash: report the missing field instead of
+        // dereferencing an undefined `port` like the broken cast version does.
+        console.log("Config missing required 'port' field");
       }
     bug: |
       `as { port: number }` is erased at runtime — TS trusts the assertion completely
       without any check. `JSON.parse("{}")` produces an empty object, so `config.port`
-      is `undefined` at runtime despite the compile-time belief. A type guard
-      validates the shape before narrowing, aligning runtime reality with the type.
-    check: none
-    signal: ""
+      is `undefined` at runtime despite the compile-time belief, and the broken code
+      throws a `TypeError` when it calls `.toFixed(0)`. A type guard validates the shape
+      before narrowing, aligning runtime reality with the type: the fixed code takes the
+      safe `else` branch and reports the problem instead of crashing.
+    check: stdout
+    signal: |
+      Config missing required 'port' field
   - prompt: |
       `resetX` mutates a `Point` in-place. Call it with a `Point3D` and observe that
       the z field is untouched — but the original `Point3D` object is still mutated.
@@ -136,5 +153,7 @@ exercises:
       the call. This is structurally sound from TS's perspective but surprises
       developers expecting `resetX` to work on a copy. Returning a spread copy makes
       the function pure and avoids the aliasing surprise.
-    check: none
-    signal: ""
+    check: stdout
+    signal: |
+      { x: 5, y: 10, z: 15 }
+      { x: 0, y: 10, z: 15 }

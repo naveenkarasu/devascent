@@ -44,7 +44,8 @@ exercises:
         return "other";
       }
 
-      describe(Status.Pending);
+      // A string enum is nominal — even its own underlying value is rejected.
+      describe("PENDING"); // error: '"PENDING"' is not assignable to parameter of type 'Status'
     fixed_code: |
       const Status = {
         Pending: "PENDING",
@@ -59,12 +60,17 @@ exercises:
         return "other";
       }
 
+      // The as-const union is structural — the raw string literal is accepted.
+      describe("PENDING");
       describe(Status.Pending);
     bug: |
-      The `as const` object + union pattern is structurally equivalent to a string
-      enum but emits no extra JS runtime object beyond the plain constant. The union
-      type is derived via `(typeof Status)[keyof typeof Status]`, which evaluates to
-      `"PENDING" | "ACTIVE" | "ARCHIVED"`. All call-site checks remain identical.
+      A string enum is nominal: the literal `"PENDING"` is NOT assignable to the enum
+      type `Status`, even though that is its underlying value — so the call errors. The
+      `as const` object + union pattern is structural: the derived union
+      `"PENDING" | "ACTIVE" | "ARCHIVED"` (computed via `(typeof Status)[keyof typeof
+      Status]`) accepts the raw string literal directly. It also emits no extra JS
+      runtime object beyond the plain constant, which is what makes it Zod- and
+      JSON-serialization-friendly. The existing call-site checks remain identical.
     check: compiles
     signal: ""
   - prompt: |
@@ -75,7 +81,12 @@ exercises:
     broken_code: |
       type Shape =
         | { kind: "circle"; radius: number }
-        | { kind: "square"; side: number };
+        | { kind: "square"; side: number }
+        | { kind: "triangle"; base: number; height: number };
+
+      function assertNever(x: never): never {
+        throw new Error(`Unhandled shape: ${JSON.stringify(x)}`);
+      }
 
       function area(s: Shape): number {
         switch (s.kind) {
@@ -83,8 +94,10 @@ exercises:
             return Math.PI * s.radius ** 2;
           case "square":
             return s.side ** 2;
+          // "triangle" case is missing — the exhaustiveness guard catches it
+          default:
+            return assertNever(s); // error: the triangle member is not assignable to 'never'
         }
-        // No exhaustiveness guard — adding new kinds is silent
       }
     fixed_code: |
       type Shape =
@@ -108,15 +121,13 @@ exercises:
             return assertNever(s);
         }
       }
-
-      // Adding a new union member without a case will error at: assertNever(s)
-      // because s is narrowed to the unhandled member, which is not `never`.
     bug: |
-      Without an exhaustiveness guard, adding a new variant to the union is a silent
-      runtime bug. Assigning the `default` value to `assertNever(x: never)` turns it
-      into a compile error: if any union member reaches the default branch, TS knows
-      the value is not `never` and rejects the call. The error points to the exact
-      assertion site.
+      Assigning the `default` value to `assertNever(x: never)` turns a missing case into
+      a compile error: if any union member reaches the default branch, TS knows the
+      value is not `never` and rejects the call. Here the `triangle` member has no
+      `case`, so it falls to the default and the assertion fails — the error points to
+      the exact assertion site. Adding the missing `case "triangle"` makes the value
+      `never` at the default again and the code compiles.
     check: compiles
     signal: ""
   - prompt: |
@@ -152,14 +163,17 @@ exercises:
       // Direction[0] === "Up"  — reverse mapping exists for numeric enums
       console.log(Direction[Direction.Up]); // "Up"
 
-      // Color["RED"] is undefined — string enums have no reverse mapping
-      // console.log(Color[Color.Red]);     // runtime: undefined (TS allows the expression)
+      // String enums have NO reverse mapping, and TS rejects the lookup at compile time:
+      // console.log(Color[Color.Red]); // error TS2551: Property 'RED' does not exist on type 'typeof Color'
     bug: |
       Numeric enums emit a JS object with both forward (`Up → 0`) and reverse
-      (`0 → "Up"`) mappings. This means `Direction[0]` is a valid runtime access —
-      the enum object can be indexed with any number, widening to `string` rather than
-      a specific member name. String enums only emit forward mappings, so there is no
-      way to accidentally look up a member by its value. This makes string enums safer
-      for serialisation and JSON round-trips.
-    check: none
+      (`0 → "Up"`) mappings, so `Direction[Direction.Up]` compiles and returns `"Up"`
+      at runtime. String enums emit only forward mappings: there is no `"RED"` key on
+      the `Color` object, so `Color[Color.Red]` (which indexes by the value `"RED"`) is
+      a compile error under `--strict` — `Property 'RED' does not exist on type
+      'typeof Color'`. Removing that line (the fix) restores a clean compile. The bug
+      is the broken code's attempt to reverse-map a string enum; that string enums
+      reject value-lookup at compile time is exactly what makes them safer for
+      serialisation and JSON round-trips than numeric enums.
+    check: compiles
     signal: ""

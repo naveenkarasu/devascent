@@ -56,6 +56,39 @@ func csLiteral(t gtype, v any) string {
 			parts[i] = csLiteral(deref(t.elem), e)
 		}
 		return "new " + csTypeStr(t) + "{" + strings.Join(parts, ", ") + "}"
+	case "any":
+		return csAny(v)
+	default:
+		return "null"
+	}
+}
+
+// csAny renders a heterogeneous (object) input value as a C# literal — the
+// analogue of goAny. Without this, op-list/design inputs (e.g. [["push",-2],
+// ["pop"]]) collapsed to null. Integers box as long (5L) so the player's
+// (long)op[i] casts succeed. (Output comparison is shared-JSON, so only the
+// INPUT side needs this.)
+func csAny(v any) string {
+	switch x := v.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return strconv.FormatBool(x)
+	case int, int64, int32:
+		return goScalar(x) + "L"
+	case float64:
+		if x == float64(int64(x)) {
+			return strconv.FormatInt(int64(x), 10) + "L"
+		}
+		return strconv.FormatFloat(x, 'g', -1, 64) + "d"
+	case string:
+		return strconv.Quote(x)
+	case []any:
+		parts := make([]string, len(x))
+		for i, e := range x {
+			parts[i] = csAny(e)
+		}
+		return "new object[]{" + strings.Join(parts, ", ") + "}"
 	default:
 		return "null"
 	}

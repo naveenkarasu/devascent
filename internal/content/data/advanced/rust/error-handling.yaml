@@ -94,6 +94,11 @@ exercises:
       ErrorKind lets us handle the expected case (file not found) gracefully while still
       panicking loudly for unexpected OS errors. The match guard (if e.kind() == ...)
       narrows the Err arm to a specific error kind.
+
+      (Left reveal-only: both versions compile, and the only observable difference is
+      filesystem state — the function takes no main and returns a File handle, so there
+      is no compiler error to assert and no deterministic stdout to grade without a
+      contrived, side-effecting harness.)
     check: none
     signal: ""
   - prompt: |
@@ -123,5 +128,5 @@ exercises:
       return type to Option<char> lets us use ? to propagate None early. The ? operator
       works on Option in functions returning Option just as it works on Result in
       functions returning Result.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "Some('h')\nNone"

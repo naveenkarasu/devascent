@@ -143,12 +143,10 @@ exercises:
     fixed_code: |
       package main
 
-      import (
-          "fmt"
-          "runtime"
-      )
+      import "fmt"
 
-      func producer(ch chan<- int, done <-chan struct{}) {
+      func producer(ch chan<- int, done <-chan struct{}, exited chan<- struct{}) {
+          defer close(exited)
           for i := 0; ; i++ {
               select {
               case ch <- i:
@@ -161,15 +159,14 @@ exercises:
       func main() {
           ch := make(chan int)
           done := make(chan struct{})
+          exited := make(chan struct{})
 
-          go producer(ch, done)
+          go producer(ch, done, exited)
 
           fmt.Println(<-ch)
           close(done) // signal producer to exit
-
-          // Give the runtime a moment to schedule the producer's exit.
-          runtime.Gosched()
-          fmt.Println("goroutines after:", runtime.NumGoroutine())
+          <-exited    // wait until producer has returned
+          fmt.Println("producer exited cleanly")
       }
     bug: |
       Without a cancellation mechanism the producer goroutine blocks on ch <- i
@@ -177,8 +174,8 @@ exercises:
       the select case <-done in the producer, allowing it to return and be garbage
       collected. The general rule: every goroutine that can block must have a way out
       — a done channel or a context.Context.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "0\nproducer exited cleanly"
 
   - prompt: |
       Implement a fixed-size worker pool: 5 workers drain a jobs channel of 20 strings,
@@ -225,6 +222,7 @@ exercises:
 
       import (
           "fmt"
+          "sort"
           "strings"
           "sync"
       )
@@ -256,7 +254,12 @@ exercises:
               close(results)
           }()
 
+          var out []string
           for r := range results {
+              out = append(out, r)
+          }
+          sort.Strings(out)
+          for _, r := range out {
               fmt.Println(r)
           }
       }
@@ -268,8 +271,8 @@ exercises:
       before launching the goroutine, and defer wg.Done() at the top of the goroutine.
       A separate goroutine waits for all workers then closes results, allowing the main
       goroutine to range over results safely.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "JOB-0\nJOB-1\nJOB-10\nJOB-11\nJOB-12\nJOB-13\nJOB-14\nJOB-15\nJOB-16\nJOB-17\nJOB-18\nJOB-19\nJOB-2\nJOB-3\nJOB-4\nJOB-5\nJOB-6\nJOB-7\nJOB-8\nJOB-9"
 
   - prompt: |
       The search function below simulates a slow operation. Wire it with
@@ -343,8 +346,8 @@ exercises:
       context error. The worker goroutine will eventually finish and its send lands in
       the buffered channel — no leak. Always defer cancel() after WithTimeout to free
       the timer even when the operation finishes before the deadline.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "error: context deadline exceeded"
 
   - prompt: |
       Implement a non-blocking rate-limiter using a buffered channel as a semaphore.
@@ -418,8 +421,8 @@ exercises:
       case tries the send immediately: if there is room in the buffer the send succeeds;
       if not, the default branch runs instantly and returns ErrBusy. Buffered channels
       as counting semaphores is a standard Go idiom for bounding concurrency.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "acquired: 0\nacquired: 1\nacquired: 2\nrejected: 3\nrejected: 4"
 
   - prompt: |
       The pipeline below has a gen stage and a square stage. The square stage should
@@ -478,6 +481,7 @@ exercises:
 
       import (
           "fmt"
+          "sort"
           "sync"
       )
 
@@ -532,7 +536,12 @@ exercises:
           sq1 := square(c)
           sq2 := square(c)
 
+          var results []int
           for n := range merge(sq1, sq2) {
+              results = append(results, n)
+          }
+          sort.Ints(results)
+          for _, n := range results {
               fmt.Println(n)
           }
       }
@@ -543,6 +552,7 @@ exercises:
       close the output channel in a separate goroutine that calls wg.Wait(). This is
       the standard merge from the Go pipelines blog post. Because two square workers
       read from the same input channel c, work is distributed between them
-      non-deterministically — order of printed results may vary.
-    check: none
-    signal: ""
+      non-deterministically — results are sorted before printing for a deterministic
+      signal.
+    check: stdout
+    signal: "4\n9\n16\n25"

@@ -38,31 +38,45 @@ exercises:
       Comparable type — without casting. Then call it with both types.
     kind: implement
     broken_code: |
-      // Does not compile: compareTo is not available on an unbounded T
-      static <T> T max(List<T> list) {
-          T result = list.get(0);
-          for (T item : list) {
-              if (item.compareTo(result) > 0) {   // error: cannot find symbol
-                  result = item;
+      import java.util.*;
+
+      public class Main {
+          // Does not compile: compareTo is not available on an unbounded T
+          static <T> T max(List<T> list) {
+              T result = list.get(0);
+              for (T item : list) {
+                  if (item.compareTo(result) > 0) {   // error: cannot find symbol
+                      result = item;
+                  }
               }
+              return result;
           }
-          return result;
+
+          public static void main(String[] args) {
+              System.out.println(max(List.of("banana", "apple", "cherry")));
+              System.out.println(max(List.of(3, 1, 4, 1, 5, 9)));
+          }
       }
     fixed_code: |
-      static <T extends Comparable<T>> T max(List<T> list) {
-          if (list.isEmpty()) throw new IllegalArgumentException("List must not be empty");
-          T result = list.get(0);
-          for (T item : list) {
-              if (item.compareTo(result) > 0) {
-                  result = item;
-              }
-          }
-          return result;
-      }
+      import java.util.*;
 
-      // Usage:
-      System.out.println(max(List.of("banana", "apple", "cherry")));  // cherry
-      System.out.println(max(List.of(3, 1, 4, 1, 5, 9)));             // 9
+      public class Main {
+          static <T extends Comparable<T>> T max(List<T> list) {
+              if (list.isEmpty()) throw new IllegalArgumentException("List must not be empty");
+              T result = list.get(0);
+              for (T item : list) {
+                  if (item.compareTo(result) > 0) {
+                      result = item;
+                  }
+              }
+              return result;
+          }
+
+          public static void main(String[] args) {
+              System.out.println(max(List.of("banana", "apple", "cherry")));  // cherry
+              System.out.println(max(List.of(3, 1, 4, 1, 5, 9)));             // 9
+          }
+      }
     bug: |
       Without the bound <T extends Comparable<T>>, the compiler does not know that T
       supports compareTo(), so the call is rejected. Adding the bound tells the
@@ -78,27 +92,39 @@ exercises:
       be the destination.
     kind: fix-it
     broken_code: |
-      static void copy(List<Number> src, List<Number> dst) {
-          for (Number n : src) {
-              dst.add(n);
+      import java.util.*;
+
+      public class Main {
+          static void copy(List<Number> src, List<Number> dst) {
+              for (Number n : src) {
+                  dst.add(n);
+              }
+          }
+
+          public static void main(String[] args) {
+              // This call does not compile — List<Integer> is NOT a List<Number>:
+              List<Integer> ints = List.of(1, 2, 3);
+              List<Number>  nums = new ArrayList<>();
+              copy(ints, nums);   // compile error: incompatible types
           }
       }
-
-      // This call does not compile — List<Integer> is NOT a List<Number>:
-      List<Integer> ints = List.of(1, 2, 3);
-      List<Number>  nums = new ArrayList<>();
-      copy(ints, nums);   // compile error: incompatible types
     fixed_code: |
-      static void copy(List<? extends Number> src, List<? super Number> dst) {
-          for (Number n : src) {
-              dst.add(n);
+      import java.util.*;
+
+      public class Main {
+          static void copy(List<? extends Number> src, List<? super Number> dst) {
+              for (Number n : src) {
+                  dst.add(n);
+              }
+          }
+
+          public static void main(String[] args) {
+              // Now both calls compile:
+              List<Integer> ints = List.of(1, 2, 3);
+              List<Number>  nums = new ArrayList<>();
+              copy(ints, nums);   // OK: List<Integer> satisfies ? extends Number
           }
       }
-
-      // Now both calls compile:
-      List<Integer> ints = List.of(1, 2, 3);
-      List<Number>  nums = new ArrayList<>();
-      copy(ints, nums);   // OK: List<Integer> satisfies ? extends Number
     bug: |
       Generics are invariant: List<Integer> is NOT a subtype of List<Number>, even
       though Integer extends Number. The PECS rule fixes this: the source produces
@@ -116,21 +142,39 @@ exercises:
       Then explain in a comment why you can iterate but not add elements to a List<?>.
     kind: fix-it
     broken_code: |
-      // Raw type: all generic checking is suppressed; compiler issues unchecked warning
-      static void printAll(List items) {
-          for (Object item : items) {
-              System.out.println(item);
+      import java.util.*;
+
+      public class Main {
+          // Raw type: all generic checking is suppressed; compiler issues unchecked warning
+          static void printAll(List items) {
+              for (Object item : items) {
+                  System.out.println(item);
+              }
+          }
+
+          public static void main(String[] args) {
+              printAll(List.of("a", "b"));
+              printAll(List.of(1, 2));
           }
       }
     fixed_code: |
-      // List<?> is safer: the wildcard says "a list of some specific but unknown type"
-      static void printAll(List<?> items) {
-          for (Object item : items) {
-              System.out.println(item);
+      import java.util.*;
+
+      public class Main {
+          // List<?> is safer: the wildcard says "a list of some specific but unknown type"
+          static void printAll(List<?> items) {
+              for (Object item : items) {
+                  System.out.println(item);
+              }
+              // items.add("hello");  // would not compile — cannot add to List<?>
+              //   because the element type is unknown; adding anything except null
+              //   could violate the caller's type invariant.
           }
-          // items.add("hello");  // would not compile — cannot add to List<?>
-          //   because the element type is unknown; adding anything except null
-          //   could violate the caller's type invariant.
+
+          public static void main(String[] args) {
+              printAll(List.of("a", "b"));
+              printAll(List.of(1, 2));
+          }
       }
     bug: |
       A raw type (List without a type argument) tells the compiler to ignore all
@@ -140,5 +184,5 @@ exercises:
       List<?> (unbounded wildcard) is safer: the compiler knows it is a list of some
       specific type and rejects any attempt to add elements (except null), while still
       allowing read-only iteration as Object.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "a\nb\n1\n2"

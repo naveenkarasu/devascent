@@ -33,34 +33,25 @@ summary: |
     only for CPU-bound work.
 exercises:
   - prompt: |
-      The controller action reads a file synchronously and blocks the thread. Rewrite
-      it using await with the correct async Task<IActionResult> signature. The broken
-      version also uses .Result on an inner call — explain the deadlock risk.
+      The method blocks on an async call using .Result instead of awaiting it. In a
+      host with a SynchronizationContext (WPF, WinForms, classic ASP.NET) this causes
+      a deadlock: the thread is blocked waiting for the Task, while the async
+      continuation is posted back to the same blocked thread. Fix it by awaiting the
+      inner call instead of using .Result (async all the way).
     kind: fix-it
     broken_code: |
-      // ASP.NET Core controller action (simplified)
-      public IActionResult ReadConfig()
-      {
-          // Synchronous file I/O — blocks the thread pool thread.
-          var content = File.ReadAllText("config.json");
-
-          // Even worse: blocking .Result in a context that may have a
-          // SynchronizationContext — classic deadlock scenario.
-          var processed = ProcessAsync(content).Result;
-
-          return Ok(processed);
-      }
+      // BUG: .Result blocks the calling thread waiting for the Task.
+      // In a context-bearing host (WPF, WinForms, old ASP.NET) this deadlocks:
+      // the continuation is posted back to the blocked thread — neither can proceed.
+      var processed = ProcessAsync("hello").Result;
+      Console.WriteLine(processed);
 
       static async Task<string> ProcessAsync(string input)
           => await Task.FromResult(input.ToUpper());
     fixed_code: |
-      // Correct: async all the way up the call chain
-      public async Task<IActionResult> ReadConfig()
-      {
-          var content = await File.ReadAllTextAsync("config.json");
-          var processed = await ProcessAsync(content);
-          return Ok(processed);
-      }
+      // FIX: await all the way — never block on a Task from a context-bearing thread.
+      var processed = await ProcessAsync("hello");
+      Console.WriteLine(processed);
 
       static async Task<string> ProcessAsync(string input)
           => await Task.FromResult(input.ToUpper());
@@ -70,8 +61,8 @@ exercises:
       async continuation is posted back to the same context — but the thread is blocked
       waiting for it. Neither can proceed: classic deadlock. The fix is async all the
       way — never block on a Task in a context-bearing thread.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "HELLO"
 
   - prompt: |
       Only the outermost method accepts a CancellationToken. Thread it through all
@@ -93,6 +84,18 @@ exercises:
       static async Task<string> ParseAsync(string raw)
           => await Task.FromResult(raw.ToUpper());
     fixed_code: |
+      // Usage with 500ms timeout (top-level statements precede local functions):
+      using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+      try
+      {
+          var result = await FetchDataAsync(cts.Token);
+          Console.WriteLine(result);
+      }
+      catch (OperationCanceledException)
+      {
+          Console.WriteLine("Cancelled after timeout.");
+      }
+
       static async Task<string> FetchDataAsync(CancellationToken ct)
       {
           var raw  = await DownloadAsync(ct);
@@ -111,30 +114,22 @@ exercises:
           ct.ThrowIfCancellationRequested();
           return await Task.FromResult(raw.ToUpper());
       }
-
-      // Usage with 500ms timeout:
-      using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
-      try
-      {
-          var result = await FetchDataAsync(cts.Token);
-      }
-      catch (OperationCanceledException)
-      {
-          Console.WriteLine("Cancelled after timeout.");
-      }
     bug: |
       Ignoring CancellationToken means cancellation is not honoured; the operation
       runs to completion even after the client disconnects or the timeout fires. Thread
       the token through every async call. Task.Delay(ms, ct) and
       ct.ThrowIfCancellationRequested() are the two primary injection points.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "Cancelled after timeout."
 
   - prompt: |
       All tasks must start concurrently before Task.WhenAll waits on them. Show that
       without .ToArray() the LINQ expression is lazy and add the materialisation.
     kind: fix-it
     broken_code: |
+      var users = await LoadUsersAsync(new[] { 1, 2, 3 });
+      Console.WriteLine(string.Join(",", users.Select(u => u.Id)));
+
       static async Task<User[]> LoadUsersAsync(IEnumerable<int> ids)
       {
           // Lazy: tasks are not started here — just an IEnumerable<Task<User>>
@@ -150,6 +145,9 @@ exercises:
 
       record User(int Id);
     fixed_code: |
+      var users = await LoadUsersAsync(new[] { 1, 2, 3 });
+      Console.WriteLine(string.Join(",", users.Select(u => u.Id)));   // 1,2,3
+
       static async Task<User[]> LoadUsersAsync(IEnumerable<int> ids)
       {
           // .ToArray() materialises: all tasks created and started immediately.
@@ -167,14 +165,16 @@ exercises:
       created sequentially as WhenAll pulls each element. For hot-path Task-returning
       methods this still works, but for async generators or methods with side effects
       the order and timing are unpredictable. Always materialise before Task.WhenAll.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "1,2,3"
 
   - prompt: |
       A ValueTask is awaited twice — once inline and once stored and awaited again
       later. Explain why this is undefined behaviour and fix it.
     kind: fix-it
     broken_code: |
+      await DemoAsync();
+
       static async Task DemoAsync()
       {
           ValueTask<int> vt = GetValueAsync();
@@ -192,6 +192,8 @@ exercises:
 
       static ValueTask<int> GetValueAsync() => new ValueTask<int>(42);
     fixed_code: |
+      await DemoAsync();
+
       static async Task DemoAsync()
       {
           // Option A: convert to Task if you need to await multiple times
@@ -201,13 +203,10 @@ exercises:
           Console.WriteLine($"{first}, {second}");   // 42, 42
       }
 
-      // Option B: restructure so the ValueTask is awaited exactly once
-      static async Task DemoOptionB()
-      {
-          int value = await GetValueAsync();
-          // Use value directly — don't store the ValueTask
-          Console.WriteLine(value);
-      }
+      // Option B: restructure so the ValueTask is awaited exactly once —
+      // await it directly and use the value, never storing the ValueTask:
+      //     int value = await GetValueAsync();
+      //     Console.WriteLine(value);
 
       static ValueTask<int> GetValueAsync() => new ValueTask<int>(42);
     bug: |
@@ -216,5 +215,5 @@ exercises:
       second await operates on an already-recycled source — the result is undefined
       and may return stale data, throw, or corrupt the pool. Use .AsTask() to convert
       to a Task (which IS safely re-awaitable) if multiple awaits are needed.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "42, 42"

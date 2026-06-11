@@ -135,5 +135,5 @@ exercises:
       the underlying JS object is still mutable. `Object.freeze` is needed to enforce
       immutability at runtime. The two layers are independent: you can have one without
       the other.
-    check: none
+    check: compiles
     signal: ""

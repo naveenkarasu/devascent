@@ -48,12 +48,27 @@ choosing a language you haven't installed opens its install guide automatically.
 You'll also want a text editor. DevAscent opens your `$EDITOR` / `$VISUAL` (e.g.
 `code -w` for VS Code) and has an in-game editor picker if you haven't set one.
 
+## Two ways to play
+
+DevAscent ships **two frontends over the same game** — same engine, same grading,
+same save files. Progress carries between them (one save slot per language), so
+pick whichever fits, or switch freely:
+
+| | `devascent` (terminal) | `devascent-gui` (desktop) |
+|---|---|---|
+| Feel | TUI in your terminal, code in your own `$EDITOR` | Desktop app with a built-in Monaco code editor |
+| Platforms | Windows / macOS / Linux · amd64 + arm64 | Windows (amd64) · macOS (universal) · Linux (amd64) |
+| Footprint | One static binary, zero dependencies | Native webview (WebView2 / WebKitGTK / Cocoa) |
+
 ## Get started
 
-### Option A — download a prebuilt binary (easiest)
+### Option A — download a prebuilt build (easiest)
 
-Grab the archive for your OS/arch from the [**Releases**](https://github.com/naveenkarasu/devascent/releases/latest)
-page, extract it, and run `devascent`:
+Grab what you want from the [**Releases**](https://github.com/naveenkarasu/devascent/releases/latest)
+page — `devascent_*` archives are the terminal app, `devascent-gui_*` archives
+are the desktop app (each release carries both; verify against the checksums).
+
+**Terminal app:**
 
 ```sh
 # macOS / Linux
@@ -62,15 +77,17 @@ tar -xzf devascent_*_*.tar.gz
 ./devascent
 ```
 
-On **macOS** you may need `xattr -d com.apple.quarantine devascent` once (it's an
-unsigned build). On **Windows**, unzip and run `devascent.exe` — SmartScreen →
-"More info" → "Run anyway". Each archive bundles the binary plus `README`,
-`LICENSE`, and `INSTALL.md`; you can verify your download against `checksums.txt`
-on the release.
+**Desktop app:** unzip and run `devascent-gui.exe` (Windows), `devascent-gui.app`
+(macOS), or `devascent-gui` (Linux).
+
+On **macOS** both builds are unsigned — run `xattr -d com.apple.quarantine <file>`
+once, or right-click → Open. On **Windows**, SmartScreen → "More info" →
+"Run anyway".
 
 ### Option B — build from source
 
-Needs [Go](https://go.dev/dl/) **1.26+** (no CGO; content is embedded in the binary):
+**Terminal app** — needs [Go](https://go.dev/dl/) **1.26+** (no CGO; content is
+embedded in the binary):
 
 ```sh
 git clone https://github.com/naveenkarasu/devascent
@@ -79,17 +96,27 @@ go build -o devascent ./cmd/devascent
 ./devascent
 ```
 
+**Desktop app** — additionally needs [Node 20+](https://nodejs.org) and the
+[Wails CLI](https://wails.io) (Linux also: `libgtk-3-dev libwebkit2gtk-4.0-dev`):
+
+```sh
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+cd devascent/devascent-gui
+wails build        # → build/bin/devascent-gui
+```
+
 > `brew` / `scoop` install are planned next.
 
-## A few flags
+## A few flags (terminal app)
 
 | Flag | What it does |
 |---|---|
 | `-doctor` | Check every language toolchain on your machine (real compile + run) and print what's installed and working. |
 | `-primer <lang>` | Print a language's reference primers to the terminal and exit (peek without playing). |
 
-Your progress is saved automatically in your per-OS config directory; set
-`DEVASCENT_SAVE_DIR` to override where.
+Your progress is saved automatically in your per-OS config directory — one save
+slot per language, shared by both frontends; set `DEVASCENT_SAVE_DIR` to
+override where.
 
 ## License
 

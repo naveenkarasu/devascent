@@ -33,14 +33,6 @@ exercises:
       longer fires.
     kind: fix-it
     broken_code: |
-      public class Logger
-      {
-          // Broken: public field delegate — outsiders can invoke or null it out
-          public Action<string> OnMessage;
-
-          public void Log(string message) => OnMessage(message);
-      }
-
       var logger = new Logger();
 
       // Three handlers
@@ -56,20 +48,20 @@ exercises:
       // Unsubscribe console — but we lost the lambda reference, so -= won't work
       logger.OnMessage -= msg => Console.WriteLine($"[Console] {msg}");
       logger.Log("world");
-    fixed_code: |
+
       public class Logger
       {
-          // Correct: event restricts outsiders to += and -=
-          public event Action<string>? OnMessage;
+          // Broken: public field delegate — outsiders can invoke or null it out
+          public Action<string> OnMessage;
 
-          public void Log(string message) => OnMessage?.Invoke(message);
+          public void Log(string message) => OnMessage(message);
       }
-
+    fixed_code: |
       var logger = new Logger();
 
       // Keep a reference to unsubscribe later
       Action<string> consoleHandler = msg => Console.WriteLine($"[Console] {msg}");
-      Action<string> fileHandler    = msg => File.AppendAllText("log.txt", msg + "\n");
+      Action<string> fileHandler    = _ => { };   // file-stub: no-op, keeps output deterministic
 
       var inMemory = new List<string>();
       Action<string> memHandler = msg => inMemory.Add(msg);
@@ -84,13 +76,21 @@ exercises:
       logger.Log("world");     // console handler no longer fires
 
       Console.WriteLine(string.Join(", ", inMemory));   // hello, world
+
+      public class Logger
+      {
+          // Correct: event restricts outsiders to += and -=
+          public event Action<string> OnMessage;
+
+          public void Log(string message) => OnMessage?.Invoke(message);
+      }
     bug: |
       A public delegate field lets outsiders invoke it directly or set it to null,
       breaking encapsulation. Use event. To unsubscribe a lambda with -=, you must
       hold a reference to the same delegate instance — a new lambda (even with
       identical code) is a different object.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "[Console] hello\nhello, world"
 
   - prompt: |
       The event is invoked without a null guard. When no handlers are subscribed it
@@ -98,9 +98,12 @@ exercises:
       for the invocation itself.
     kind: fix-it
     broken_code: |
+      var btn = new Button();
+      btn.SimulateClick("OK");   // crash
+
       public class Button
       {
-          public event Action<string>? Clicked;
+          public event Action<string> Clicked;
 
           public void SimulateClick(string label)
           {
@@ -108,13 +111,14 @@ exercises:
               Clicked(label);
           }
       }
-
-      var btn = new Button();
-      btn.SimulateClick("OK");   // crash
     fixed_code: |
+      var btn = new Button();
+      btn.SimulateClick("OK");   // no-op, no exception
+      Console.WriteLine("No subscribers - safe");
+
       public class Button
       {
-          public event Action<string>? Clicked;
+          public event Action<string> Clicked;
 
           public void SimulateClick(string label)
           {
@@ -123,9 +127,6 @@ exercises:
               Clicked?.Invoke(label);
           }
       }
-
-      var btn = new Button();
-      btn.SimulateClick("OK");   // no-op, no exception
     bug: |
       Invoking a null delegate throws NullReferenceException. ?.Invoke() is safe
       because the compiler reads the delegate field into a temporary before the null
@@ -133,21 +134,16 @@ exercises:
       the temporary still holds the old invocation list. The invocation itself proceeds
       safely. However, checking subscriber count and then invoking is still a TOCTOU
       race — always use ?.Invoke().
-    check: none
-    signal: ""
+    check: stdout
+    signal: "No subscribers - safe"
 
   - prompt: |
       Rewrite the custom delegate type Transform using Func<double, double>. Then
       explain when a custom named delegate is still preferable.
     kind: fix-it
     broken_code: |
-      // Custom delegate
-      delegate double Transform(double x);
-
       Transform square = x => x * x;
       Transform cube   = x => x * x * x;
-
-      static double Apply(Transform t, double value) => t(value);
 
       Console.WriteLine(Apply(square, 4));   // 16
       Console.WriteLine(Apply(cube,   3));   // 27
@@ -156,18 +152,23 @@ exercises:
       // compatible but nominally distinct types.
       Func<double, double> fn = x => x + 1;
       Transform t2 = fn;   // CS0029: cannot implicitly convert
+
+      static double Apply(Transform t, double value) => t(value);
+
+      // Custom delegate
+      delegate double Transform(double x);
     fixed_code: |
       // Use Func<double, double> everywhere
       Func<double, double> square = x => x * x;
       Func<double, double> cube   = x => x * x * x;
-
-      static double Apply(Func<double, double> t, double value) => t(value);
 
       Console.WriteLine(Apply(square, 4));   // 16
       Console.WriteLine(Apply(cube,   3));   // 27
 
       Func<double, double> fn = x => x + 1;
       Apply(fn, 5);   // now works — same type
+
+      static double Apply(Func<double, double> t, double value) => t(value);
 
       // When to prefer a custom delegate:
       // - Named parameters improve readability (e.g., delegate bool Predicate<T>(T item))
@@ -180,7 +181,7 @@ exercises:
       Transform(fn) wrapper. Use Func/Action for anonymous, short-lived callbacks;
       use a custom delegate when the type needs a meaningful name, documentation,
       or specific variance annotations.
-    check: none
+    check: compiles
     signal: ""
 
   - prompt: |
@@ -220,5 +221,5 @@ exercises:
       fresh, independent variable that the lambda captures.
       Note: foreach in C# 5+ declares a new loop variable per iteration, so this bug
       does not appear with foreach; it only manifests with for loops.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "0\n1\n2\n3\n4"

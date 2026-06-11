@@ -47,11 +47,11 @@ exercises:
       print([f() for f in funcs])
     fixed_code: |
       funcs = [lambda i=i: i for i in range(5)]
-      print([f() for f in funcs])   # [0, 1, 2, 3, 4]
+      print([f() for f in funcs])
     bug: |
       Closures capture the VARIABLE i by reference, not its value at creation time.
       By the time the lambdas run, the loop has finished and i == 4, so all five
       return 4 → [4, 4, 4, 4, 4]. Binding it as a default (`lambda i=i: i`) captures
       the value at each iteration.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "[0, 1, 2, 3, 4]"

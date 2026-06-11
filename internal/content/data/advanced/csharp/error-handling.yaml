@@ -40,12 +40,23 @@ exercises:
       ExceptionDispatchInfo for re-throwing across async boundaries.
     kind: fix-it
     broken_code: |
+      try
+      {
+          ParseConfig("config.json");
+      }
+      catch (IOException ex)
+      {
+          // The rethrown stack trace now points at ParseConfig's "throw ex" line,
+          // NOT at ReadConfig where the IOException originated.
+          bool originPreserved = ex.StackTrace?.Contains("ReadConfig") ?? false;
+          Console.WriteLine($"Origin preserved: {originPreserved}");
+      }
+
       static void ParseConfig(string path)
       {
           try
           {
-              var text = File.ReadAllText(path);
-              // ... parse ...
+              ReadConfig(path);
           }
           catch (IOException ex)
           {
@@ -55,15 +66,27 @@ exercises:
           }
       }
 
+      static void ReadConfig(string path)
+          => throw new IOException("disk read failed");
+
       static void Log(Exception ex) => Console.WriteLine(ex.Message);
     fixed_code: |
-      using System.Runtime.ExceptionServices;
+      try
+      {
+          ParseConfig("config.json");
+      }
+      catch (IOException ex)
+      {
+          // With bare `throw;` the original throw site (ReadConfig) is retained.
+          bool originPreserved = ex.StackTrace?.Contains("ReadConfig") ?? false;
+          Console.WriteLine($"Origin preserved: {originPreserved}");
+      }
 
       static void ParseConfig(string path)
       {
           try
           {
-              var text = File.ReadAllText(path);
+              ReadConfig(path);
           }
           catch (IOException ex)
           {
@@ -72,22 +95,13 @@ exercises:
           }
       }
 
-      // For re-throwing across async/await or thread boundaries:
-      static async Task ParseConfigAsync(string path)
-      {
-          ExceptionDispatchInfo? captured = null;
-          try
-          {
-              var text = await File.ReadAllTextAsync(path);
-          }
-          catch (IOException ex)
-          {
-              captured = ExceptionDispatchInfo.Capture(ex);
-          }
+      static void ReadConfig(string path)
+          => throw new IOException("disk read failed");
 
-          // Do other work here if needed, then re-throw preserving original trace:
-          captured?.Throw();
-      }
+      // For re-throwing across async/await or thread boundaries, capture the
+      // exception and replay it without losing the original trace:
+      //     var captured = ExceptionDispatchInfo.Capture(ex);
+      //     captured.Throw();
 
       static void Log(Exception ex) => Console.WriteLine(ex.Message);
     bug: |
@@ -97,8 +111,8 @@ exercises:
       ExceptionDispatchInfo.Capture(ex).Throw() is the correct tool when you need
       to re-throw a captured exception from a different execution context (async,
       thread boundaries).
-    check: none
-    signal: ""
+    check: stdout
+    signal: "disk read failed\nOrigin preserved: True"
 
   - prompt: |
       Implement IDisposable on DatabaseConnection correctly (full dispose pattern with
@@ -107,6 +121,11 @@ exercises:
       inside the block.
     kind: fix-it
     broken_code: |
+      // No IDisposable: nothing closes the connection — it just leaks.
+      var conn = new DatabaseConnection("Server=localhost");
+      conn.ExecuteQuery("SELECT 1");
+      // No way to deterministically release the resource (no Dispose, no using).
+
       // DatabaseConnection leaks — no IDisposable, no cleanup.
       public class DatabaseConnection
       {
@@ -125,6 +144,19 @@ exercises:
           }
       }
     fixed_code: |
+      // using block: Dispose runs even though the block throws.
+      try
+      {
+          DatabaseConnection.Demo();
+      }
+      catch (InvalidOperationException ex)
+      {
+          Console.WriteLine($"Caught: {ex.Message}");
+      }
+
+      // using declaration: disposed at end of scope.
+      DatabaseConnection.DemoDeclaration();
+
       public class DatabaseConnection : IDisposable
       {
           private bool _open    = false;
@@ -139,6 +171,7 @@ exercises:
           public void ExecuteQuery(string sql)
           {
               ObjectDisposedException.ThrowIf(_disposed, this);
+              if (!_open) throw new InvalidOperationException("Connection is closed.");
               Console.WriteLine($"Executing: {sql}");
           }
 
@@ -190,8 +223,8 @@ exercises:
       (Dispose(bool), GC.SuppressFinalize) is required for non-sealed classes so
       subclasses can override cleanup. The using statement guarantees Dispose runs
       even if an exception is thrown inside the block.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "Opening connection to Server=localhost\nExecuting: SELECT 1\nConnection closed.\nCaught: Simulated error\nOpening connection to Server=localhost\nExecuting: SELECT 2\nConnection closed."
 
   - prompt: |
       Refactor the catch-then-rethrow into an exception filter using when. Explain
@@ -199,20 +232,25 @@ exercises:
       catch-then-rethrow does not.
     kind: fix-it
     broken_code: |
-      static async Task<string> FetchWithRetryAsync(string url)
+      using System.Net;
+
+      int attempt = 0;
+      Console.WriteLine(await FetchWithRetryAsync("/api"));
+
+      async Task<string> FetchWithRetryAsync(string url)
       {
           try
           {
-              return await HttpClient.GetStringAsync(url);
+              return await DownloadAsync(url);
           }
           catch (HttpRequestException ex)
           {
               // Only handle transient errors; rethrow the rest.
-              if (ex.StatusCode is System.Net.HttpStatusCode.ServiceUnavailable
-                                 or System.Net.HttpStatusCode.GatewayTimeout)
+              if (ex.StatusCode is HttpStatusCode.ServiceUnavailable
+                                 or HttpStatusCode.GatewayTimeout)
               {
                   Console.WriteLine("Transient error, retrying...");
-                  return await HttpClient.GetStringAsync(url);
+                  return await DownloadAsync(url);
               }
 
               // Rethrow — BUT this resets the stack trace to HERE even with throw;
@@ -221,27 +259,46 @@ exercises:
           }
       }
 
-      static HttpClient HttpClient = new();
+      async Task<string> DownloadAsync(string url)
+      {
+          await Task.Yield();
+          // First call fails with a transient 503; retry succeeds.
+          if (attempt++ == 0)
+              throw new HttpRequestException("503", null, HttpStatusCode.ServiceUnavailable);
+          return "payload";
+      }
     fixed_code: |
-      static async Task<string> FetchWithRetryAsync(string url)
+      using System.Net;
+
+      int attempt = 0;
+      Console.WriteLine(await FetchWithRetryAsync("/api"));
+
+      async Task<string> FetchWithRetryAsync(string url)
       {
           try
           {
-              return await HttpClient.GetStringAsync(url);
+              return await DownloadAsync(url);
           }
           catch (HttpRequestException ex)
-              when (ex.StatusCode is System.Net.HttpStatusCode.ServiceUnavailable
-                                   or System.Net.HttpStatusCode.GatewayTimeout)
+              when (ex.StatusCode is HttpStatusCode.ServiceUnavailable
+                                   or HttpStatusCode.GatewayTimeout)
           {
               // when filter: stack is NOT unwound for non-matching cases.
               // Only transient errors enter this block.
               Console.WriteLine("Transient error, retrying...");
-              return await HttpClient.GetStringAsync(url);
+              return await DownloadAsync(url);
           }
           // Non-matching HttpRequestException propagates with its original stack.
       }
 
-      static HttpClient HttpClient = new();
+      async Task<string> DownloadAsync(string url)
+      {
+          await Task.Yield();
+          // First call fails with a transient 503; retry succeeds.
+          if (attempt++ == 0)
+              throw new HttpRequestException("503", null, HttpStatusCode.ServiceUnavailable);
+          return "payload";
+      }
     bug: |
       When a catch block is entered, the runtime has already unwound the stack to
       reach it — even a bare throw; re-throws from an already-unwound frame. An
@@ -249,8 +306,8 @@ exercises:
       returns false, the exception continues propagating with its original stack intact.
       This makes when filters superior for conditional catch logic where preserving
       the stack for the non-matching case matters (e.g., logging or debugging).
-    check: none
-    signal: ""
+    check: stdout
+    signal: "Transient error, retrying...\npayload"
 
   - prompt: |
       Three tasks run concurrently via Task.WhenAll; two of them throw different
@@ -259,6 +316,8 @@ exercises:
       Task.Exception property.
     kind: fix-it
     broken_code: |
+      await RunAsync();
+
       static async Task RunAsync()
       {
           var t1 = Task.FromException(new InvalidOperationException("Error 1"));
@@ -279,6 +338,16 @@ exercises:
           }
       }
     fixed_code: |
+      try
+      {
+          await RunAsync();
+      }
+      catch (Exception ex)
+      {
+          // await unwrapped only the FIRST exception, as its original type.
+          Console.WriteLine($"Rethrown: {ex.GetType().Name}");
+      }
+
       static async Task RunAsync()
       {
           var t1 = Task.FromException(new InvalidOperationException("Error 1"));
@@ -313,5 +382,5 @@ exercises:
       A catch (AggregateException) after await never matches and silently discards
       the block. To access all exceptions, keep a reference to the WhenAll task before
       awaiting, then read task.Exception.InnerExceptions from the catch block.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "InvalidOperationException: Error 1\nArgumentException: Error 2\nRethrown: InvalidOperationException"

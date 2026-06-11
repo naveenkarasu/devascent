@@ -510,7 +510,7 @@ func TestExitTutorial_GoesToHandoff(t *testing.T) {
 
 func TestResume_ContinuesTutorial(t *testing.T) {
 	t.Setenv("DEVASCENT_SAVE_DIR", t.TempDir())
-	if err := save.Save(save.State{Language: "python", Stage: "tutorial", LessonIdx: 3, StageIdx: 1}); err != nil {
+	if err := save.SaveLang("python", save.State{Stage: "tutorial", LessonIdx: 3, StageIdx: 1}); err != nil {
 		t.Fatal(err)
 	}
 	m := New()
@@ -529,7 +529,7 @@ func TestResumeIntake_RebuildsFromIDs(t *testing.T) {
 	c, _ := content.Load()
 	intake := selectIntake(c.Diagnostics, "a-little", nil, rand.New(rand.NewSource(11)))
 	ids := diagIDs(intake)
-	if err := save.Save(save.State{Language: "python", Stage: "intake", Level: "a-little", DiagIdx: 2, DiagIDs: ids, PassedAdd: true}); err != nil {
+	if err := save.SaveLang("python", save.State{Stage: "intake", Level: "a-little", DiagIdx: 2, DiagIDs: ids, PassedAdd: true}); err != nil {
 		t.Fatal(err)
 	}
 	m := New()
@@ -554,7 +554,7 @@ func TestResume_ContinuesDevLiteracy(t *testing.T) {
 	}
 	set := selectDevSet(c.DevTasks, 5, rand.New(rand.NewSource(2)))
 	ids := devTaskIDs(set)
-	if err := save.Save(save.State{Language: "python", Stage: "devliteracy", DevIdx: 1, DevIDs: ids, Placement: "dev-literacy"}); err != nil {
+	if err := save.SaveLang("python", save.State{Stage: "devliteracy", DevIdx: 1, DevIDs: ids, Placement: "dev-literacy"}); err != nil {
 		t.Fatal(err)
 	}
 	m := New()
@@ -567,7 +567,7 @@ func TestResume_ContinuesDevLiteracy(t *testing.T) {
 
 func TestResume_DoneOffersEndScreen(t *testing.T) {
 	t.Setenv("DEVASCENT_SAVE_DIR", t.TempDir())
-	if err := save.Save(save.State{Language: "python", Stage: "done", Placement: "test-out"}); err != nil {
+	if err := save.SaveLang("python", save.State{Stage: "done", Placement: "test-out"}); err != nil {
 		t.Fatal(err)
 	}
 	m := New()
@@ -664,7 +664,7 @@ func TestResume_ContinuesBench(t *testing.T) {
 	}
 	pool := selectBench(c.Problems, "test-out", rand.New(rand.NewSource(4)))
 	ids := benchIDs(pool)
-	if err := save.Save(save.State{Language: "python", Stage: "bench", BenchIDs: ids, BenchIdx: 2, BenchSolved: 1, Placement: "test-out"}); err != nil {
+	if err := save.SaveLang("python", save.State{Stage: "bench", BenchIDs: ids, BenchIdx: 2, BenchSolved: 1, Placement: "test-out"}); err != nil {
 		t.Fatal(err)
 	}
 	m := New()
@@ -1370,7 +1370,7 @@ func TestStep0_NotMetEarly(t *testing.T) {
 
 func TestResume_Step0Done(t *testing.T) {
 	t.Setenv("DEVASCENT_SAVE_DIR", t.TempDir())
-	if err := save.Save(save.State{Language: "python", Stage: "step0done", Step0Done: true, SolvedIDs: []string{"reverse-linked-list", "merge-intervals"}}); err != nil {
+	if err := save.SaveLang("python", save.State{Stage: "step0done", Step0Done: true, SolvedIDs: []string{"reverse-linked-list", "merge-intervals"}}); err != nil {
 		t.Fatal(err)
 	}
 	m := New()

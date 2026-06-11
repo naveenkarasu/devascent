@@ -29,28 +29,36 @@ exercises:
       call produces a compile error.
     kind: fix-it
     broken_code: |
-      function pick(obj: any, keys: string[]): any {
-        return Object.fromEntries(keys.map((k) => [k, obj[k]]));
+      function pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
+        const result = {} as Pick<T, K>;
+        for (const k of keys) {
+          result[k] = obj[k];
+        }
+        return result;
       }
 
       const user = { id: 1, name: "Alice", role: "admin" };
-      const subset = pick(user, ["id", "oops"]); // should "oops" error?
+      const subset = pick(user, ["id", "oops"]); // error: "oops" is not a key of user
     fixed_code: |
       function pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
-        return Object.fromEntries(
-          keys.map((k) => [k, obj[k]]),
-        ) as Pick<T, K>;
+        const result = {} as Pick<T, K>;
+        for (const k of keys) {
+          result[k] = obj[k];
+        }
+        return result;
       }
 
       const user = { id: 1, name: "Alice", role: "admin" };
       const subset = pick(user, ["id", "name"]);    // OK
       // const bad = pick(user, ["id", "oops"]);    // error: "oops" not in keyof typeof user
     bug: |
-      The `any`-based version accepts any string keys including invalid ones — there is
-      no type-safety. Adding `K extends keyof T` constrains the keys array to only
-      known property names of T, so passing an unknown key becomes a compile-time
-      error. The return type `Pick<T, K>` also accurately narrows the result to only
-      the selected properties.
+      The constraint `K extends keyof T` restricts the keys array to only known property
+      names of T, so passing the unknown key `"oops"` is a compile-time error — that is
+      the broken call. Correcting the call to valid keys (`["id", "name"]`) compiles,
+      and the return type `Pick<T, K>` accurately narrows the result to only the
+      selected properties. (Avoid `Object.fromEntries` here — it requires the es2019 lib
+      and returns a loosely-typed object; an indexed loop keeps the precise `Pick<T, K>`
+      result.)
     check: compiles
     signal: ""
   - prompt: |
@@ -59,13 +67,13 @@ exercises:
       producing a compile error.
     kind: fix-it
     broken_code: |
-      function pipe(f: Function, g: Function): Function {
-        return (a: unknown) => g(f(a));
+      function pipe<A, B, C>(f: (a: A) => B, g: (b: B) => C): (a: A) => C {
+        return (a: A) => g(f(a));
       }
 
       const result = pipe(
-        (s: string) => s.length,
-        (n: string) => n.toUpperCase(), // n should be number, not string
+        (s: string) => s.length,        // A=string, B=number
+        (n: string) => n.toUpperCase(), // expects string, but B is number — mismatch
       );
     fixed_code: |
       function pipe<A, B, C>(f: (a: A) => B, g: (b: B) => C): (a: A) => C {
@@ -82,11 +90,13 @@ exercises:
       //   (n: string) => n.toUpperCase(), // error: number not assignable to string
       // );
     bug: |
-      Using bare `Function` types loses all type information — there is nothing to
-      catch mismatched intermediate types. The generic signature `<A, B, C>` with
-      dependent parameters forces TS to unify B across both functions. If the output
-      type of `f` does not match the input type of `g`, inference fails and a compile
-      error is reported.
+      The generic signature `<A, B, C>` with dependent parameters forces TS to unify B
+      across both functions: the output type of `f` must match the input type of `g`.
+      The broken call gives `f` an output of `number` but types `g`'s parameter as
+      `string`, so unifying B fails and TS reports the mismatch. Matching the second
+      function's parameter to `number` lets the types chain and the code compiles.
+      (Using bare `Function` types instead would lose all type information and catch
+      nothing.)
     check: compiles
     signal: ""
   - prompt: |
@@ -94,19 +104,19 @@ exercises:
       `findById`. Verify that instantiating with a type missing `id` errors.
     kind: fix-it
     broken_code: |
-      class Stack<T> {
+      class Stack<T extends { id: string }> {
         private items: T[] = [];
         push(item: T): void {
           this.items.push(item);
         }
         findById(id: string): T | undefined {
-          return (this.items as any[]).find((i) => i.id === id);
+          return this.items.find((item) => item.id === id);
         }
       }
 
-      const s = new Stack<number>();
+      const s = new Stack<number>(); // error: number does not satisfy { id: string }
       s.push(42);
-      s.findById("1"); // number has no .id — runtime bug, not caught
+      s.findById("1");
     fixed_code: |
       class Stack<T extends { id: string }> {
         private items: T[] = [];
@@ -131,11 +141,12 @@ exercises:
 
       // const bad = new Stack<number>(); // error: number does not satisfy { id: string }
     bug: |
-      Without the constraint `T extends { id: string }`, TS allows instantiating
-      `Stack<number>` even though `findById` accesses `.id` — the `any` cast in the
-      original hides this. Adding the constraint enforces the contract at the
-      instantiation site, and `.id` can be accessed safely inside the class body
-      without any cast.
+      With the constraint `T extends { id: string }`, the class can safely access `.id`
+      inside `findById` without any cast — and the contract is enforced at the
+      instantiation site, so `new Stack<number>()` is rejected because `number` does not
+      satisfy `{ id: string }`. Instantiating with a type that has an `id` (e.g. `User`)
+      compiles. (Without the constraint, an `any` cast inside `findById` would hide the
+      bug and let `Stack<number>` through silently.)
     check: compiles
     signal: ""
   - prompt: |
@@ -152,7 +163,8 @@ exercises:
       }
 
       const r1 = createResponse({ name: "Alice" });
-      const r2 = createResponse("hello"); // should this be allowed?
+      // Specificity is lost: r1.data.name is `unknown`, so string methods are rejected.
+      const upper = r1.data.name.toUpperCase(); // error: 'r1.data.name' is of type 'unknown'
     fixed_code: |
       function createResponse<T = Record<string, unknown>>(data: T): {
         data: T;
@@ -161,14 +173,16 @@ exercises:
         return { data, status: 200 };
       }
 
-      const r1 = createResponse({ name: "Alice" }); // T inferred as { name: string }
-      const r2 = createResponse<string>("hello");    // explicit T overrides default
-      const r3 = createResponse();                   // T uses default: Record<string, unknown>
+      const r1 = createResponse({ name: "Alice" });       // T inferred as { name: string }
+      const upper = r1.data.name.toUpperCase();           // OK — name is a string
+      const r2 = createResponse<string>("hello");         // explicit T overrides default
+      const r3 = createResponse({} as Record<string, unknown>); // T uses the default shape
     bug: |
       The non-generic version locks the input and output to `Record<string, unknown>`,
-      losing specificity (r1.data.name is unknown, not string). The default type
-      parameter `<T = Record<string, unknown>>` lets callers omit the type arg when
-      the default is appropriate, while allowing explicit override. TS infers T from
-      the argument when provided.
+      losing specificity — `r1.data.name` is `unknown`, so calling `.toUpperCase()` on
+      it is a compile error. The default type parameter `<T = Record<string, unknown>>`
+      lets TS infer the precise argument type (so `r1.data.name` is `string`) while
+      still allowing an explicit override (`<string>`) or falling back to the default
+      shape. TS infers T from the argument when provided.
     check: compiles
     signal: ""

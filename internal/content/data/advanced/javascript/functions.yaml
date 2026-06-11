@@ -56,17 +56,24 @@ exercises:
       timer.startRegular();
       timer.startArrow();
     fixed_code: |
-      // The arrow version is the correct pattern for callbacks that need the method's this.
+      // Annotated — regular loses `this`; arrow inherits lexical `this` from startArrow.
       const timer = {
         name: "my timer",
 
+        startRegular() {
+          setTimeout(function () {
+            console.log("regular:", this.name); // undefined — callback's this is globalThis/undefined
+          }, 0);
+        },
+
         startArrow() {
           setTimeout(() => {
-            console.log("arrow:", this.name);
+            console.log("arrow:", this.name); // "my timer" — arrow inherits timer's this
           }, 0);
         },
       };
 
+      timer.startRegular();
       timer.startArrow();
     bug: |
       The regular function callback loses `this` — it is called by `setTimeout` with no

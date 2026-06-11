@@ -38,25 +38,53 @@ exercises:
       filter → mapToDouble → sum.
     kind: fix-it
     broken_code: |
-      record Order(String status, double total) {}
+      import java.util.*;
 
-      static double sumPending(List<Order> orders) {
-          double sum = 0;
-          for (Order o : orders) {
-              if ("PENDING".equals(o.status())) {
-                  sum += o.total();
+      public class Main {
+          record Order(String status, double total) {}
+
+          static double sumPending(List<Order> orders) {
+              double sum = 0;
+              for (Order o : orders) {
+                  if ("PENDING".equals(o.status())) {
+                      sum += o.total();
+                  }
               }
+              return sum;
           }
-          return sum;
+
+          public static void main(String[] args) {
+              List<Order> orders = List.of(
+                  new Order("PENDING", 10.0),
+                  new Order("SHIPPED", 99.0),
+                  new Order("PENDING", 15.5),
+                  new Order("PENDING", 24.5)
+              );
+              System.out.println(sumPending(orders));
+          }
       }
     fixed_code: |
-      record Order(String status, double total) {}
+      import java.util.*;
 
-      static double sumPending(List<Order> orders) {
-          return orders.stream()
-                       .filter(o -> "PENDING".equals(o.status()))
-                       .mapToDouble(Order::total)
-                       .sum();
+      public class Main {
+          record Order(String status, double total) {}
+
+          static double sumPending(List<Order> orders) {
+              return orders.stream()
+                           .filter(o -> "PENDING".equals(o.status()))
+                           .mapToDouble(Order::total)
+                           .sum();
+          }
+
+          public static void main(String[] args) {
+              List<Order> orders = List.of(
+                  new Order("PENDING", 10.0),
+                  new Order("SHIPPED", 99.0),
+                  new Order("PENDING", 15.5),
+                  new Order("PENDING", 24.5)
+              );
+              System.out.println(sumPending(orders));
+          }
       }
     bug: |
       The imperative version is correct but verbose. The stream version is more
@@ -65,8 +93,8 @@ exercises:
       mistake: storing the stream in a variable and calling filter() on it, then
       trying to call another terminal operation on the same stream — the second call
       throws IllegalStateException because streams cannot be reused.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "50.0"
 
   - prompt: |
       A List<Order> where each Order has a List<Item>. Extract all item names into a
@@ -74,32 +102,46 @@ exercises:
       wrong type — fix it.
     kind: fix-it
     broken_code: |
-      record Item(String name) {}
-      record Order(List<Item> items) {}
+      import java.util.*;
+      import java.util.stream.*;
 
-      List<Order> orders = List.of(
-          new Order(List.of(new Item("Apple"), new Item("Banana"))),
-          new Order(List.of(new Item("Cherry")))
-      );
+      public class Main {
+          record Item(String name) {}
+          record Order(List<Item> items) {}
 
-      // Wrong: produces Stream<List<String>>, not Stream<String>
-      List<List<String>> names = orders.stream()
-          .map(o -> o.items().stream().map(Item::name).toList())
-          .toList();
-      System.out.println(names);
+          public static void main(String[] args) {
+              List<Order> orders = List.of(
+                  new Order(List.of(new Item("Apple"), new Item("Banana"))),
+                  new Order(List.of(new Item("Cherry")))
+              );
+
+              // Wrong: produces Stream<List<String>>, not Stream<String>
+              List<List<String>> names = orders.stream()
+                  .map(o -> o.items().stream().map(Item::name).toList())
+                  .toList();
+              System.out.println(names);
+          }
+      }
     fixed_code: |
-      record Item(String name) {}
-      record Order(List<Item> items) {}
+      import java.util.*;
+      import java.util.stream.*;
 
-      List<Order> orders = List.of(
-          new Order(List.of(new Item("Apple"), new Item("Banana"))),
-          new Order(List.of(new Item("Cherry")))
-      );
+      public class Main {
+          record Item(String name) {}
+          record Order(List<Item> items) {}
 
-      List<String> names = orders.stream()
-          .flatMap(o -> o.items().stream().map(Item::name))
-          .toList();
-      System.out.println(names);
+          public static void main(String[] args) {
+              List<Order> orders = List.of(
+                  new Order(List.of(new Item("Apple"), new Item("Banana"))),
+                  new Order(List.of(new Item("Cherry")))
+              );
+
+              List<String> names = orders.stream()
+                  .flatMap(o -> o.items().stream().map(Item::name))
+                  .toList();
+              System.out.println(names);
+          }
+      }
     bug: |
       map() transforms each element individually — applied to a List<Order> it produces
       a Stream<List<String>>, which is a stream of lists. flatMap() also transforms each
@@ -115,27 +157,47 @@ exercises:
       as the fallback.
     kind: fix-it
     broken_code: |
-      record Address(String city) {}
-      record User(String name, Address address) {}
+      import java.util.*;
 
-      static String getCity(User user) {
-          if (user != null) {
-              Address addr = user.address();
-              if (addr != null) {
-                  return addr.city();
+      public class Main {
+          record Address(String city) {}
+          record User(String name, Address address) {}
+
+          static String getCity(User user) {
+              if (user != null) {
+                  Address addr = user.address();
+                  if (addr != null) {
+                      return addr.city();
+                  }
               }
+              return "Unknown";
           }
-          return "Unknown";
+
+          public static void main(String[] args) {
+              System.out.println(getCity(new User("Ada", new Address("London"))));
+              System.out.println(getCity(new User("Bob", null)));
+              System.out.println(getCity(null));
+          }
       }
     fixed_code: |
-      record Address(String city) {}
-      record User(String name, Address address) {}
+      import java.util.*;
 
-      static String getCity(User user) {
-          return Optional.ofNullable(user)
-                         .map(User::address)
-                         .map(Address::city)
-                         .orElse("Unknown");
+      public class Main {
+          record Address(String city) {}
+          record User(String name, Address address) {}
+
+          static String getCity(User user) {
+              return Optional.ofNullable(user)
+                             .map(User::address)
+                             .map(Address::city)
+                             .orElse("Unknown");
+          }
+
+          public static void main(String[] args) {
+              System.out.println(getCity(new User("Ada", new Address("London"))));
+              System.out.println(getCity(new User("Bob", null)));
+              System.out.println(getCity(null));
+          }
       }
     bug: |
       Nested null checks are verbose and easy to mis-nest. Optional.ofNullable wraps
@@ -144,8 +206,8 @@ exercises:
       the default when the Optional is empty. Common mistakes: calling optional.get()
       without isPresent() (throws NoSuchElementException — defeats the purpose); using
       Optional as a method parameter (anti-pattern — use @Nullable or overloads instead).
-    check: none
-    signal: ""
+    check: stdout
+    signal: "London\nUnknown\nUnknown"
 
   - prompt: |
       Given a list of employees, group them by department and find the highest-earning
@@ -155,38 +217,59 @@ exercises:
       collector so the Optional is unwrapped in the collector itself.
     kind: implement
     broken_code: |
-      record Employee(String name, String department, double salary) {}
+      import java.util.*;
+      import java.util.stream.*;
 
-      List<Employee> employees = List.of(
-          new Employee("Alice", "Eng",   95000),
-          new Employee("Bob",   "Eng",   87000),
-          new Employee("Carol", "Sales", 72000),
-          new Employee("Dave",  "Sales", 80000)
-      );
+      public class Main {
+          record Employee(String name, String department, double salary) {}
 
-      // TODO: produce Map<String, Employee> — top earner per department
-      // Hint: Collectors.groupingBy + collectingAndThen(maxBy(...), Optional::get)
+          public static void main(String[] args) {
+              List<Employee> employees = List.of(
+                  new Employee("Alice", "Eng",   95000),
+                  new Employee("Bob",   "Eng",   87000),
+                  new Employee("Carol", "Sales", 72000),
+                  new Employee("Dave",  "Sales", 80000)
+              );
+
+              // TODO: produce Map<String, Employee> — top earner per department
+              // Hint: Collectors.groupingBy + collectingAndThen(maxBy(...), Optional::get)
+              Map<String, Employee> topEarners = new HashMap<>();
+
+              topEarners.entrySet().stream()
+                  .sorted(Map.Entry.comparingByKey())
+                  .forEach(e -> System.out.println(e.getKey() + " -> " + e.getValue().name()));
+          }
+      }
     fixed_code: |
-      record Employee(String name, String department, double salary) {}
+      import java.util.*;
+      import java.util.stream.*;
 
-      List<Employee> employees = List.of(
-          new Employee("Alice", "Eng",   95000),
-          new Employee("Bob",   "Eng",   87000),
-          new Employee("Carol", "Sales", 72000),
-          new Employee("Dave",  "Sales", 80000)
-      );
+      public class Main {
+          record Employee(String name, String department, double salary) {}
 
-      Map<String, Employee> topEarners = employees.stream()
-          .collect(Collectors.groupingBy(
-              Employee::department,
-              Collectors.collectingAndThen(
-                  Collectors.maxBy(Comparator.comparingDouble(Employee::salary)),
-                  Optional::get   // safe here: each group has at least one employee
-              )
-          ));
+          public static void main(String[] args) {
+              List<Employee> employees = List.of(
+                  new Employee("Alice", "Eng",   95000),
+                  new Employee("Bob",   "Eng",   87000),
+                  new Employee("Carol", "Sales", 72000),
+                  new Employee("Dave",  "Sales", 80000)
+              );
 
-      topEarners.forEach((dept, emp) ->
-          System.out.println(dept + " -> " + emp.name()));
+              Map<String, Employee> topEarners = employees.stream()
+                  .collect(Collectors.groupingBy(
+                      Employee::department,
+                      Collectors.collectingAndThen(
+                          Collectors.maxBy(Comparator.comparingDouble(Employee::salary)),
+                          Optional::get   // safe here: each group has at least one employee
+                      )
+                  ));
+
+              // Sort by department key for deterministic output:
+              topEarners.entrySet().stream()
+                  .sorted(Map.Entry.comparingByKey())
+                  .forEach(e -> System.out.println(e.getKey() + " -> " + e.getValue().name()));
+          }
+      }
     bug: |
       Collectors.maxBy() returns Optional<Employee> because the group could
       theoretically be empty, giving a raw result type of Map<String, Optional<Employee>>.
@@ -196,5 +279,5 @@ exercises:
       the Optional in place — forces every downstream consumer to unwrap it separately.
       Note: mutating employees inside intermediate stream operations is a side-effect
       anti-pattern; streams should be treated as read-only pipelines.
-    check: none
-    signal: ""
+    check: stdout
+    signal: "Eng -> Alice\nSales -> Dave"

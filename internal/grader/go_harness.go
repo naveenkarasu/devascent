@@ -33,18 +33,21 @@ func nodeType(shapeKind string) gtype {
 
 // inferType merges the inferred type across several sample values (resolving
 // empty arrays by looking at other cases).
+// inferType merges the inferred type of every sample. The accumulator starts at
+// the bottom type "unknown" (no evidence yet); leftover "unknown" (e.g. all
+// samples null/empty) resolves to "any" (interface{}).
 func inferType(samples []any) gtype {
-	cur := gtype{kind: "any"}
+	cur := gtype{kind: "unknown"}
 	for _, s := range samples {
 		cur = mergeType(cur, inferOne(s))
 	}
-	return cur
+	return resolveUnknown(cur)
 }
 
 func inferOne(v any) gtype {
 	switch x := v.(type) {
 	case nil:
-		return gtype{kind: "any"}
+		return gtype{kind: "null"} // a null literal; mixing with a concrete type → nullable (interface{})
 	case bool:
 		return gtype{kind: "bool"}
 	case int, int64, int32:
@@ -57,7 +60,7 @@ func inferOne(v any) gtype {
 	case string:
 		return gtype{kind: "string"}
 	case []any:
-		el := gtype{kind: "any"}
+		el := gtype{kind: "unknown"}
 		for _, e := range x {
 			el = mergeType(el, inferOne(e))
 		}
@@ -68,12 +71,24 @@ func inferOne(v any) gtype {
 	}
 }
 
+// mergeType unifies two inferred types. "unknown" is the bottom (no evidence →
+// identity); "any" is the top (genuinely heterogeneous → absorbing, so a mixed
+// list like [["push",-2],["pop"]] stays slice<any>=interface{}, not slice<string>).
 func mergeType(a, b gtype) gtype {
-	if a.kind == "any" {
+	if a.kind == "unknown" {
 		return b
 	}
-	if b.kind == "any" {
+	if b.kind == "unknown" {
 		return a
+	}
+	if a.kind == "null" && b.kind == "null" {
+		return gtype{kind: "null"} // all-null so far; resolved to interface{} at the end
+	}
+	if a.kind == "null" || b.kind == "null" {
+		return gtype{kind: "any"} // concrete + null → nullable, so null is preserved (interface{})
+	}
+	if a.kind == "any" || b.kind == "any" {
+		return gtype{kind: "any"} // top absorbs — mixed stays mixed
 	}
 	if a.kind == "slice" && b.kind == "slice" {
 		m := mergeType(deref(a.elem), deref(b.elem))
@@ -86,6 +101,19 @@ func mergeType(a, b gtype) gtype {
 		return gtype{kind: "float"}
 	}
 	return gtype{kind: "any"} // mismatch → interface{}
+}
+
+// resolveUnknown maps any leftover bottom "unknown" (and nested unknowns) to
+// "any" so a fully-evidence-free type renders as interface{}.
+func resolveUnknown(t gtype) gtype {
+	switch t.kind {
+	case "unknown", "null":
+		return gtype{kind: "any"} // no concrete evidence (empty/all-null) → interface{}
+	case "slice":
+		e := resolveUnknown(deref(t.elem))
+		return gtype{kind: "slice", elem: &e}
+	}
+	return t
 }
 
 func deref(t *gtype) gtype {
