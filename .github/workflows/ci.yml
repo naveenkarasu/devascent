@@ -34,8 +34,11 @@ jobs:
           python-version: "3.x"
 
       - name: gofmt
+        # testdata/ holds the bench-corpus player solutions — bare function
+        # snippets with no package clause (the harness wraps them). The go tool
+        # ignores testdata dirs; gofmt walks everything, so exclude explicitly.
         run: |
-          unformatted=$(gofmt -l .)
+          unformatted=$(gofmt -l $(git ls-files '*.go' ':!:**/testdata/**'))
           if [ -n "$unformatted" ]; then
             echo "These files need gofmt:"; echo "$unformatted"; exit 1
           fi
