@@ -191,12 +191,14 @@ func nativeAdapters() map[string]langAdapter {
 }
 
 // csprojTemplate is a minimal console project for the C# adapter. TargetFramework
-// is pinned; revisit if we support older/newer SDKs (the detector confirms an SDK
-// is present, but not its exact version).
+// is pinned to a known-good language baseline; RollForward lets the output RUN
+// on whatever newer runtime the player actually has (BYO toolchain — players
+// with only .NET 10/11 must not fail on a net9.0 target; the TS 6.0 lesson).
 const csprojTemplate = `<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net9.0</TargetFramework>
+    <RollForward>LatestMajor</RollForward>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <AssemblyName>devascentapp</AssemblyName>

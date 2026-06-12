@@ -1,10 +1,13 @@
 name: Release
 
 # Fires when you push a version tag, e.g. `git tag v0.1.0 && git push origin v0.1.0`.
+# `workflow_dispatch` runs a SNAPSHOT build (nothing published) — a dry run that
+# validates the GoReleaser config, the action version, and the tap manifests.
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write # GoReleaser creates the GitHub Release and uploads assets
@@ -21,9 +24,13 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - uses: goreleaser/goreleaser-action@v6
+      - uses: goreleaser/goreleaser-action@v7
         with:
           version: "~> v2"
-          args: release --clean
+          args: ${{ github.event_name == 'workflow_dispatch' && 'release --snapshot --clean' || 'release --clean' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Cross-repo push for the Homebrew/Scoop tap manifests. Optional: when
+          # the secret is unset, the taps' skip_upload template turns publishing
+          # off and the release still succeeds (manifests just aren't pushed).
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}

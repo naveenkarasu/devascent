@@ -63,3 +63,30 @@ release:
     ---
     DevAscent ships no language runtimes — install the toolchain for the language
     you want to play (see INSTALL.md), then run `devascent -doctor`.
+
+# Homebrew tap + Scoop bucket (the TUI binary; the GUI ships as release assets).
+# Publishing needs a TAP_GITHUB_TOKEN secret (PAT with write access to the two
+# tap repos) — when it's unset the skip_upload template disables the push and
+# the release still succeeds, so a missing secret can never fail a release.
+homebrew_casks:
+  - name: devascent
+    ids: [default]
+    repository:
+      owner: naveenkarasu
+      name: homebrew-devascent
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    skip_upload: '{{ if index .Env "TAP_GITHUB_TOKEN" }}false{{ else }}true{{ end }}'
+    homepage: https://github.com/naveenkarasu/devascent
+    description: "SWE career-sim game — real code, graded by your own compilers"
+
+scoops:
+  - name: devascent
+    ids: [default]
+    repository:
+      owner: naveenkarasu
+      name: scoop-devascent
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    skip_upload: '{{ if index .Env "TAP_GITHUB_TOKEN" }}false{{ else }}true{{ end }}'
+    homepage: https://github.com/naveenkarasu/devascent
+    description: "SWE career-sim game — real code, graded by your own compilers"
+    license: AGPL-3.0-only

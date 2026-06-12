@@ -17,3 +17,7 @@
 # OS
 .DS_Store
 Thumbs.db
+
+# session/repo index — internal, never published (a prior index was removed pre-publish)
+/PROJECT_INDEX.md
+/PROJECT_INDEX.json

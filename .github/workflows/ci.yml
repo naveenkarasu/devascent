@@ -76,7 +76,7 @@ jobs:
           python-version: "3.x"
 
       - name: Set up Node (JavaScript + TypeScript)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
 
@@ -84,13 +84,13 @@ jobs:
         run: npm install -g typescript
 
       - name: Set up Java (JDK)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Set up .NET (C#)
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 

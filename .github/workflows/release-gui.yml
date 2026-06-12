@@ -47,7 +47,7 @@ jobs:
           go-version-file: go.mod # root module's toolchain builds both modules
           cache: true
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "20"
 
@@ -113,7 +113,7 @@ jobs:
             shasum -a 256 "$BASE" > "${BASE}.sha256"
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: devascent-gui_${{ matrix.slug }}
           path: dist/*
