@@ -1,5 +1,7 @@
 # Canonical NeetCode 150 — remaining linked-list (node harness / scaffold) + tree.
 - id: nc-add-two-numbers
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Add Two Numbers
   difficulty: medium
   pattern: linked-list
@@ -45,6 +47,8 @@
     - {name: case 3, input: [[9,9,9], [1]], expected: [0,0,0,1]}
 
 - id: nc-reverse-k-group
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Reverse Nodes in k-Group
   difficulty: hard
   pattern: linked-list
@@ -97,6 +101,8 @@
     - {name: case 3, input: [[1,2,3,4,5], 1], expected: [1,2,3,4,5]}
 
 - id: nc-copy-random-list
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Copy List with Random Pointer
   difficulty: medium
   pattern: linked-list
@@ -208,6 +214,8 @@
     - {name: case 3, input: [[]], expected: []}
 
 - id: nc-count-good-nodes
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Count Good Nodes in Binary Tree
   difficulty: medium
   pattern: tree

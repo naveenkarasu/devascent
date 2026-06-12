@@ -1,6 +1,8 @@
 # Canonical NeetCode 150 — Math & Bit Manipulation (original prompts, own solutions).
 # Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
 - id: nc-single-number
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Single Number
   difficulty: easy
   pattern: bit
@@ -32,6 +34,8 @@
     - {name: case 3, input: [[1]], expected: 1}
 
 - id: nc-number-of-1-bits
+  time_complexity: "O(log n)"
+  space_complexity: "O(1)"
   title: Number of 1 Bits
   difficulty: easy
   pattern: bit
@@ -63,6 +67,8 @@
     - {name: case 3, input: [0], expected: 0}
 
 - id: nc-counting-bits
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Counting Bits
   difficulty: easy
   pattern: bit
@@ -93,6 +99,8 @@
     - {name: case 3, input: [0], expected: [0]}
 
 - id: nc-missing-number
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Missing Number
   difficulty: easy
   pattern: bit
@@ -122,6 +130,8 @@
     - {name: case 3, input: [[9,6,4,2,3,5,7,0,1]], expected: 8}
 
 - id: nc-reverse-integer
+  time_complexity: "O(log n)"
+  space_complexity: "O(log n)"
   title: Reverse Integer
   difficulty: medium
   pattern: bit

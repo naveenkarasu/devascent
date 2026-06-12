@@ -1,6 +1,8 @@
 # Canonical NeetCode 150 — Arrays & Hashing (original prompts, own solutions).
 # Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
 - id: nc-contains-duplicate
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Contains Duplicate
   difficulty: easy
   pattern: hashing
@@ -33,6 +35,8 @@
     - {name: case 3, input: [[]], expected: false}
 
 - id: nc-valid-anagram
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Valid Anagram
   difficulty: easy
   pattern: hashing
@@ -69,6 +73,8 @@
     - {name: case 3, input: ["a", "ab"], expected: false}
 
 - id: nc-two-sum
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Two Sum
   difficulty: easy
   pattern: hashing
@@ -102,6 +108,8 @@
     - {name: case 3, input: [[3,3], 6], expected: [0,1]}
 
 - id: nc-product-except-self
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Product of Array Except Self
   difficulty: medium
   pattern: arrays
@@ -139,6 +147,8 @@
     - {name: case 3, input: [[2,3]], expected: [3,2]}
 
 - id: nc-longest-consecutive
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Longest Consecutive Sequence
   difficulty: medium
   pattern: hashing

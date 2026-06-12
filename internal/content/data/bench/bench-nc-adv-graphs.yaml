@@ -2,6 +2,8 @@
 # Authored original; all test cases hand-traced.
 
 - id: nc-reconstruct-itinerary
+  time_complexity: "O(n log n)"
+  space_complexity: "O(V+E)"
   title: Reconstruct Itinerary
   difficulty: hard
   pattern: graph
@@ -54,6 +56,8 @@
       expected: ["JFK","AAA","JFK","BBB"]
 
 - id: nc-min-cost-connect-points
+  time_complexity: "O(n^2)"
+  space_complexity: "O(n)"
   title: Min Cost to Connect Points
   difficulty: medium
   pattern: graph
@@ -108,6 +112,8 @@
       expected: 3
 
 - id: nc-network-delay-time
+  time_complexity: "O(n log n)"
+  space_complexity: "O(V+E)"
   title: Network Delay Time
   difficulty: medium
   pattern: graph
@@ -163,6 +169,8 @@
       expected: -1
 
 - id: nc-swim-in-water
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
   title: Swim in Rising Water
   difficulty: hard
   pattern: graph
@@ -216,6 +224,8 @@
       expected: 2
 
 - id: nc-cheapest-flights
+  time_complexity: "O(n^2)"
+  space_complexity: "O(n)"
   title: Cheapest Flights Within K Stops
   difficulty: medium
   pattern: graph

@@ -327,6 +327,11 @@
   padding: 3px 10px;
   font-size: 12px;
 }
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
 .work {
   position: relative;
 }
@@ -452,6 +457,104 @@
 .profx.armed {
   color: var(--red);
   font-weight: 600;
+}
+
+/* ── Home mentor card (BYO-AI backend picker) ───────────────── */
+.rightcol {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+}
+.mentorcard {
+  flex: none;
+}
+.mentornote {
+  margin-top: 10px;
+  color: var(--textMuted);
+  font-size: 12px;
+  line-height: 18px;
+}
+.mrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 2px 2px;
+}
+.mdot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--borderStrong);
+  flex: none;
+}
+.mdot.on {
+  background: var(--green);
+}
+.mname {
+  color: var(--textPrimary);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.minfo {
+  color: var(--textMuted);
+  font-size: 11.5px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mprobe {
+  font-size: 11px;
+  white-space: nowrap;
+}
+.mprobe.ok {
+  color: var(--green);
+}
+.mprobe.bad {
+  color: var(--red);
+}
+.msel {
+  color: var(--green);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mrow .btn.small,
+.mform .btn.small {
+  height: 26px;
+  width: auto;
+  flex: none;
+  font-weight: 500;
+}
+.merr {
+  color: var(--red);
+  font-size: 11.5px;
+  margin: 2px 0 0 16px;
+}
+.mform {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 2px 16px;
+}
+.minput {
+  padding: 6px 9px;
+  background: var(--panel);
+  color: var(--textPrimary);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 7px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.minput:focus {
+  outline: none;
+  border-color: var(--blue);
 }
 
 /* ── Orientation per-signal chips ───────────────────────────── */
@@ -734,4 +837,292 @@
 .cdetail code {
   color: var(--textSecondary);
   font-family: var(--font-mono);
+}
+.vtok {
+  color: var(--yellow);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+/* ── Provisional solves (passed, write-up pending) ──────────── */
+.prow .ptick.prov {
+  color: var(--yellow);
+  cursor: pointer;
+}
+.pwrite {
+  flex: none;
+  color: var(--textMuted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.pwrite:hover {
+  color: var(--yellow);
+}
+
+/* ── Graduation gate (Blind 75) section ─────────────────────── */
+.gatecard {
+  margin: 8px 10px 0;
+  padding: 8px 11px;
+  background: var(--panel);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 8px;
+}
+.gatehead {
+  color: var(--textMuted);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  user-select: none;
+}
+.gatehead:hover {
+  color: var(--textSecondary);
+}
+.gatemet {
+  margin-top: 5px;
+  color: var(--green);
+  font-weight: 700;
+  font-size: 12px;
+}
+.gatecount {
+  margin-top: 4px;
+  color: var(--textPrimary);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.gatebody {
+  margin-top: 6px;
+}
+.gcat {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  margin-top: 5px;
+}
+.gcname {
+  color: var(--textSecondary);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gcnum {
+  color: var(--textMuted);
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+.gcnum.ok {
+  color: var(--green);
+}
+.gcbar {
+  grid-column: 1 / -1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--panelStrong);
+  overflow: hidden;
+}
+.gcfill {
+  height: 100%;
+  background: var(--yellow);
+}
+.gcfill.ok {
+  background: var(--green);
+}
+.gmanhead {
+  margin-top: 8px;
+  color: var(--textMuted);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.gman {
+  color: var(--textMuted);
+  font-size: 11.5px;
+  margin-top: 3px;
+}
+.gman.ok {
+  color: var(--green);
+}
+
+/* ── Hint panel (Track A2 hint economy) ─────────────────────── */
+.hintpanel {
+  width: 340px;
+}
+.hwallet {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--textSecondary);
+  padding: 6px 8px;
+  background: var(--panel);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 7px;
+  margin-bottom: 10px;
+}
+.hrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--borderSubtle);
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+.hname {
+  color: var(--textPrimary);
+  font-weight: 600;
+  font-size: 13px;
+}
+.hcost {
+  color: var(--textMuted);
+  font-size: 11.5px;
+}
+.hrow .btn.small {
+  height: 26px;
+  width: auto;
+  flex: none;
+  font-weight: 500;
+}
+.hrow .btn.small.armed {
+  border-color: var(--red);
+  color: var(--red);
+}
+.hout {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 19px;
+}
+.htext {
+  color: var(--textSecondary);
+  white-space: pre-wrap;
+  padding: 8px 10px;
+  background: var(--canvas);
+  border-radius: 6px;
+}
+.hsrc {
+  margin-top: 4px;
+  color: var(--textMuted);
+  font-size: 11px;
+}
+.hnotice {
+  color: var(--yellow);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.herr {
+  color: var(--red);
+  font-size: 12.5px;
+  margin-top: 6px;
+}
+.hlink {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--textMuted);
+  font-size: 11.5px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.hlink:hover {
+  color: var(--textSecondary);
+}
+
+/* ── Centered modal (write-up gate, mentor preview) ─────────── */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+.modal.hidden {
+  display: none;
+}
+.modalcard {
+  width: 540px;
+  max-width: 92vw;
+  max-height: 82vh;
+  overflow-y: auto;
+  background: var(--base);
+  border: 1px solid var(--borderStrong);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.mhead {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--textPrimary);
+  margin-bottom: 8px;
+}
+.mpre {
+  max-height: 52vh;
+  overflow-y: auto;
+}
+.modalcard .workbar {
+  padding: 12px 0 0;
+}
+.modalcard .btn.small {
+  height: 30px;
+  width: auto;
+  flex: none;
+}
+
+/* ── Write-up modal (MCQ + approach text) ───────────────────── */
+.wq {
+  color: var(--textPrimary);
+  font-size: 13px;
+  margin: 10px 0 6px;
+}
+.wopts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wopt {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--panel);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 8px;
+  color: var(--textSecondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.wopt:hover {
+  border-color: var(--blue);
+}
+.wopts.bad .wopt {
+  border-color: var(--red);
+}
+.wopts.shake {
+  animation: wshake 0.3s;
+}
+@keyframes wshake {
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+.wtext {
+  display: block;
+  width: 100%;
+  margin: 10px 0 0;
+  min-height: 90px;
+}
+.wfollow {
+  margin-top: 6px;
+  padding: 9px 11px;
+  background: var(--panel);
+  border-left: 3px solid var(--cyan);
+  border-radius: 6px;
+  color: var(--textSecondary);
+  font-size: 13px;
+  line-height: 19px;
 }

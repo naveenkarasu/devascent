@@ -2,6 +2,8 @@
 # the player fills the class methods; the dispatch loop over operations is
 # scaffolded. Each op returns a result (null for void ops). Original prompts.
 - id: nc-min-stack
+  time_complexity: "O(1)"
+  space_complexity: "O(n)"
   title: Min Stack
   difficulty: medium
   pattern: stack
@@ -94,6 +96,8 @@
       expected: [null, null, 2, null, 2, null, 1]
 
 - id: nc-lru-cache
+  time_complexity: "O(1)"
+  space_complexity: "O(n)"
   title: LRU Cache
   difficulty: medium
   pattern: linked-list
@@ -174,6 +178,8 @@
       expected: [null, null, null, 10, 2, null, 2]
 
 - id: nc-time-based-kv
+  time_complexity: "O(log n)"
+  space_complexity: "O(n)"
   title: Time Based Key-Value Store
   difficulty: medium
   pattern: binary-search
@@ -253,6 +259,8 @@
       expected: [null, null, "", "v1", "v2", "v2"]
 
 - id: nc-kth-largest-stream
+  time_complexity: "O(log n)"
+  space_complexity: "O(n)"
   title: Kth Largest Element in a Stream
   difficulty: easy
   pattern: heap
@@ -318,6 +326,8 @@
       expected: [4, 5, 5]
 
 - id: nc-find-median-stream
+  time_complexity: "O(log n)"
+  space_complexity: "O(n)"
   title: Find Median from Data Stream
   difficulty: hard
   pattern: heap
@@ -396,6 +406,8 @@
       expected: [null, 5]
 
 - id: nc-design-twitter
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
   title: Design Twitter
   difficulty: medium
   pattern: heap
@@ -497,6 +509,8 @@
       expected: [null, null, null, [20,10], [20]]
 
 - id: nc-detect-squares
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Detect Squares
   difficulty: medium
   pattern: math

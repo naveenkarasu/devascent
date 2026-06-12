@@ -280,6 +280,8 @@ export namespace guiapi {
 	    banked: boolean;
 	    newlyBanked: boolean;
 	    saveErr: string;
+	    tokensAwarded: number;
+	    writeupPending: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new GradeResult(source);
@@ -295,6 +297,8 @@ export namespace guiapi {
 	        this.banked = source["banked"];
 	        this.newlyBanked = source["newlyBanked"];
 	        this.saveErr = source["saveErr"];
+	        this.tokensAwarded = source["tokensAwarded"];
+	        this.writeupPending = source["writeupPending"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -351,7 +355,147 @@ export namespace guiapi {
 		    return a;
 		}
 	}
+	export class GateCategoryView {
+	    category: string;
+	    done: number;
+	    required: number;
+	    available: number;
 	
+	    static createFrom(source: any = {}) {
+	        return new GateCategoryView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.done = source["done"];
+	        this.required = source["required"];
+	        this.available = source["available"];
+	    }
+	}
+	export class GateItemView {
+	    slug: string;
+	    title: string;
+	    done: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new GateItemView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.slug = source["slug"];
+	        this.title = source["title"];
+	        this.done = source["done"];
+	    }
+	}
+	export class GateView {
+	    full: number;
+	    provisional: number;
+	    target: number;
+	    categories: GateCategoryView[];
+	    mandatory: GateItemView[];
+	    countMet: boolean;
+	    catsMet: boolean;
+	    mandatoryOk: boolean;
+	    met: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new GateView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.full = source["full"];
+	        this.provisional = source["provisional"];
+	        this.target = source["target"];
+	        this.categories = this.convertValues(source["categories"], GateCategoryView);
+	        this.mandatory = this.convertValues(source["mandatory"], GateItemView);
+	        this.countMet = source["countMet"];
+	        this.catsMet = source["catsMet"];
+	        this.mandatoryOk = source["mandatoryOk"];
+	        this.met = source["met"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class WalletView {
+	    tokens: number;
+	    nudgeCharges: number;
+	    nudgeMax: number;
+	    nextRechargeSec: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new WalletView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.tokens = source["tokens"];
+	        this.nudgeCharges = source["nudgeCharges"];
+	        this.nudgeMax = source["nudgeMax"];
+	        this.nextRechargeSec = source["nextRechargeSec"];
+	    }
+	}
+	export class HintResult {
+	    text: string;
+	    source: string;
+	    tier: number;
+	    pity: boolean;
+	    refunded: boolean;
+	    wallet: WalletView;
+	    err: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HintResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.text = source["text"];
+	        this.source = source["source"];
+	        this.tier = source["tier"];
+	        this.pity = source["pity"];
+	        this.refunded = source["refunded"];
+	        this.wallet = this.convertValues(source["wallet"], WalletView);
+	        this.err = source["err"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class InstallGuideView {
 	    found: boolean;
 	    lang: string;
@@ -540,6 +684,7 @@ export namespace guiapi {
 	    category: string;
 	    lists: string[];
 	    solved: boolean;
+	    writeup: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ProblemSummary(source);
@@ -553,6 +698,7 @@ export namespace guiapi {
 	        this.category = source["category"];
 	        this.lists = source["lists"];
 	        this.solved = source["solved"];
+	        this.writeup = source["writeup"];
 	    }
 	}
 	export class ProfileView {
@@ -629,6 +775,104 @@ export namespace guiapi {
 	        this.lesson = source["lesson"];
 	        this.stage = source["stage"];
 	        this.done = source["done"];
+	    }
+	}
+	
+	export class WriteupResult {
+	    accepted: boolean;
+	    mcqCorrect: boolean;
+	    tokensAwarded: number;
+	    wallet: WalletView;
+	    followup: string;
+	    err: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new WriteupResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.accepted = source["accepted"];
+	        this.mcqCorrect = source["mcqCorrect"];
+	        this.tokensAwarded = source["tokensAwarded"];
+	        this.wallet = this.convertValues(source["wallet"], WalletView);
+	        this.followup = source["followup"];
+	        this.err = source["err"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class WriteupView {
+	    problemId: string;
+	    title: string;
+	    solved: boolean;
+	    done: boolean;
+	    question: string;
+	    options: string[];
+	    hasMcq: boolean;
+	    minLen: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new WriteupView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.problemId = source["problemId"];
+	        this.title = source["title"];
+	        this.solved = source["solved"];
+	        this.done = source["done"];
+	        this.question = source["question"];
+	        this.options = source["options"];
+	        this.hasMcq = source["hasMcq"];
+	        this.minLen = source["minLen"];
+	    }
+	}
+
+}
+
+export namespace main {
+	
+	export class MentorStatusView {
+	    id: string;
+	    name: string;
+	    present: boolean;
+	    info: string;
+	    selected: boolean;
+	    probed: boolean;
+	    probeOk: boolean;
+	    probeErr: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MentorStatusView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.present = source["present"];
+	        this.info = source["info"];
+	        this.selected = source["selected"];
+	        this.probed = source["probed"];
+	        this.probeOk = source["probeOk"];
+	        this.probeErr = source["probeErr"];
 	    }
 	}
 

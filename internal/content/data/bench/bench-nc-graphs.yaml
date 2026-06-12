@@ -2,6 +2,8 @@
 # Authored original; all test cases hand-traced.
 
 - id: nc-max-area-island
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
   title: Max Area of Island
   difficulty: medium
   pattern: graph
@@ -58,6 +60,8 @@
       expected: 3
 
 - id: nc-rotting-oranges
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
   title: Rotting Oranges
   difficulty: medium
   pattern: graph
@@ -123,6 +127,8 @@
       expected: 0
 
 - id: nc-pacific-atlantic
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
   title: Pacific Atlantic Water Flow
   difficulty: medium
   pattern: graph
@@ -192,6 +198,8 @@
       expected: [[0,0],[0,1],[1,0],[1,1]]
 
 - id: nc-surrounded-regions
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
   title: Surrounded Regions
   difficulty: medium
   pattern: graph
@@ -261,6 +269,8 @@
       expected: [["X","X","X"],["X","X","X"],["X","X","X"]]
 
 - id: nc-graph-valid-tree
+  time_complexity: "O(V+E)"
+  space_complexity: "O(V+E)"
   title: Graph Valid Tree
   difficulty: medium
   pattern: graph
@@ -310,6 +320,8 @@
       expected: false
 
 - id: nc-num-connected-components
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Number of Connected Components in an Undirected Graph
   difficulty: medium
   pattern: graph
@@ -358,6 +370,8 @@
       expected: 4
 
 - id: nc-word-ladder
+  time_complexity: "O(n^2)"
+  space_complexity: "O(n)"
   title: Word Ladder
   difficulty: hard
   pattern: graph

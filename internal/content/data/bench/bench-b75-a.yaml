@@ -1,5 +1,7 @@
 # Blind 75 completion — set A (scalar / canonical-output gaps). Original prompts.
 - id: nc-sum-two-integers
+  time_complexity: "O(1)"
+  space_complexity: "O(1)"
   title: Sum of Two Integers
   difficulty: medium
   pattern: bit
@@ -33,6 +35,8 @@
     - {name: case 3, input: [0, 0], expected: 0}
 
 - id: nc-reverse-bits
+  time_complexity: "O(1)"
+  space_complexity: "O(1)"
   title: Reverse Bits
   difficulty: easy
   pattern: bit
@@ -64,6 +68,8 @@
     - {name: case 3, input: [0], expected: 0}
 
 - id: nc-meeting-rooms-ii
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
   title: Meeting Rooms II
   difficulty: medium
   pattern: intervals
@@ -106,6 +112,8 @@
     - {name: case 3, input: [[]], expected: 0}
 
 - id: nc-top-k-frequent
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
   title: Top K Frequent Elements
   difficulty: medium
   pattern: heap
@@ -137,6 +145,8 @@
     - {name: case 3, input: [[4,4,5,5,6], 2], expected: [4,5]}
 
 - id: nc-group-anagrams
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
   title: Group Anagrams
   difficulty: medium
   pattern: hashing
@@ -170,6 +180,8 @@
     - {name: case 3, input: [["a"]], expected: [["a"]]}
 
 - id: nc-alien-dictionary
+  time_complexity: "O(V+E)"
+  space_complexity: "O(V+E)"
   title: Alien Dictionary
   difficulty: hard
   pattern: graph

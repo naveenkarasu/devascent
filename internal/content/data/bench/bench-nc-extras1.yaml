@@ -2,6 +2,8 @@
 # Authored original; all test cases hand-traced.
 
 - id: nc-course-schedule-ii
+  time_complexity: "O(n log n)"
+  space_complexity: "O(V+E)"
   title: Course Schedule II
   difficulty: medium
   pattern: graph
@@ -63,6 +65,8 @@
       expected: []
 
 - id: nc-walls-and-gates
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
   title: Walls and Gates
   difficulty: medium
   pattern: graph
@@ -129,6 +133,8 @@
       expected: [[2147483647,-1],[-1,0]]
 
 - id: nc-redundant-connection
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Redundant Connection
   difficulty: medium
   pattern: graph
@@ -192,6 +198,8 @@
       expected: [1, 3]
 
 - id: nc-find-duplicate
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Find the Duplicate Number
   difficulty: medium
   pattern: linked-list
@@ -241,6 +249,8 @@
       expected: 2
 
 - id: nc-burst-balloons
+  time_complexity: "O(n^3)"
+  space_complexity: "O(n^2)"
   title: Burst Balloons
   difficulty: hard
   pattern: dp
@@ -294,6 +304,8 @@
       expected: 7
 
 - id: nc-regex-matching
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
   title: Regular Expression Matching
   difficulty: hard
   pattern: dp

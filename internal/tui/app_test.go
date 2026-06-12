@@ -626,8 +626,17 @@ func TestBench_MenuThenSolveAndSkip(t *testing.T) {
 	}
 	d.enterBenchAll()
 	d.passCode()
-	if d.m.benchIdx != 1 || d.m.benchSolved != 1 {
-		t.Fatalf("after solve want idx1 solved1, got idx%d solved%d", d.m.benchIdx, d.m.benchSolved)
+	// A solve banks provisionally and opens the write-up gate (A1) before the
+	// bench moves on; skipping the write-up keeps the solve and continues.
+	if d.m.screen != screenWriteup {
+		t.Fatalf("solve should open the write-up gate, got screen %d", d.m.screen)
+	}
+	if d.m.benchSolved != 1 {
+		t.Fatalf("solve should bank, got solved%d", d.m.benchSolved)
+	}
+	d.runes("s") // keep provisional
+	if d.m.screen != screenBench || d.m.benchIdx != 1 {
+		t.Fatalf("after write-up skip want bench idx1, got screen %d idx%d", d.m.screen, d.m.benchIdx)
 	}
 	d.runes("s")
 	if d.m.benchIdx != 2 || d.m.benchSolved != 1 {

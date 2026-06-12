@@ -1,6 +1,8 @@
 # Canonical NeetCode 150 — Math & Geometry (original prompts, own solutions).
 # Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
 - id: nc-happy-number
+  time_complexity: "O(log n)"
+  space_complexity: "O(log n)"
   title: Happy Number
   difficulty: easy
   pattern: math
@@ -39,6 +41,8 @@
     - {name: case 3, input: [7], expected: true}
 
 - id: nc-plus-one
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Plus One
   difficulty: easy
   pattern: math
@@ -71,6 +75,8 @@
     - {name: case 3, input: [[9,9]], expected: [1,0,0]}
 
 - id: nc-spiral-matrix
+  time_complexity: "O(m*n)"
+  space_complexity: "O(1)"
   title: Spiral Matrix
   difficulty: medium
   pattern: math
@@ -117,6 +123,8 @@
     - {name: case 3, input: [[[1,2,3],[4,5,6]]], expected: [1,2,3,6,5,4]}
 
 - id: nc-rotate-image
+  time_complexity: "O(m*n)"
+  space_complexity: "O(1)"
   title: Rotate Image
   difficulty: medium
   pattern: math
@@ -152,6 +160,8 @@
     - {name: case 3, input: [[[5,1,9,11],[2,4,8,10],[13,3,6,7],[15,14,12,16]]], expected: [[15,13,2,5],[14,3,4,1],[12,6,8,9],[16,7,10,11]]}
 
 - id: nc-set-matrix-zeroes
+  time_complexity: "O(m*n)"
+  space_complexity: "O(n)"
   title: Set Matrix Zeroes
   difficulty: medium
   pattern: math
@@ -190,6 +200,8 @@
     - {name: case 3, input: [[[1,2,3],[4,0,6]]], expected: [[1,0,3],[0,0,0]]}
 
 - id: nc-multiply-strings
+  time_complexity: "O(m*n)"
+  space_complexity: "O(n)"
   title: Multiply Strings
   difficulty: medium
   pattern: math

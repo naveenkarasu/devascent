@@ -164,6 +164,109 @@ func (a *App) NextProblem(lang, afterID string) string {
 	return a.engine.NextProblem(lang, afterID)
 }
 
+// ── Track A: hint economy, write-up gate, graduation gate, mentor ─────────────
+
+// GetWallet returns lang's hint-currency wallet.
+func (a *App) GetWallet(lang string) guiapi.WalletView {
+	if a.engine == nil {
+		return guiapi.WalletView{}
+	}
+	return a.engine.Wallet(lang)
+}
+
+// RequestHint serves a tier-1 nudge or paid tier-2/3 hint (paid tiers may
+// block up to 45s when an AI mentor is configured — the frontend awaits it).
+func (a *App) RequestHint(lang, id string, tier int, code string) guiapi.HintResult {
+	if a.engine == nil {
+		return guiapi.HintResult{Err: "engine not loaded"}
+	}
+	return a.engine.RequestHint(lang, id, tier, code)
+}
+
+// GetWriteup returns the write-up form state for one problem.
+func (a *App) GetWriteup(lang, id string) guiapi.WriteupView {
+	if a.engine == nil {
+		return guiapi.WriteupView{ProblemID: id}
+	}
+	return a.engine.Writeup(lang, id)
+}
+
+// SubmitWriteup grades the MCQ + free text; acceptance banks the solve fully.
+func (a *App) SubmitWriteup(lang, id string, mcqIdx int, text string) guiapi.WriteupResult {
+	if a.engine == nil {
+		return guiapi.WriteupResult{Err: "engine not loaded"}
+	}
+	return a.engine.SubmitWriteup(lang, id, mcqIdx, text)
+}
+
+// GetGate returns lang's graduation-gate (Blind 75) progress.
+func (a *App) GetGate(lang string) guiapi.GateView {
+	if a.engine == nil {
+		return guiapi.GateView{}
+	}
+	return a.engine.Gate(lang)
+}
+
+// MentorStatusView mirrors mentor.Status for the JS binding (this module
+// sits outside the devascent tree, so it can't import internal/mentor).
+type MentorStatusView struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Present  bool   `json:"present"`
+	Info     string `json:"info"`
+	Selected bool   `json:"selected"`
+	Probed   bool   `json:"probed"`
+	ProbeOK  bool   `json:"probeOk"`
+	ProbeErr string `json:"probeErr"`
+}
+
+// GetMentorBackends lists templates + every detected AI backend.
+func (a *App) GetMentorBackends() []MentorStatusView {
+	if a.engine == nil {
+		return nil
+	}
+	var out []MentorStatusView
+	for _, s := range a.engine.MentorBackends() {
+		out = append(out, MentorStatusView{
+			ID: s.ID, Name: s.Name, Present: s.Present, Info: s.Info,
+			Selected: s.Selected, Probed: s.Probed, ProbeOK: s.ProbeOK, ProbeErr: s.ProbeErr,
+		})
+	}
+	return out
+}
+
+// ProbeMentor runs the canary round-trip (may take ~90s); error message or "".
+func (a *App) ProbeMentor(id string) string {
+	if a.engine == nil {
+		return "engine not loaded"
+	}
+	return a.engine.ProbeMentor(id)
+}
+
+// SelectMentor probes then persists a backend choice; error message or "".
+func (a *App) SelectMentor(id string) string {
+	if a.engine == nil {
+		return "engine not loaded"
+	}
+	return a.engine.SelectMentor(id)
+}
+
+// SetMentorEndpoint stores openai-compat connection details (+model override).
+func (a *App) SetMentorEndpoint(endpoint, model, apiKey string) string {
+	if a.engine == nil {
+		return "engine not loaded"
+	}
+	return a.engine.SetMentorEndpoint(endpoint, model, apiKey)
+}
+
+// GetMentorPreview returns the exact prompt a hint request would send.
+func (a *App) GetMentorPreview(lang, id string, tier int, code string) string {
+	if a.engine == nil {
+		return ""
+	}
+	return a.engine.MentorPreview(lang, id, tier, code)
+}
+
 // ── Orientation (entrance test) ───────────────────────────────────────────────
 
 // StartOrientation begins a new entrance test for lang at the given self-report

@@ -1,6 +1,8 @@
 # Canonical NeetCode 150 — Heap / Priority Queue (original prompts, own solutions).
 # Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
 - id: nc-last-stone-weight
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
   title: Last Stone Weight
   difficulty: easy
   pattern: heap
@@ -41,6 +43,8 @@
     - {name: case 3, input: [[2,2]], expected: 0}
 
 - id: nc-kth-largest-element
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
   title: Kth Largest Element in an Array
   difficulty: medium
   pattern: heap
@@ -75,6 +79,8 @@
     - {name: case 3, input: [[1], 1], expected: 1}
 
 - id: nc-task-scheduler
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Task Scheduler
   difficulty: medium
   pattern: heap
@@ -109,6 +115,8 @@
     - {name: case 3, input: [["A","A","A","A","A","A","B","C","D","E","F","G"], 2], expected: 16}
 
 - id: nc-k-closest-points
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
   title: K Closest Points to Origin
   difficulty: medium
   pattern: heap

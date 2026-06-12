@@ -1,6 +1,8 @@
 # Canonical NeetCode 150 — Backtracking (original prompts, own solutions).
 # Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
 - id: nc-subsets
+  time_complexity: "O(2^n)"
+  space_complexity: "O(n)"
   title: Subsets
   difficulty: medium
   pattern: backtracking
@@ -39,6 +41,8 @@
     - {name: case 3, input: [[1]], expected: [[],[1]]}
 
 - id: nc-combination-sum
+  time_complexity: "O(2^n)"
+  space_complexity: "O(n)"
   title: Combination Sum
   difficulty: medium
   pattern: backtracking
@@ -83,6 +87,8 @@
     - {name: case 3, input: [[7], 7], expected: [[7]]}
 
 - id: nc-permutations
+  time_complexity: "O(n!)"
+  space_complexity: "O(n)"
   title: Permutations
   difficulty: medium
   pattern: backtracking
@@ -122,6 +128,8 @@
     - {name: case 3, input: [[1]], expected: [[1]]}
 
 - id: nc-letter-combinations
+  time_complexity: "O(2^n)"
+  space_complexity: "O(n)"
   title: Letter Combinations of a Phone Number
   difficulty: medium
   pattern: backtracking
@@ -166,6 +174,8 @@
     - {name: case 3, input: ["7"], expected: ["p","q","r","s"]}
 
 - id: nc-word-search
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
   title: Word Search
   difficulty: medium
   pattern: backtracking
@@ -219,6 +229,8 @@
       expected: false
 
 - id: nc-n-queens
+  time_complexity: "O(n!)"
+  space_complexity: "O(n)"
   title: N-Queens
   difficulty: hard
   pattern: backtracking

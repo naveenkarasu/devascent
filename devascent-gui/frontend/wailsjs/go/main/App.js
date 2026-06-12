@@ -22,6 +22,10 @@ export function GetAdvancedTopics(arg1) {
   return window['go']['main']['App']['GetAdvancedTopics'](arg1);
 }
 
+export function GetGate(arg1) {
+  return window['go']['main']['App']['GetGate'](arg1);
+}
+
 export function GetInstallGuide(arg1) {
   return window['go']['main']['App']['GetInstallGuide'](arg1);
 }
@@ -32,6 +36,14 @@ export function GetLangPresence() {
 
 export function GetLesson(arg1) {
   return window['go']['main']['App']['GetLesson'](arg1);
+}
+
+export function GetMentorBackends() {
+  return window['go']['main']['App']['GetMentorBackends']();
+}
+
+export function GetMentorPreview(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['GetMentorPreview'](arg1, arg2, arg3, arg4);
 }
 
 export function GetPrimer(arg1, arg2) {
@@ -52,6 +64,14 @@ export function GetProgress(arg1) {
 
 export function GetVersion() {
   return window['go']['main']['App']['GetVersion']();
+}
+
+export function GetWallet(arg1) {
+  return window['go']['main']['App']['GetWallet'](arg1);
+}
+
+export function GetWriteup(arg1, arg2) {
+  return window['go']['main']['App']['GetWriteup'](arg1, arg2);
 }
 
 export function Grade(arg1, arg2, arg3) {
@@ -78,12 +98,28 @@ export function NextProblem(arg1, arg2) {
   return window['go']['main']['App']['NextProblem'](arg1, arg2);
 }
 
+export function ProbeMentor(arg1) {
+  return window['go']['main']['App']['ProbeMentor'](arg1);
+}
+
 export function RecheckLang(arg1) {
   return window['go']['main']['App']['RecheckLang'](arg1);
 }
 
+export function RequestHint(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['RequestHint'](arg1, arg2, arg3, arg4);
+}
+
 export function ResumeTutorial() {
   return window['go']['main']['App']['ResumeTutorial']();
+}
+
+export function SelectMentor(arg1) {
+  return window['go']['main']['App']['SelectMentor'](arg1);
+}
+
+export function SetMentorEndpoint(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetMentorEndpoint'](arg1, arg2, arg3);
 }
 
 export function StartDevLiteracy() {
@@ -112,4 +148,8 @@ export function SubmitOrientationCode(arg1) {
 
 export function SubmitOrientationSpec(arg1) {
   return window['go']['main']['App']['SubmitOrientationSpec'](arg1);
+}
+
+export function SubmitWriteup(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SubmitWriteup'](arg1, arg2, arg3, arg4);
 }

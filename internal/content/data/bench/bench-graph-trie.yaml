@@ -5,6 +5,8 @@
 
 # ── Graph (plain grid / adjacency-list I/O) ──────────────────────────────────
 - id: number-of-islands
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
   title: Number of Islands
   difficulty: medium
   pattern: graph
@@ -58,6 +60,8 @@
       expected: 0
 
 - id: course-schedule
+  time_complexity: "O(V+E)"
+  space_complexity: "O(V+E)"
   title: Course Schedule
   difficulty: medium
   pattern: graph
@@ -110,6 +114,8 @@
 
 # ── Trie (design / op-list; dispatch loop scaffolded) ────────────────────────
 - id: implement-trie
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Implement Trie (Prefix Tree)
   difficulty: medium
   pattern: trie

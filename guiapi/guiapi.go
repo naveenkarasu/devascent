@@ -34,6 +34,7 @@ type Engine struct {
 type slot struct {
 	st     save.State
 	solved map[string]bool
+	nudges map[string]int // per-problem nudge escalation (session-only)
 }
 
 // New loads the content catalog and the grader. Save slots load lazily per
@@ -68,7 +69,7 @@ func (e *Engine) getSlot(lang string) *slot {
 	if sl, ok := e.slots[lang]; ok {
 		return sl
 	}
-	sl := &slot{solved: map[string]bool{}}
+	sl := &slot{solved: map[string]bool{}, nudges: map[string]int{}}
 	if st, err := save.LoadLang(lang); err == nil && st != nil {
 		sl.st = *st
 		for _, id := range st.SolvedIDs {
@@ -121,6 +122,7 @@ type ProblemSummary struct {
 	Category   string   `json:"category"`
 	Lists      []string `json:"lists"` // curated-list tags (blind75, neetcode150, …)
 	Solved     bool     `json:"solved"`
+	Writeup    bool     `json:"writeup"` // write-up complete (solved && !writeup = provisional)
 }
 
 // Problems returns the full bench problem list (browse view) with lang's
@@ -133,8 +135,9 @@ func (e *Engine) Problems(lang string) []ProblemSummary {
 	for _, p := range e.cat.Problems {
 		out = append(out, ProblemSummary{
 			ID: p.ID, Title: p.Title, Difficulty: p.Difficulty, Category: p.Category,
-			Lists:  p.Lists,
-			Solved: sl.solved[p.ID],
+			Lists:   p.Lists,
+			Solved:  sl.solved[p.ID],
+			Writeup: sl.record(p.ID).WriteupDone,
 		})
 	}
 	return out
@@ -194,6 +197,11 @@ type GradeResult struct {
 	Banked      bool   `json:"banked"`      // this problem is in the banked set
 	NewlyBanked bool   `json:"newlyBanked"` // this pass banked it for the first time
 	SaveErr     string `json:"saveErr"`     // persistence failure (grade still valid)
+
+	// Track A (set on the bench path): token payout for a clean first bank,
+	// and whether the write-up gate is still open for this problem.
+	TokensAwarded  int  `json:"tokensAwarded"`
+	WriteupPending bool `json:"writeupPending"`
 }
 
 // Grade runs the player's code against the problem's hidden tests in lang,
@@ -214,6 +222,9 @@ func (e *Engine) Grade(lang, id, code string) GradeResult {
 	if res.Passed {
 		res.Banked = true
 		res.NewlyBanked, res.SaveErr = e.bank(lang, id)
+		res.TokensAwarded, res.WriteupPending = e.trackABank(lang, p)
+	} else {
+		e.trackAFail(lang, id)
 	}
 	return res
 }

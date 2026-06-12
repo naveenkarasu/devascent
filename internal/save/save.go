@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const SchemaVersion = 3 // 3 = per-language slot files
+const SchemaVersion = 4 // 3 = per-language slot files; 4 = +wallet/solve records (additive)
 
 type State struct {
 	SchemaVersion int    `json:"schema_version"`
@@ -50,7 +50,31 @@ type State struct {
 	SolvedIDs   []string `json:"solved_ids"` // distinct problems banked across the whole bench
 	Step0Done   bool     `json:"step0_done"` // completion milestone reached
 
+	// Track A (v4): hint economy wallet + per-problem solve records. Additive —
+	// a v3 save loads with zero values and WalletInit=false triggers the
+	// starting grant on first bench entry.
+	Tokens            int                    `json:"tokens"`
+	WalletInit        bool                   `json:"wallet_init"`
+	NudgeCharges      int                    `json:"nudge_charges"`
+	NudgeRechargeAt   string                 `json:"nudge_recharge_at"` // RFC3339 accrual anchor
+	SolveRecords      map[string]SolveRecord `json:"solve_records,omitempty"`
+	MilestonesAwarded []string               `json:"milestones_awarded,omitempty"` // gate categories already paid out
+
 	UpdatedAt string `json:"updated_at"`
+}
+
+// SolveRecord is per-problem A1/A2 state, keyed by problem ID alongside
+// SolvedIDs. Created on first hint use or first grading attempt. A problem in
+// SolvedIDs without WriteupDone is a PROVISIONAL solve (passed the tests, not
+// yet explained); WriteupDone makes it fully banked for the graduation gate.
+type SolveRecord struct {
+	HintTier    int    `json:"hint_tier"`              // max paid tier used: 0 none, 2 strategy, 3 walkthrough (nudges never recorded)
+	PityUsed    bool   `json:"pity_used,omitempty"`    // the one-time free strategy hint
+	FailedRuns  int    `json:"failed_runs,omitempty"`  // failed grade attempts (pity eligibility)
+	FirstTryAt  string `json:"first_try_at,omitempty"` // RFC3339 of first grade attempt (pity eligibility)
+	WriteupDone bool   `json:"writeup_done,omitempty"`
+	WriteupText string `json:"writeup_text,omitempty"` // shown to the A4 mentor; never content-graded
+	MCQCorrect  bool   `json:"mcq_correct,omitempty"`
 }
 
 // Profile is the per-language slot summary shown by profile pickers.
@@ -62,6 +86,11 @@ type Profile struct {
 	Banked    int    `json:"banked"` // distinct problems banked
 	UpdatedAt string `json:"updatedAt"`
 }
+
+// Dir returns the directory that holds the save files (exported for sibling
+// machine-level config like the mentor selection, which lives next to the
+// slots and honors DEVASCENT_SAVE_DIR in tests).
+func Dir() (string, error) { return dir() }
 
 // dir returns the directory that holds the save files.
 // If DEVASCENT_SAVE_DIR is set, that value is used directly;

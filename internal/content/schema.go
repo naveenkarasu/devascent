@@ -142,6 +142,12 @@ type Problem struct {
 	// the clean version). Curated-list counts are by distinct slug; serving a list
 	// picks one random variant per slug. Defaults to Slugify(Title).
 	Slug string `yaml:"slug"`
+
+	// Canonical complexity of the reference solution (worst case, tightest bound
+	// from the fixed ladder in engine.ComplexityLadder). Drives the write-up MCQ;
+	// never shown before the problem is solved.
+	TimeComplexity  string `yaml:"time_complexity"`
+	SpaceComplexity string `yaml:"space_complexity"`
 }
 
 // CanonicalSlug returns the explicit Slug or, if empty, Slugify(Title).

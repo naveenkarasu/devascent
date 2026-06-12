@@ -3,6 +3,8 @@
 # writes the core algorithm. Original prompts; grader-validated.
 
 - id: nc-linked-list-cycle
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Linked List Cycle
   difficulty: easy
   pattern: linked-list
@@ -64,6 +66,8 @@
     - {name: case 3, input: [[1], -1], expected: false}
 
 - id: nc-merge-k-sorted
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
   title: Merge k Sorted Lists
   difficulty: hard
   pattern: linked-list
@@ -102,6 +106,8 @@
     - {name: case 3, input: [[[]]], expected: []}
 
 - id: nc-reorder-list
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Reorder List
   difficulty: medium
   pattern: linked-list
@@ -156,6 +162,8 @@
     - {name: case 3, input: [[1]], expected: [1]}
 
 - id: nc-encode-decode-strings
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Encode and Decode Strings
   difficulty: medium
   pattern: string
@@ -209,6 +217,8 @@
     - {name: case 3, input: [["a#b","2#c"]], expected: ["a#b","2#c"]}
 
 - id: nc-clone-graph
+  time_complexity: "O(V+E)"
+  space_complexity: "O(V+E)"
   title: Clone Graph
   difficulty: medium
   pattern: graph

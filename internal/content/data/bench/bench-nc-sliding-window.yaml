@@ -1,6 +1,8 @@
 # Canonical NeetCode 150 — Two Pointers & Sliding Window (original prompts, own solutions).
 # Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
 - id: nc-best-time-stock
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Best Time to Buy and Sell Stock
   difficulty: easy
   pattern: sliding-window
@@ -36,6 +38,8 @@
     - {name: case 3, input: [[2,4,1]], expected: 2}
 
 - id: nc-longest-substring
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Longest Substring Without Repeating Characters
   difficulty: medium
   pattern: sliding-window
@@ -72,6 +76,8 @@
     - {name: case 3, input: [""], expected: 0}
 
 - id: nc-char-replacement
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Longest Repeating Character Replacement
   difficulty: medium
   pattern: sliding-window
@@ -113,6 +119,8 @@
     - {name: case 3, input: ["A", 0], expected: 1}
 
 - id: nc-permutation-in-string
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Permutation in String
   difficulty: medium
   pattern: sliding-window
@@ -156,6 +164,8 @@
     - {name: case 3, input: ["a", "b"], expected: false}
 
 - id: nc-min-window-substring
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Minimum Window Substring
   difficulty: hard
   pattern: sliding-window
@@ -210,6 +220,8 @@
     - {name: case 3, input: ["a", "aa"], expected: ""}
 
 - id: nc-sliding-window-max
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Sliding Window Maximum
   difficulty: hard
   pattern: sliding-window

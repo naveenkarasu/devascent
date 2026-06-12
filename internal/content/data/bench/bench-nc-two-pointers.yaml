@@ -1,5 +1,7 @@
 # Canonical NeetCode 150 — Two Pointers (original prompts, own solutions).
 - id: nc-valid-palindrome
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Valid Palindrome
   difficulty: easy
   pattern: two-pointers
@@ -37,6 +39,8 @@
     - {name: case 3, input: [" "], expected: true}
 
 - id: nc-two-sum-ii
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Two Sum II - Input Array Is Sorted
   difficulty: medium
   pattern: two-pointers
@@ -74,6 +78,8 @@
     - {name: case 3, input: [[-1,0], -1], expected: [1,2]}
 
 - id: nc-container-most-water
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Container With Most Water
   difficulty: medium
   pattern: two-pointers
@@ -110,6 +116,8 @@
     - {name: case 3, input: [[4,3,2,1,4]], expected: 16}
 
 - id: nc-trapping-rain-water
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Trapping Rain Water
   difficulty: hard
   pattern: two-pointers
@@ -151,6 +159,8 @@
     - {name: case 3, input: [[]], expected: 0}
 
 - id: nc-3sum
+  time_complexity: "O(n^2)"
+  space_complexity: "O(n)"
   title: 3Sum
   difficulty: medium
   pattern: two-pointers

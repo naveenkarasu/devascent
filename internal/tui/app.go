@@ -12,8 +12,10 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"devascent/internal/content"
+	"devascent/internal/economy"
 	"devascent/internal/engine"
 	"devascent/internal/grader"
+	"devascent/internal/mentor"
 	"devascent/internal/save"
 	"devascent/internal/toolchain"
 )
@@ -39,6 +41,9 @@ const (
 	screenAdvancedTopic
 	screenInstallHelp
 	screenProfilePick
+	screenWriteup // A1: post-solve write-up gate (MCQ + approach note)
+	screenGate    // A3: Blind-75 graduation gate progress
+	screenMentor  // A4: AI mentor picker
 )
 
 // Step 0 completion milestone targets — aliased from internal/engine (the
@@ -80,6 +85,20 @@ type langProbesMsg struct{}
 
 // advGradeMsg carries the result of grading an Advanced-Topics exercise attempt.
 type advGradeMsg struct{ v grader.Verdict }
+
+// hintMsg carries an async mentor reply (paid hint tiers); cost is refunded
+// when the AI fell back to templates.
+type hintMsg struct {
+	resp mentor.Response
+	tier int
+	cost int
+}
+
+// mentorSelectMsg carries the result of probing+selecting a mentor backend.
+type mentorSelectMsg struct {
+	id  string
+	err error
+}
 
 // langExt is the source-file extension for a language, so the editor opens the
 // player's attempt with correct syntax highlighting.
@@ -197,6 +216,30 @@ type Model struct {
 	solvedSet    map[string]bool            // distinct problems banked across the whole bench
 	step0Done    bool                       // completion milestone reached
 	probByID     map[string]content.Problem // catalog index for stats lookups
+
+	// Track A: hint economy + write-up gate + graduation gate + mentor
+	wallet       economy.Wallet
+	solveRecords map[string]save.SolveRecord // per-problem hint/write-up state
+	milestones   []string                    // gate categories already paid out
+	nudgeUsed    map[string]int              // per-problem nudge escalation (session)
+	hintMode     bool                        // hint picker open over the bench task
+	hintBusy     bool                        // awaiting an async mentor reply
+	hintArm      int                         // paid tier armed for confirm (0 = none)
+	hintText     string                      // last hint, kept under the task
+	hintNote     string                      // source/refund line under the hint
+	wuQueue      []string                    // problem IDs queued for write-up
+	wuQIdx       int
+	wuFromBench  bool // write-up entered from a fresh solve (continue bench after)
+	wuMCQ        engine.MCQ
+	wuHasMCQ     bool
+	wuSel        int
+	wuPhase      int // 0 = MCQ, 1 = approach note
+	wuErr        string
+	wuAward      int // tokens from the bank that opened this write-up (flash)
+	mentorRows   []mentor.Status
+	mentorIdx    int
+	mentorBusy   bool
+	mentorNote   string
 }
 
 func New() Model {
@@ -210,6 +253,8 @@ func New() Model {
 	}
 	m.cat = cat
 	m.solvedSet = map[string]bool{}
+	m.solveRecords = map[string]save.SolveRecord{}
+	m.nudgeUsed = map[string]int{}
 	m.probByID = map[string]content.Problem{}
 	for _, p := range cat.Problems {
 		m.probByID[p.ID] = p
@@ -306,7 +351,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			default:
 				m.status = "Some tests failed — edit ([e]) and run again ([r])."
 			}
+			// Pity-rule bookkeeping: failed bench attempts accumulate toward the
+			// one-time free strategy hint.
+			if m.ctx == ctxBench && !v.Passed && !m.solvedSet[m.curProblem.ID] {
+				m.recordFail(m.curProblem.ID)
+			}
 		}
+		return m, nil
+	case hintMsg:
+		m.hintBusy = false
+		m.hintText = msg.resp.Text
+		m.hintNote = "from " + msg.resp.Source
+		if msg.resp.FellBack && msg.cost > 0 {
+			m.wallet.Refund(msg.cost)
+			m.hintNote = "mentor unavailable — answered from the playbook, token refunded"
+			m.persist()
+		}
+		return m, nil
+	case mentorSelectMsg:
+		m.mentorBusy = false
+		if msg.err != nil {
+			m.mentorNote = "✗ " + msg.err.Error()
+		} else {
+			m.mentorNote = "✓ mentor set: " + msg.id
+		}
+		m.mentorRows = tuiMentor().Statuses()
 		return m, nil
 	case langProbesMsg:
 		return m, nil // detector cache now populated; re-render the picker
@@ -451,13 +520,31 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case screenBenchMenu:
 		return m.handleBenchMenuKey(msg)
 	case screenBench:
+		if m.hintMode { // hint picker is modal over the task
+			return m.handleHintKey(msg)
+		}
 		if msg.String() == "m" { // back to the browse menu
 			return m.startBench()
 		}
 		if msg.String() == "l" { // learn: show this pattern's primer
 			return m.showPrimer()
 		}
+		if msg.String() == "h" && m.task != nil { // hints (A2)
+			m.ensureWallet()
+			m.hintMode = true
+			m.hintArm = 0
+			return m, nil
+		}
 		return m.handleTaskKey(msg)
+	case screenWriteup:
+		return m.handleWriteupKey(msg)
+	case screenGate:
+		if msg.String() == "esc" || msg.String() == "m" || msg.String() == "enter" {
+			return m.startBench()
+		}
+		return m, nil
+	case screenMentor:
+		return m.handleMentorKey(msg)
 	case screenStep0Complete:
 		if msg.String() == "enter" { // keep practicing
 			return m.startBench()
@@ -875,6 +962,13 @@ func (m Model) handleInputKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyEnter:
 		return m.submitInput()
 	case tea.KeyEsc, tea.KeyCtrlC:
+		if m.screen == screenWriteup && msg.Type == tea.KeyEsc {
+			// Leave the note field, back to the question (or [s] to skip).
+			m.inputActive = false
+			m.wuPhase = 0
+			m.wuErr = ""
+			return m, nil
+		}
 		m.persist()
 		m.quitting = true
 		return m, tea.Quit
@@ -896,6 +990,9 @@ func (m Model) submitInput() (tea.Model, tea.Cmd) {
 	if ans == "" {
 		m.status = "Type an answer first."
 		return m, nil
+	}
+	if m.screen == screenWriteup { // approach note (A1)
+		return m.submitWriteupText(ans)
 	}
 	if m.screen == screenDiagnostic { // spec item
 		passed := specMatch(ans, m.curDiag.Spec)
@@ -1358,6 +1455,20 @@ func (m Model) startBench() (tea.Model, tea.Cmd) {
 			kind:  "devlit",
 		})
 	}
+	// Track A entries: pending write-ups (provisional solves), the graduation
+	// gate, and the AI mentor picker.
+	m.ensureWallet()
+	if n := len(m.provisionalIDs()); n > 0 {
+		m.benchMenu = append(m.benchMenu, benchOption{
+			label: fmt.Sprintf("✍ Write-ups pending (%d) — explain to bank fully (+1 token each)", n),
+			kind:  "writeups",
+		})
+	}
+	g := m.gateProgress()
+	m.benchMenu = append(m.benchMenu,
+		benchOption{label: fmt.Sprintf("🎓 Graduation gate — Blind 75 (%d/%d)", g.Full, g.Target), kind: "gate"},
+		benchOption{label: "🤖 AI mentor — " + m.mentorLabel(), kind: "mentor"},
+	)
 	m.benchMenuIdx = 0
 	m.screen = screenBenchMenu
 	m.ctx = ctxNone
@@ -1384,6 +1495,16 @@ func (m Model) handleBenchMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if opt.kind == "devlit" {
 				m.devRevisit = true
 				return m.startDevLiteracy()
+			}
+			if opt.kind == "writeups" {
+				return m.openWriteups(m.provisionalIDs(), false)
+			}
+			if opt.kind == "gate" {
+				m.screen = screenGate
+				return m, nil
+			}
+			if opt.kind == "mentor" {
+				return m.openMentorPicker()
 			}
 			return m.startBenchFiltered(opt)
 		}
@@ -1416,7 +1537,8 @@ func (m *Model) enterProblem() {
 	t := codeTask{prompt: p.Prompt, funcName: p.FuncName, code: p.Starter, tests: p.Tests, shape: p.GraderShape()}
 	m.task = &t
 	m.applyLangStarter(p.Solution)
-	m.status = "Press [e] to write your code, [r] to run, [s] to skip. " + editorHint(m.editorChoice)
+	m.hintMode, m.hintText, m.hintNote, m.hintArm = false, "", "", 0
+	m.status = "Press [e] to write your code, [r] to run, [h] for a hint, [s] to skip. " + editorHint(m.editorChoice)
 }
 
 // gradingAvailable / applyLangStarter delegate the language dispatch to
@@ -1437,24 +1559,59 @@ func (m *Model) applyLangStarter(pySource string) {
 	}
 }
 
-// benchNext advances to the next problem (solved=true banks it). Reaching the
-// Step 0 completion milestone routes to the completion screen (once).
+// benchNext routes a finished problem: solved banks it (provisionally) and
+// opens the write-up gate; a skip just advances.
 func (m Model) benchNext(solved bool) (tea.Model, tea.Cmd) {
 	if solved {
-		m.benchSolved++
+		return m.benchSolvedNow()
+	}
+	return m.benchAdvance()
+}
+
+// benchSolvedNow banks the current problem (provisional until its write-up),
+// pays the clean-solve award, and opens the write-up gate (A1) before the
+// bench continues.
+func (m Model) benchSolvedNow() (tea.Model, tea.Cmd) {
+	m.ensureWallet()
+	id := m.curProblem.ID
+	if !m.solvedSet[id] {
 		if m.solvedSet == nil {
 			m.solvedSet = map[string]bool{}
 		}
-		m.solvedSet[m.curProblem.ID] = true
-		if !m.step0Done && m.step0Met() {
-			m.step0Done = true
-			m.screen = screenStep0Complete
-			m.ctx = ctxNone
-			m.task = nil
-			m.persist()
-			return m, nil
+		m.solvedSet[id] = true
+		m.benchSolved++
+		m.wuAward = 0
+		rec := m.solveRecords[id]
+		if rec.HintTier == economy.TierNone && !rec.PityUsed {
+			m.wuAward = economy.SolveAward(m.curProblem.Difficulty)
+			m.wallet.Award(m.wuAward)
+		}
+		m.persist()
+		if !rec.WriteupDone {
+			return m.openWriteups([]string{id}, true)
 		}
 	}
+	return m.benchContinue()
+}
+
+// benchContinue is the post-bank half: milestone screen check, then advance.
+func (m Model) benchContinue() (tea.Model, tea.Cmd) {
+	if !m.step0Done && m.step0Met() {
+		m.step0Done = true
+		m.screen = screenStep0Complete
+		m.ctx = ctxNone
+		m.task = nil
+		m.persist()
+		return m, nil
+	}
+	return m.benchAdvance()
+}
+
+// benchAdvance moves to the next problem in the pool.
+func (m Model) benchAdvance() (tea.Model, tea.Cmd) {
+	m.screen = screenBench
+	m.ctx = ctxBench
+	m.hintMode, m.hintText, m.hintNote = false, "", ""
 	m.benchIdx++
 	if m.benchIdx >= len(m.bench) {
 		m.task = nil // exhausted the pool
@@ -1533,6 +1690,12 @@ func (m Model) currentState() save.State {
 		SolvedIDs:    solvedSlice(m.solvedSet),
 		Step0Done:    m.step0Done,
 	}
+	// Track A state rides along on every save (zero values for pre-bench runs).
+	m.wallet.Store(&s)
+	if len(m.solveRecords) > 0 {
+		s.SolveRecords = m.solveRecords
+	}
+	s.MilestonesAwarded = m.milestones
 	switch m.screen {
 	case screenLesson:
 		s.Stage = "tutorial"
@@ -1543,7 +1706,7 @@ func (m Model) currentState() save.State {
 		s.DevIdx = m.devIdx
 	case screenStep0Complete:
 		s.Stage = "step0done"
-	case screenBench:
+	case screenBench, screenWriteup, screenGate, screenMentor:
 		s.Stage = "bench"
 	case screenResults:
 		s.Stage = "results"
@@ -1561,7 +1724,8 @@ func (m Model) currentState() save.State {
 // persist best-effort saves progress once the run has actually started.
 func (m Model) persist() {
 	switch m.screen {
-	case screenDiagnostic, screenTestOut, screenResults, screenDevLiteracy, screenLesson, screenHandoff, screenBench, screenStep0Complete:
+	case screenDiagnostic, screenTestOut, screenResults, screenDevLiteracy, screenLesson, screenHandoff,
+		screenBench, screenStep0Complete, screenWriteup, screenGate, screenMentor:
 		_ = save.SaveLang(m.lang, m.currentState())
 	}
 }
@@ -1601,6 +1765,16 @@ func (m Model) applyResume() (tea.Model, tea.Cmd) {
 	m.solvedSet = map[string]bool{}
 	for _, id := range s.SolvedIDs {
 		m.solvedSet[id] = true
+	}
+	// Track A state (zero values on pre-v4 saves; the wallet grants on load).
+	m.solveRecords = map[string]save.SolveRecord{}
+	for id, r := range s.SolveRecords {
+		m.solveRecords[id] = r
+	}
+	m.milestones = s.MilestonesAwarded
+	m.wallet = economy.Load(s, time.Now())
+	if m.nudgeUsed == nil {
+		m.nudgeUsed = map[string]int{}
 	}
 	switch s.Stage {
 	case "step0done":
@@ -1877,8 +2051,16 @@ func (m Model) View() string {
 		if m.benchFilter != "" {
 			sub += "  ·  " + m.benchFilter
 		}
+		sub += "  ·  " + m.walletLine()
 		b.WriteString(dimStyle.Render(sub) + "\n\n")
 		b.WriteString(m.renderTask())
+		b.WriteString(m.renderHintPanel())
+	case screenWriteup:
+		b.WriteString(m.renderWriteup())
+	case screenGate:
+		b.WriteString(m.renderGate())
+	case screenMentor:
+		b.WriteString(m.renderMentor())
 	case screenPrimer:
 		pr := m.primer
 		pages := m.primerPages()

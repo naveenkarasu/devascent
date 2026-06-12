@@ -1,6 +1,8 @@
 # Canonical NeetCode 150 — Stack (original prompts, own solutions).
 # Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
 - id: nc-valid-parentheses
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Valid Parentheses
   difficulty: easy
   pattern: stack
@@ -37,6 +39,8 @@
     - {name: case 3, input: ["(]"], expected: false}
 
 - id: nc-eval-rpn
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Evaluate Reverse Polish Notation
   difficulty: medium
   pattern: stack
@@ -81,6 +85,8 @@
     - {name: case 3, input: [["3","4","+","2","*"]], expected: 14}
 
 - id: nc-generate-parentheses
+  time_complexity: "O(2^n)"
+  space_complexity: "O(n)"
   title: Generate Parentheses
   difficulty: medium
   pattern: stack
@@ -120,6 +126,8 @@
     - {name: case 3, input: [3], expected: ["((()))","(()())","(())()","()(())","()()()"]}
 
 - id: nc-daily-temperatures
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Daily Temperatures
   difficulty: medium
   pattern: stack
@@ -155,6 +163,8 @@
     - {name: case 3, input: [[30,60,90]], expected: [1,1,0]}
 
 - id: nc-car-fleet
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
   title: Car Fleet
   difficulty: medium
   pattern: stack
@@ -190,6 +200,8 @@
     - {name: case 3, input: [10,[6,8],[3,2]], expected: 2}
 
 - id: nc-largest-rectangle
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Largest Rectangle in Histogram
   difficulty: hard
   pattern: stack

@@ -1,6 +1,8 @@
 # Canonical NeetCode 150 — 1-D Dynamic Programming (original prompts, own solutions).
 # Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
 - id: nc-min-cost-climbing
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Min Cost Climbing Stairs
   difficulty: easy
   pattern: dp
@@ -33,6 +35,8 @@
     - {name: case 3, input: [[0,0,0,0]], expected: 0}
 
 - id: nc-house-robber
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: House Robber
   difficulty: medium
   pattern: dp
@@ -70,6 +74,8 @@
     - {name: case 3, input: [[1]], expected: 1}
 
 - id: nc-house-robber-ii
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: House Robber II
   difficulty: medium
   pattern: dp
@@ -113,6 +119,8 @@
     - {name: case 3, input: [[1]], expected: 1}
 
 - id: nc-longest-palindrome-substr
+  time_complexity: "O(n^2)"
+  space_complexity: "O(1)"
   title: Longest Palindromic Substring
   difficulty: medium
   pattern: dp
@@ -159,6 +167,8 @@
     - {name: case 3, input: ["a"], expected: "a"}
 
 - id: nc-palindromic-substrings
+  time_complexity: "O(n^2)"
+  space_complexity: "O(1)"
   title: Palindromic Substrings
   difficulty: medium
   pattern: dp
@@ -199,6 +209,8 @@
     - {name: case 3, input: ["a"], expected: 1}
 
 - id: nc-decode-ways
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Decode Ways
   difficulty: medium
   pattern: dp
@@ -239,6 +251,8 @@
     - {name: case 3, input: ["06"], expected: 0}
 
 - id: nc-coin-change-2-not
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Maximum Product Subarray
   difficulty: medium
   pattern: dp
@@ -273,6 +287,8 @@
     - {name: case 3, input: [[-2,3,-4]], expected: 24}
 
 - id: nc-word-break
+  time_complexity: "O(n^2)"
+  space_complexity: "O(n)"
   title: Word Break
   difficulty: medium
   pattern: dp
@@ -311,6 +327,8 @@
     - {name: case 3, input: ["catsandog", ["cats","dog","sand","and","cat"]], expected: false}
 
 - id: nc-lis
+  time_complexity: "O(n^2)"
+  space_complexity: "O(n)"
   title: Longest Increasing Subsequence
   difficulty: medium
   pattern: dp
@@ -344,6 +362,8 @@
     - {name: case 3, input: [[7,7,7,7]], expected: 1}
 
 - id: nc-partition-equal-subset
+  time_complexity: "O(n^2)"
+  space_complexity: "O(n)"
   title: Partition Equal Subset Sum
   difficulty: medium
   pattern: dp

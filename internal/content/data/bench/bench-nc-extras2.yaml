@@ -1,6 +1,8 @@
 # Canonical NeetCode 150 — extras batch 2 (original prompts, own solutions).
 # Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
 - id: nc-subsets-ii
+  time_complexity: "O(2^n)"
+  space_complexity: "O(n)"
   title: Subsets II
   difficulty: medium
   pattern: backtracking
@@ -43,6 +45,8 @@
     - {name: case 3, input: [[1,2]], expected: [[],[1],[1,2],[2]]}
 
 - id: nc-combination-sum-ii
+  time_complexity: "O(2^n)"
+  space_complexity: "O(n)"
   title: Combination Sum II
   difficulty: medium
   pattern: backtracking
@@ -90,6 +94,8 @@
     - {name: case 3, input: [[1,1,1], 2], expected: [[1,1]]}
 
 - id: nc-palindrome-partitioning
+  time_complexity: "O(2^n)"
+  space_complexity: "O(n)"
   title: Palindrome Partitioning
   difficulty: medium
   pattern: backtracking
@@ -133,6 +139,8 @@
     - {name: case 3, input: ["aa"], expected: [["a","a"],["aa"]]}
 
 - id: nc-min-interval-query
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
   title: Minimum Interval to Include Each Query
   difficulty: hard
   pattern: intervals
@@ -178,6 +186,8 @@
     - {name: case 3, input: [[[1,6]], [3]], expected: [6]}
 
 - id: nc-pow
+  time_complexity: "O(log n)"
+  space_complexity: "O(log n)"
   title: "Pow(x, n)"
   difficulty: medium
   pattern: math
@@ -216,6 +226,8 @@
     - {name: case 3, input: [5, 0], expected: 1}
 
 - id: nc-valid-sudoku
+  time_complexity: "O(1)"
+  space_complexity: "O(1)"
   title: Valid Sudoku
   difficulty: medium
   pattern: hashing

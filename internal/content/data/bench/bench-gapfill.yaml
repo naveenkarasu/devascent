@@ -6,6 +6,8 @@
 
 # ── Intervals ────────────────────────────────────────────────────────────────
 - id: merge-intervals
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
   title: Merge Intervals
   difficulty: medium
   pattern: intervals
@@ -45,6 +47,8 @@
       expected: [[1,4]]
 
 - id: insert-interval
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Insert Interval
   difficulty: medium
   pattern: intervals
@@ -88,6 +92,8 @@
       expected: [[5,7]]
 
 - id: non-overlapping-intervals
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
   title: Non-overlapping Intervals
   difficulty: medium
   pattern: intervals
@@ -131,6 +137,8 @@
       expected: 0
 
 - id: meeting-rooms
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
   title: Meeting Rooms
   difficulty: easy
   pattern: intervals
@@ -169,6 +177,8 @@
 
 # ── Greedy ───────────────────────────────────────────────────────────────────
 - id: jump-game
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Jump Game
   difficulty: medium
   pattern: greedy
@@ -207,6 +217,8 @@
       expected: true
 
 - id: gas-station
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Gas Station
   difficulty: medium
   pattern: greedy
@@ -251,6 +263,8 @@
 
 # ── Dynamic Programming (1-D & 2-D) ──────────────────────────────────────────
 - id: climbing-stairs
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Climbing Stairs
   difficulty: easy
   pattern: dp
@@ -287,6 +301,8 @@
       expected: 8
 
 - id: coin-change
+  time_complexity: "O(m*n)"
+  space_complexity: "O(n)"
   title: Coin Change
   difficulty: medium
   pattern: dp
@@ -326,6 +342,8 @@
       expected: 0
 
 - id: unique-paths
+  time_complexity: "O(m*n)"
+  space_complexity: "O(n)"
   title: Unique Paths
   difficulty: medium
   pattern: dp
@@ -363,6 +381,8 @@
       expected: 1
 
 - id: longest-common-subsequence
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
   title: Longest Common Subsequence
   difficulty: medium
   pattern: dp
@@ -404,6 +424,8 @@
       expected: 0
 
 - id: min-path-sum
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
   title: Minimum Path Sum
   difficulty: medium
   pattern: dp

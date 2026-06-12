@@ -2,6 +2,8 @@
 # Trees are level-order arrays with null for missing children. The player gets a
 # real TreeNode and returns an int/bool/list (ret_kind: raw). Original prompts.
 - id: nc-diameter-tree
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Diameter of Binary Tree
   difficulty: easy
   pattern: tree
@@ -42,6 +44,8 @@
     - {name: case 3, input: [[]], expected: 0}
 
 - id: nc-balanced-tree
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Balanced Binary Tree
   difficulty: easy
   pattern: tree
@@ -82,6 +86,8 @@
     - {name: case 3, input: [[]], expected: true}
 
 - id: nc-subtree-of-another
+  time_complexity: "O(n^2)"
+  space_complexity: "O(n)"
   title: Subtree of Another Tree
   difficulty: easy
   pattern: tree
@@ -124,6 +130,8 @@
     - {name: case 3, input: [[1,1], [1]], expected: true}
 
 - id: nc-validate-bst
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Validate Binary Search Tree
   difficulty: medium
   pattern: tree
@@ -158,6 +166,8 @@
     - {name: case 3, input: [[]], expected: true}
 
 - id: nc-kth-smallest-bst
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Kth Smallest Element in a BST
   difficulty: medium
   pattern: tree
@@ -197,6 +207,8 @@
     - {name: case 3, input: [[1], 1], expected: 1}
 
 - id: nc-level-order
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Binary Tree Level Order Traversal
   difficulty: medium
   pattern: tree
@@ -242,6 +254,8 @@
     - {name: case 3, input: [[]], expected: []}
 
 - id: nc-right-side-view
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Binary Tree Right Side View
   difficulty: medium
   pattern: tree
@@ -287,6 +301,8 @@
     - {name: case 3, input: [[]], expected: []}
 
 - id: nc-lca-bst
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Lowest Common Ancestor of a BST
   difficulty: medium
   pattern: tree
@@ -323,6 +339,8 @@
     - {name: case 3, input: [[2,1,3], 1, 3], expected: 2}
 
 - id: nc-max-path-sum
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Binary Tree Maximum Path Sum
   difficulty: hard
   pattern: tree

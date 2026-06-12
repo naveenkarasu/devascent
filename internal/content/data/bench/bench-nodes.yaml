@@ -6,6 +6,8 @@
 
 # ── Linked List (shape: linkedlist) ──────────────────────────────────────────
 - id: reverse-linked-list
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Reverse Linked List
   difficulty: easy
   pattern: linked-list
@@ -54,6 +56,8 @@
       expected: []
 
 - id: merge-two-sorted-lists
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Merge Two Sorted Lists
   difficulty: easy
   pattern: linked-list
@@ -101,6 +105,8 @@
       expected: []
 
 - id: remove-nth-from-end
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Remove Nth Node From End of List
   difficulty: medium
   pattern: linked-list
@@ -148,6 +154,8 @@
 
 # ── Binary Tree (shape: tree; arrays are level-order with null) ──────────────
 - id: max-depth-binary-tree
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Maximum Depth of Binary Tree
   difficulty: easy
   pattern: tree
@@ -198,6 +206,8 @@
       expected: 0
 
 - id: invert-binary-tree
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Invert Binary Tree
   difficulty: easy
   pattern: tree
@@ -237,6 +247,8 @@
       expected: []
 
 - id: same-tree
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
   title: Same Tree
   difficulty: easy
   pattern: tree

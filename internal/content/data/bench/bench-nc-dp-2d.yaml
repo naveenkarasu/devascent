@@ -1,6 +1,8 @@
 # Canonical NeetCode 150 — 2-D Dynamic Programming (original prompts, own solutions).
 # Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
 - id: nc-edit-distance
+  time_complexity: "O(m*n)"
+  space_complexity: "O(n)"
   title: Edit Distance
   difficulty: hard
   pattern: dp
@@ -40,6 +42,8 @@
     - {name: case 3, input: ["", "abc"], expected: 3}
 
 - id: nc-coin-change-ii
+  time_complexity: "O(m*n)"
+  space_complexity: "O(n)"
   title: Coin Change II
   difficulty: medium
   pattern: dp
@@ -72,6 +76,8 @@
     - {name: case 3, input: [10, [10]], expected: 1}
 
 - id: nc-target-sum
+  time_complexity: "O(n^2)"
+  space_complexity: "O(n)"
   title: Target Sum
   difficulty: medium
   pattern: dp
@@ -106,6 +112,8 @@
     - {name: case 3, input: [[1,0], 1], expected: 2}
 
 - id: nc-best-time-cooldown
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
   title: Best Time to Buy/Sell Stock with Cooldown
   difficulty: medium
   pattern: dp
@@ -141,6 +149,8 @@
     - {name: case 3, input: [[2,1,4]], expected: 3}
 
 - id: nc-longest-increasing-path
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
   title: Longest Increasing Path in a Matrix
   difficulty: hard
   pattern: dp
@@ -184,6 +194,8 @@
     - {name: case 3, input: [[[1]]], expected: 1}
 
 - id: nc-distinct-subsequences
+  time_complexity: "O(m*n)"
+  space_complexity: "O(n)"
   title: Distinct Subsequences
   difficulty: hard
   pattern: dp
@@ -218,6 +230,8 @@
     - {name: case 3, input: ["aaa", "aa"], expected: 3}
 
 - id: nc-interleaving-string
+  time_complexity: "O(m*n)"
+  space_complexity: "O(n)"
   title: Interleaving String
   difficulty: medium
   pattern: dp
