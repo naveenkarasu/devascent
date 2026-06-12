@@ -6,6 +6,7 @@ import { mountBench } from './workbench';
 import { mountOrientation } from './orientation';
 import { mountTutorial } from './tutorial';
 import { mountDevLit } from './devlit';
+import { mountAdvanced } from './advanced';
 import { GradedLanguages, GetLangPresence, GetVersion } from '../wailsjs/go/main/App';
 
 // ── Theme registry ────────────────────────────────────────────
@@ -33,13 +34,14 @@ function applyTheme(id: ThemeId) {
 }
 
 // ── View router ───────────────────────────────────────────────
-type ViewId = 'home' | 'orientation' | 'tutorial' | 'devlit' | 'bench';
+type ViewId = 'home' | 'orientation' | 'tutorial' | 'devlit' | 'bench' | 'advanced';
 const NAV: { id: ViewId; label: string }[] = [
   { id: 'home', label: 'Home' },
   { id: 'orientation', label: 'Entrance Test' },
   { id: 'tutorial', label: 'Tutorial Island' },
   { id: 'devlit', label: 'Dev-Literacy' },
   { id: 'bench', label: 'Bench' },
+  { id: 'advanced', label: 'Advanced' },
 ];
 let view: ViewId = 'home';
 let lang = 'python';
@@ -56,6 +58,7 @@ function render() {
   else if (view === 'orientation') dispose = mountOrientation(root, lang);
   else if (view === 'tutorial') dispose = mountTutorial(root, lang);
   else if (view === 'devlit') dispose = mountDevLit(root);
+  else if (view === 'advanced') dispose = mountAdvanced(root, lang);
   else dispose = mountBench(root, lang);
   document
     .querySelectorAll<HTMLButtonElement>('.nav button')

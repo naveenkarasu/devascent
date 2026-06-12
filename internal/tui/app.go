@@ -38,6 +38,7 @@ const (
 	screenAdvancedList
 	screenAdvancedTopic
 	screenInstallHelp
+	screenProfilePick
 )
 
 // Step 0 completion milestone targets — aliased from internal/engine (the
@@ -131,6 +132,10 @@ type Model struct {
 	resume  *save.State
 	rng     *rand.Rand // run-local RNG (time-seeded; tests pin a fixed seed)
 
+	profiles   []save.Profile // per-language save slots (picker shows when >1)
+	profIdx    int            // cursor on the profile picker
+	devRevisit bool           // dev-literacy entered as bench-menu practice (returns there)
+
 	ctx    taskCtx
 	task   *codeTask
 	status string
@@ -213,6 +218,11 @@ func New() Model {
 	// exactly the old behavior; multi-language players resume the last one).
 	if s, err := save.LoadLatest(); err == nil && s != nil && s.Stage != "" {
 		m.resume = s // offer resume for any prior run (incl. a finished one → its end screen)
+	}
+	// With more than one slot, [c] opens a profile picker instead of silently
+	// resuming the latest (saves are one-per-language, shared with the GUI).
+	if ps, err := save.Profiles(); err == nil {
+		m.profiles = ps
 	}
 	return m
 }
@@ -322,6 +332,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case screenHook:
 		switch msg.String() {
 		case "c":
+			if len(m.profiles) > 1 {
+				m.profIdx = 0
+				m.screen = screenProfilePick
+				return m, nil
+			}
 			if m.resume != nil {
 				return m.applyResume()
 			}
@@ -393,7 +408,36 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDevKey(msg)
 	case screenDiagnostic:
 		return m.handleDiagKey(msg)
+	case screenProfilePick:
+		switch msg.String() {
+		case "up", "k":
+			if m.profIdx > 0 {
+				m.profIdx--
+			}
+		case "down", "j":
+			if m.profIdx < len(m.profiles)-1 {
+				m.profIdx++
+			}
+		case "esc":
+			m.screen = screenHook
+		case "enter":
+			if m.profIdx >= 0 && m.profIdx < len(m.profiles) {
+				if st, err := save.LoadLang(m.profiles[m.profIdx].Lang); err == nil && st != nil {
+					m.resume = st
+					return m.applyResume()
+				}
+			}
+		}
+		return m, nil
 	case screenLesson:
+		// "test me": skip ahead to this lesson's final hands-on stage — passing
+		// it advances to the next lesson exactly like working through the stages.
+		if msg.String() == "t" && m.ctx == ctxLesson && !m.inputActive && m.stageIdx < len(m.les.stages)-1 {
+			m.stageIdx = len(m.les.stages) - 1
+			m.enterStage()
+			m.persist()
+			return m, nil
+		}
 		return m.handleTaskKey(msg)
 	case screenHandoff:
 		switch msg.String() {
@@ -1136,10 +1180,20 @@ func (m Model) route() (tea.Model, tea.Cmd) {
 
 // ── Dev-Literacy track (command checker — not a real shell) ───────────────────
 
+// devDone routes dev-literacy completion: a routed (gating) run hands off to
+// the bench; a revisit from the bench menu returns to the menu.
+func (m Model) devDone() (tea.Model, tea.Cmd) {
+	if m.devRevisit {
+		m.devRevisit = false
+		return m.startBench()
+	}
+	return m.toHandoff()
+}
+
 func (m Model) startDevLiteracy() (tea.Model, tea.Cmd) {
 	m.dev = selectDevSet(m.cat.DevTasks, 5, m.rng) // 5 across distinct categories
 	if len(m.dev) == 0 {
-		return m.toHandoff() // nothing authored → straight to bench
+		return m.devDone() // nothing authored → straight back
 	}
 	m.screen = screenDevLiteracy
 	m.ctx = ctxNone
@@ -1164,7 +1218,7 @@ func (m Model) handleDevKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.answered && msg.String() == "enter" {
 		m.devIdx++
 		if m.devIdx >= len(m.dev) {
-			return m.toHandoff()
+			return m.devDone()
 		}
 		m.enterDevTask()
 		m.persist()
@@ -1298,6 +1352,12 @@ func (m Model) startBench() (tea.Model, tea.Cmd) {
 			kind:  "advanced",
 		})
 	}
+	if len(m.cat.DevTasks) > 0 { // revisitable terminal drills (non-gating practice)
+		m.benchMenu = append(m.benchMenu, benchOption{
+			label: "🖥 Dev-Literacy practice — terminal drills",
+			kind:  "devlit",
+		})
+	}
 	m.benchMenuIdx = 0
 	m.screen = screenBenchMenu
 	m.ctx = ctxNone
@@ -1320,6 +1380,10 @@ func (m Model) handleBenchMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			opt := m.benchMenu[m.benchMenuIdx]
 			if opt.kind == "advanced" {
 				return m.openAdvancedList()
+			}
+			if opt.kind == "devlit" {
+				m.devRevisit = true
+				return m.startDevLiteracy()
 			}
 			return m.startBenchFiltered(opt)
 		}
@@ -1670,11 +1734,34 @@ func (m Model) View() string {
 		b.WriteString("you on as an apprentice. Before you touch real client code, the\n")
 		b.WriteString("lead wants to see where you're at.\n\n")
 		if m.resume != nil {
-			b.WriteString(okStyle.Render("Saved progress found.") + "\n")
+			if len(m.profiles) > 1 {
+				b.WriteString(okStyle.Render(fmt.Sprintf("Saved progress found (%d language profiles).", len(m.profiles))) + "\n")
+			} else {
+				b.WriteString(okStyle.Render("Saved progress found.") + "\n")
+			}
 			b.WriteString(dimStyle.Render("[c] continue   ·   [enter] start over   ·   [q] quit"))
 		} else {
 			b.WriteString(dimStyle.Render("[enter] begin   ·   [q] quit"))
 		}
+	case screenProfilePick:
+		b.WriteString(titleStyle.Render("Choose a profile") + "\n\n")
+		b.WriteString("One save slot per language — progress is shared with the desktop app.\n\n")
+		for i, p := range m.profiles {
+			sel := "  "
+			line := fmt.Sprintf("%-12s %d banked", langLabel(p.Lang), p.Banked)
+			if p.Placement != "" {
+				line += " · " + p.Placement
+			}
+			if len(p.UpdatedAt) >= 10 {
+				line += "   (" + p.UpdatedAt[:10] + ")"
+			}
+			if i == m.profIdx {
+				sel = "› "
+				line = okStyle.Render(line)
+			}
+			b.WriteString(sel + line + "\n")
+		}
+		b.WriteString("\n" + dimStyle.Render("[↑/↓] move   ·   [enter] continue   ·   [esc] back"))
 	case screenLanguage:
 		b.WriteString(titleStyle.Render("Pick your language") + "\n\n")
 		b.WriteString("This is your language for the whole session — it sets which\n")
@@ -1744,7 +1831,7 @@ func (m Model) View() string {
 		if st.task != nil {
 			b.WriteString(m.renderTask())
 		} else {
-			b.WriteString(dimStyle.Render("[enter] continue   ·   [x] skip tutorial   ·   [q] quit"))
+			b.WriteString(dimStyle.Render("[enter] continue   ·   [t] test me (jump to the task)   ·   [x] skip tutorial   ·   [q] quit"))
 		}
 	case screenHandoff:
 		b.WriteString(titleStyle.Render("Orientation complete — nice work") + "\n\n")
@@ -2084,7 +2171,7 @@ func (m Model) renderTask() string {
 		hints += "   ·   [l] learn   ·   [m] menu"
 	}
 	if m.ctx == ctxLesson {
-		hints += "   ·   [x] skip tutorial"
+		hints += "   ·   [t] test me   ·   [x] skip tutorial"
 	}
 	hints += "   ·   [q] quit"
 	b.WriteString(dimStyle.Render(hints))

@@ -1,4 +1,4 @@
-import { GetProgress, GetProfiles } from '../wailsjs/go/main/App';
+import { GetProgress, GetProfiles, DeleteProfile } from '../wailsjs/go/main/App';
 import { guiapi } from '../wailsjs/go/models';
 import { esc } from './util';
 
@@ -36,9 +36,9 @@ export function mountHome(root: HTMLElement, lang: string): () => void {
           <span class="proflabel">profiles</span>
           ${(profiles || [])
             .map(
-              (p) => `<button class="profchip ${p.lang === lang ? 'on' : ''}" data-lang="${esc(p.lang)}">
+              (p) => `<span class="profpair"><button class="profchip ${p.lang === lang ? 'on' : ''}" data-lang="${esc(p.lang)}">
                 <span class="b">${esc(p.lang)}</span><span class="mut"> · ${p.banked} banked${p.placement ? ' · ' + esc(p.placement) : ''}</span>
-              </button>`,
+              </button><button class="profx" data-del="${esc(p.lang)}" title="Delete this profile">✕</button></span>`,
             )
             .join('')}
         </div>`
@@ -87,6 +87,31 @@ export function mountHome(root: HTMLElement, lang: string): () => void {
     root
       .querySelectorAll<HTMLButtonElement>('.profchip')
       .forEach((b) => b.addEventListener('click', () => switchLang(b.dataset.lang as string)));
+    // delete profile: two-click armed confirm (✕ → "sure?" → gone); disarms after 3s
+    root.querySelectorAll<HTMLButtonElement>('.profx').forEach((b) =>
+      b.addEventListener('click', async () => {
+        if (!b.dataset.armed) {
+          b.dataset.armed = '1';
+          b.textContent = 'sure?';
+          b.classList.add('armed');
+          setTimeout(() => {
+            if (disposed) return;
+            delete b.dataset.armed;
+            b.textContent = '✕';
+            b.classList.remove('armed');
+          }, 3000);
+          return;
+        }
+        const err = await DeleteProfile(b.dataset.del as string);
+        if (disposed) return;
+        if (err) {
+          b.textContent = '!';
+          b.title = err;
+          return;
+        }
+        nav('home'); // re-render the view with the slot gone
+      }),
+    );
   })();
 
   return () => {

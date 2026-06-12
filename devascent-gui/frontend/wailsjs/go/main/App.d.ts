@@ -6,6 +6,12 @@ export function AdvanceTutorial(arg1:number,arg2:number):Promise<guiapi.Tutorial
 
 export function CheckLang(arg1:string):Promise<guiapi.LangStatus>;
 
+export function DeleteProfile(arg1:string):Promise<string>;
+
+export function GetAdvancedTopic(arg1:string,arg2:number):Promise<guiapi.AdvTopicDetail>;
+
+export function GetAdvancedTopics(arg1:string):Promise<Array<guiapi.AdvTopicSummary>>;
+
 export function GetInstallGuide(arg1:string):Promise<guiapi.InstallGuideView>;
 
 export function GetLangPresence():Promise<Array<guiapi.LangStatus>>;
@@ -23,6 +29,8 @@ export function GetProgress(arg1:string):Promise<guiapi.Progress>;
 export function GetVersion():Promise<string>;
 
 export function Grade(arg1:string,arg2:string,arg3:string):Promise<guiapi.GradeResult>;
+
+export function GradeAdvanced(arg1:string,arg2:number,arg3:number,arg4:string):Promise<guiapi.GradeResult>;
 
 export function GradeLessonStage(arg1:number,arg2:number,arg3:string):Promise<guiapi.GradeResult>;
 

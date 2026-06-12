@@ -77,6 +77,22 @@ func (e *Engine) Profiles() []ProfileView {
 	return out
 }
 
+// DeleteProfile removes lang's save slot from disk and memory — the GUI's
+// "delete profile". Destructive; the frontend confirms before calling.
+// Returns an error message, or "" on success.
+func (e *Engine) DeleteProfile(lang string) string {
+	if lang == "" {
+		lang = "python"
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if err := save.DeleteLang(lang); err != nil {
+		return err.Error()
+	}
+	delete(e.slots, lang)
+	return ""
+}
+
 // NextProblem returns the first problem unsolved in lang after afterID in
 // catalog order (wrapping around), or "" when everything is solved.
 func (e *Engine) NextProblem(lang, afterID string) string {

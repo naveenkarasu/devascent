@@ -10,6 +10,18 @@ export function CheckLang(arg1) {
   return window['go']['main']['App']['CheckLang'](arg1);
 }
 
+export function DeleteProfile(arg1) {
+  return window['go']['main']['App']['DeleteProfile'](arg1);
+}
+
+export function GetAdvancedTopic(arg1, arg2) {
+  return window['go']['main']['App']['GetAdvancedTopic'](arg1, arg2);
+}
+
+export function GetAdvancedTopics(arg1) {
+  return window['go']['main']['App']['GetAdvancedTopics'](arg1);
+}
+
 export function GetInstallGuide(arg1) {
   return window['go']['main']['App']['GetInstallGuide'](arg1);
 }
@@ -44,6 +56,10 @@ export function GetVersion() {
 
 export function Grade(arg1, arg2, arg3) {
   return window['go']['main']['App']['Grade'](arg1, arg2, arg3);
+}
+
+export function GradeAdvanced(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['GradeAdvanced'](arg1, arg2, arg3, arg4);
 }
 
 export function GradeLessonStage(arg1, arg2, arg3) {

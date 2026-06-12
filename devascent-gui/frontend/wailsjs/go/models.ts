@@ -1,5 +1,145 @@
 export namespace guiapi {
 	
+	export class AdvExerciseView {
+	    index: number;
+	    kind: string;
+	    prompt: string;
+	    brokenCode: string;
+	    fixedCode: string;
+	    bug: string;
+	    check: string;
+	    gradeable: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AdvExerciseView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.index = source["index"];
+	        this.kind = source["kind"];
+	        this.prompt = source["prompt"];
+	        this.brokenCode = source["brokenCode"];
+	        this.fixedCode = source["fixedCode"];
+	        this.bug = source["bug"];
+	        this.check = source["check"];
+	        this.gradeable = source["gradeable"];
+	    }
+	}
+	export class PrimerOpView {
+	    label: string;
+	    code: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PrimerOpView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.label = source["label"];
+	        this.code = source["code"];
+	    }
+	}
+	export class PrimerSectionView {
+	    title: string;
+	    ops: PrimerOpView[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PrimerSectionView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.title = source["title"];
+	        this.ops = this.convertValues(source["ops"], PrimerOpView);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AdvTopicDetail {
+	    found: boolean;
+	    index: number;
+	    lang: string;
+	    group: string;
+	    title: string;
+	    tag: string;
+	    summary: string;
+	    sections: PrimerSectionView[];
+	    exercises: AdvExerciseView[];
+	
+	    static createFrom(source: any = {}) {
+	        return new AdvTopicDetail(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.found = source["found"];
+	        this.index = source["index"];
+	        this.lang = source["lang"];
+	        this.group = source["group"];
+	        this.title = source["title"];
+	        this.tag = source["tag"];
+	        this.summary = source["summary"];
+	        this.sections = this.convertValues(source["sections"], PrimerSectionView);
+	        this.exercises = this.convertValues(source["exercises"], AdvExerciseView);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AdvTopicSummary {
+	    index: number;
+	    group: string;
+	    title: string;
+	    tag: string;
+	    exercises: number;
+	    gradeable: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new AdvTopicSummary(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.index = source["index"];
+	        this.group = source["group"];
+	        this.title = source["title"];
+	        this.tag = source["tag"];
+	        this.exercises = source["exercises"];
+	        this.gradeable = source["gradeable"];
+	    }
+	}
 	export class CaseResult {
 	    name: string;
 	    passed: boolean;
@@ -323,52 +463,8 @@ export namespace guiapi {
 		}
 	}
 	
-	export class PrimerOpView {
-	    label: string;
-	    code: string;
 	
-	    static createFrom(source: any = {}) {
-	        return new PrimerOpView(source);
-	    }
 	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.label = source["label"];
-	        this.code = source["code"];
-	    }
-	}
-	export class PrimerSectionView {
-	    title: string;
-	    ops: PrimerOpView[];
-	
-	    static createFrom(source: any = {}) {
-	        return new PrimerSectionView(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.title = source["title"];
-	        this.ops = this.convertValues(source["ops"], PrimerOpView);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
 	export class PrimerView {
 	    found: boolean;
 	    category: string;

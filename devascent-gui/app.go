@@ -97,6 +97,40 @@ func (a *App) GetInstallGuide(lang string) guiapi.InstallGuideView {
 	return a.engine.InstallGuideFor(lang)
 }
 
+// ── Advanced Topics ───────────────────────────────────────────────────────────
+
+// GetAdvancedTopics lists lang's advanced topics.
+func (a *App) GetAdvancedTopics(lang string) []guiapi.AdvTopicSummary {
+	if a.engine == nil {
+		return nil
+	}
+	return a.engine.AdvancedTopics(lang)
+}
+
+// GetAdvancedTopic returns one topic with sections + exercises.
+func (a *App) GetAdvancedTopic(lang string, idx int) guiapi.AdvTopicDetail {
+	if a.engine == nil {
+		return guiapi.AdvTopicDetail{Index: idx, Lang: lang}
+	}
+	return a.engine.AdvancedTopic(lang, idx)
+}
+
+// GradeAdvanced grades the player's fix for one advanced exercise.
+func (a *App) GradeAdvanced(lang string, topicIdx, exIdx int, code string) guiapi.GradeResult {
+	if a.engine == nil {
+		return guiapi.GradeResult{Err: "engine not loaded"}
+	}
+	return a.engine.GradeAdvanced(lang, topicIdx, exIdx, code)
+}
+
+// DeleteProfile removes lang's save slot (destructive; the UI confirms first).
+func (a *App) DeleteProfile(lang string) string {
+	if a.engine == nil {
+		return "engine not loaded"
+	}
+	return a.engine.DeleteProfile(lang)
+}
+
 // GetPrimer returns the category primer (Learn drawer) for lang.
 func (a *App) GetPrimer(category, lang string) guiapi.PrimerView {
 	if a.engine == nil {
