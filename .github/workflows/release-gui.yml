@@ -58,7 +58,16 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 # pinned to go.mod
+        # pinned to go.mod's wails version; retried — module-proxy downloads can
+        # reset mid-stream on runners (seen on macOS: "stream error: INTERNAL_ERROR")
+        shell: bash
+        run: |
+          ok=""
+          for i in 1 2 3; do
+            if go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0; then ok=1; break; fi
+            echo "go install failed (attempt $i) — retrying in 15s…"; sleep 15
+          done
+          [ -n "$ok" ]
 
       - name: Resolve version
         id: ver
