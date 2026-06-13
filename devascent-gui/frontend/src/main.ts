@@ -143,10 +143,20 @@ function applyLocks(): void {
 }
 
 let lockSeq = 0; // stale-read guard across rapid language switches
+let locksLang = ''; // language the current `locks` were computed for
 async function refreshLocks(): Promise<void> {
   const seq = ++lockSeq;
+  // On a LANGUAGE SWITCH, lock the gated tracks pessimistically and
+  // SYNCHRONOUSLY (before any click can land) so the previous language's
+  // unlocked nav can't carry over while the new language's progress loads.
+  // Same-language renders skip this (no flicker).
+  if (lang !== locksLang) {
+    locks = { tutorial: LOCK_INTAKE, devlit: LOCK_INTAKE, bench: LOCK_INTAKE, advanced: LOCK_INTAKE };
+    applyLocks();
+  }
   const pr = await GetProgress(lang);
   if (seq !== lockSeq) return;
+  locksLang = lang;
   locks = computeLocks(pr);
   applyLocks();
 }

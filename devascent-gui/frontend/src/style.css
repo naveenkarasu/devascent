@@ -69,12 +69,13 @@ body, .titlebar, .prompt, .status, .seg, .card, .term, .btn, .chip, .info, .bran
 .caret{display:inline-block;width:2px;height:16px;background:var(--blue);vertical-align:middle;animation:blink 1.06s step-end infinite;}
 @keyframes blink{50%{opacity:0;}}
 
-/* language icons (inline SVG brand marks — see langicons.ts). Sized ~1.4em so
-   the padded glyphs read at least as large as the surrounding letters. */
-.langico{width:1.4em;height:1.4em;display:inline-block;vertical-align:-0.34em;}
+/* language icons (inline SVG brand marks — see langicons.ts). Marks fill their
+   box (no padding) and are sized ~1.82em (+30%) so they read as real logos
+   beside the language name. */
+.langico{width:1.82em;height:1.82em;display:inline-block;vertical-align:-0.46em;}
 .langico-fb{color:var(--textMuted);}
 /* the header language segment is the most prominent — give it a touch more */
-.seg.cap .langico{width:1.6em;height:1.6em;vertical-align:-0.42em;}
+.seg.cap .langico{width:2.08em;height:2.08em;vertical-align:-0.56em;}
 
 /* hard-locked nav entries (progression gating — dimming + tooltip only) */
 .nav button:disabled{opacity:.4;cursor:not-allowed;}
