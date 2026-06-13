@@ -10,6 +10,7 @@ import {
   RecheckLang,
   GetInstallGuide,
   GetWallet,
+  GetHintInfo,
   RequestHint,
   GetWriteup,
   SubmitWriteup,
@@ -352,13 +353,43 @@ export function mountBench(root: HTMLElement, lang: string, graded = true): () =
     if (walletFetching) return;
     walletFetching = true;
     try {
-      const w = await GetWallet(lang);
-      if (disposed) return;
-      wallet = w;
-      walletAt = Date.now();
-      renderWalletLine();
+      // Per-problem when the panel has a problem, so we can surface the earned
+      // free-Strategy offer; falls back to the global wallet otherwise.
+      if (currentId) {
+        const info = await GetHintInfo(lang, currentId);
+        if (disposed) return;
+        wallet = info.wallet;
+        walletAt = Date.now();
+        renderWalletLine();
+        applyStrategyOffer(info);
+      } else {
+        const w = await GetWallet(lang);
+        if (disposed) return;
+        wallet = w;
+        walletAt = Date.now();
+        renderWalletLine();
+      }
     } finally {
       walletFetching = false;
+    }
+  }
+
+  // applyStrategyOffer relabels the Strategy row: FREE when the player has been
+  // stuck long enough to earn it (they still choose to take it), "owned" once
+  // paid on this problem, otherwise the normal 1-token cost.
+  function applyStrategyOffer(info: guiapi.HintInfo): void {
+    const cost = root.querySelector('#hStratCost') as HTMLElement | null;
+    const row = root.querySelector('#hStratRow') as HTMLElement | null;
+    if (!cost || !row) return;
+    if (info.pityStrategyFree) {
+      cost.textContent = "FREE ✦ you've earned it — stuck a while";
+      row.classList.add('hfree');
+    } else if (info.strategyOwned) {
+      cost.textContent = 'owned · re-show is free';
+      row.classList.remove('hfree');
+    } else {
+      cost.textContent = '1 ⬡ · the approach, not the code';
+      row.classList.remove('hfree');
     }
   }
 
@@ -408,6 +439,7 @@ export function mountBench(root: HTMLElement, lang: string, graded = true): () =
       wallet = res.wallet;
       walletAt = Date.now();
       renderWalletLine();
+      if (tier >= 2) void refreshWallet(); // relabel the Strategy row (pity consumed / now owned)
       const notice =
         (res.pity ? '<div class="hnotice">free hint — you\'ve earned it for persistence</div>' : '') +
         (res.refunded
@@ -443,7 +475,7 @@ export function mountBench(root: HTMLElement, lang: string, graded = true): () =
       <div class="drawbody">
         <div id="hWallet" class="hwallet">…</div>
         <div class="hrow"><div><div class="hname">Nudge</div><div class="hcost">free · uses a ◉ charge</div></div><button class="btn small" data-tier="1">Ask</button></div>
-        <div class="hrow"><div><div class="hname">Strategy</div><div class="hcost">1 ⬡ · the approach, not the code</div></div><button class="btn small" data-tier="2">Ask</button></div>
+        <div class="hrow" id="hStratRow"><div><div class="hname">Strategy</div><div class="hcost" id="hStratCost">1 ⬡ · the approach, not the code</div></div><button class="btn small" data-tier="2">Ask</button></div>
         <div class="hrow"><div><div class="hname">Walkthrough</div><div class="hcost">3 ⬡ · step-by-step plan</div></div><button class="btn small" data-tier="3">Ask</button></div>
         <div id="hOut" class="hout vmuted">Stuck? A nudge costs nothing but a charge.</div>
         <a id="hPreview" class="hlink">what gets sent</a>

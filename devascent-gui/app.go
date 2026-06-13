@@ -179,6 +179,15 @@ func (a *App) GetWallet(lang string) guiapi.WalletView {
 	return a.engine.Wallet(lang)
 }
 
+// GetHintInfo returns per-problem hint state (wallet + which paid tiers are
+// owned + whether the earned free Strategy is on offer) for the hint panel.
+func (a *App) GetHintInfo(lang, id string) guiapi.HintInfo {
+	if a.engine == nil {
+		return guiapi.HintInfo{}
+	}
+	return a.engine.HintInfo(lang, id)
+}
+
 // RequestHint serves a tier-1 nudge or paid tier-2/3 hint (paid tiers may
 // block up to 45s when an AI mentor is configured — the frontend awaits it).
 func (a *App) RequestHint(lang, id string, tier int, code string) guiapi.HintResult {

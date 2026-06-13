@@ -52,11 +52,16 @@ func (m *Model) ensureWallet() {
 	}
 }
 
-// recordFail accumulates pity-rule bookkeeping for an unsolved problem.
-func (m *Model) recordFail(id string) {
+// recordFail accumulates pity-rule bookkeeping for an unsolved problem. The
+// failure counter only advances on a DISTINCT attempt — re-running the same
+// broken code doesn't count toward the free-strategy unlock.
+func (m *Model) recordFail(id, code string) {
 	m.ensureWallet()
 	rec := m.solveRecords[id]
-	rec.FailedRuns++
+	if h := economy.FailHash(code); h != rec.LastFailHash {
+		rec.FailedRuns++
+		rec.LastFailHash = h
+	}
 	if rec.FirstTryAt == "" {
 		rec.FirstTryAt = time.Now().UTC().Format(time.RFC3339)
 	}
@@ -234,7 +239,12 @@ func (m Model) renderHintPanel() string {
 	if m.hintMode {
 		b.WriteString(titleStyle.Render("Hints — "+m.walletLine()) + "\n")
 		b.WriteString("  [1] Nudge — free (uses a nudge charge)\n")
-		b.WriteString(fmt.Sprintf("  [2] Strategy — %d ⬡ (mastery ×%.1f)\n", economy.StrategyCost, economy.MasteryWeight(economy.TierStrategy)))
+		// Offer the earned free Strategy — the player still chooses to take it.
+		if rec := m.solveRecords[m.curProblem.ID]; rec.HintTier < economy.TierStrategy && economy.PityEligible(rec, time.Now()) {
+			b.WriteString("  " + okStyle.Render("[2] Strategy — FREE (you've earned it — stuck a while)") + "\n")
+		} else {
+			b.WriteString(fmt.Sprintf("  [2] Strategy — %d ⬡ (mastery ×%.1f)\n", economy.StrategyCost, economy.MasteryWeight(economy.TierStrategy)))
+		}
 		b.WriteString(fmt.Sprintf("  [3] Walkthrough — %d ⬡ (mastery ×%.1f)\n", economy.WalkthroughCost, economy.MasteryWeight(economy.TierWalkthrough)))
 		b.WriteString(dimStyle.Render("  [p] preview what the mentor sees   ·   [esc] close") + "\n")
 	}

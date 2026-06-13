@@ -354,7 +354,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Pity-rule bookkeeping: failed bench attempts accumulate toward the
 			// one-time free strategy hint.
 			if m.ctx == ctxBench && !v.Passed && !m.solvedSet[m.curProblem.ID] {
-				m.recordFail(m.curProblem.ID)
+				m.recordFail(m.curProblem.ID, m.task.code)
 			}
 		}
 		return m, nil

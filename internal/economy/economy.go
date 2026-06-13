@@ -8,6 +8,9 @@ package economy
 // clock in, so everything is deterministic under test.
 
 import (
+	"hash/fnv"
+	"strconv"
+	"strings"
 	"time"
 
 	"devascent/internal/save"
@@ -24,11 +27,12 @@ const (
 	StrategyCost    = 1
 	WalkthroughCost = 3
 
-	NudgeMax      = 3
-	NudgeRecharge = 20 * time.Minute
+	NudgeMax      = 3                // charges held at once (the ladder has 6 distinct texts)
+	NudgeRecharge = 10 * time.Minute // one charge refills this often
 
-	PityMinFails   = 5                // failed grade attempts before pity unlocks…
-	PityMinElapsed = 20 * time.Minute // …and minimum time on the problem
+	PityMinFails    = 5                // DISTINCT failed attempts (different code, not the same run)…
+	PityMinElapsed  = 10 * time.Minute // …plus this long on the problem unlocks a free strategy hint,
+	PitySoloElapsed = 30 * time.Minute // …OR this long alone (genuinely stuck) unlocks it without the fail count.
 )
 
 // Hint tiers. Nudges are free and never recorded against a solve; only the
@@ -177,14 +181,32 @@ func (w *Wallet) Award(n int) {
 }
 
 // PityEligible reports whether the one-time free strategy hint unlocks for a
-// problem: enough failed attempts, enough time invested, not already used.
+// problem (never auto-applied — the UI OFFERS it and the player chooses). It
+// unlocks on either of two genuinely-stuck signals, measured from the first
+// grade attempt: (a) at least PityMinFails DISTINCT failed attempts AND at
+// least PityMinElapsed on the problem, or (b) at least PitySoloElapsed on the
+// problem regardless of the failure count. "Distinct" is enforced upstream:
+// FailedRuns only increments when the failing code actually changed.
 func PityEligible(rec save.SolveRecord, now time.Time) bool {
-	if rec.PityUsed || rec.FailedRuns < PityMinFails || rec.FirstTryAt == "" {
+	if rec.PityUsed || rec.FirstTryAt == "" {
 		return false
 	}
 	first, err := time.Parse(time.RFC3339, rec.FirstTryAt)
 	if err != nil {
 		return false
 	}
-	return now.Sub(first) >= PityMinElapsed
+	elapsed := now.Sub(first)
+	if elapsed >= PitySoloElapsed {
+		return true
+	}
+	return rec.FailedRuns >= PityMinFails && elapsed >= PityMinElapsed
+}
+
+// FailHash fingerprints a failing submission so callers can count only
+// DISTINCT failures — re-running the same broken code must not advance the
+// pity counter. Whitespace-insensitive at the edges; any real edit changes it.
+func FailHash(code string) string {
+	h := fnv.New64a()
+	h.Write([]byte(strings.TrimSpace(code)))
+	return strconv.FormatUint(h.Sum64(), 16)
 }

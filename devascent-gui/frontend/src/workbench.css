@@ -979,6 +979,14 @@
   color: var(--textMuted);
   font-size: 11.5px;
 }
+/* the earned free-Strategy offer — accent the row so the player notices it */
+.hrow.hfree {
+  border-color: var(--accent);
+}
+.hrow.hfree .hcost {
+  color: var(--accent);
+  font-weight: 600;
+}
 .hrow .btn.small {
   height: 26px;
   width: auto;

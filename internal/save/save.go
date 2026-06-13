@@ -68,13 +68,14 @@ type State struct {
 // SolvedIDs without WriteupDone is a PROVISIONAL solve (passed the tests, not
 // yet explained); WriteupDone makes it fully banked for the graduation gate.
 type SolveRecord struct {
-	HintTier    int    `json:"hint_tier"`              // max paid tier used: 0 none, 2 strategy, 3 walkthrough (nudges never recorded)
-	PityUsed    bool   `json:"pity_used,omitempty"`    // the one-time free strategy hint
-	FailedRuns  int    `json:"failed_runs,omitempty"`  // failed grade attempts (pity eligibility)
-	FirstTryAt  string `json:"first_try_at,omitempty"` // RFC3339 of first grade attempt (pity eligibility)
-	WriteupDone bool   `json:"writeup_done,omitempty"`
-	WriteupText string `json:"writeup_text,omitempty"` // shown to the A4 mentor; never content-graded
-	MCQCorrect  bool   `json:"mcq_correct,omitempty"`
+	HintTier     int    `json:"hint_tier"`                // max paid tier used: 0 none, 2 strategy, 3 walkthrough (nudges never recorded)
+	PityUsed     bool   `json:"pity_used,omitempty"`      // the one-time free strategy hint
+	FailedRuns   int    `json:"failed_runs,omitempty"`    // DISTINCT failed attempts (pity eligibility)
+	LastFailHash string `json:"last_fail_hash,omitempty"` // fingerprint of the last failing code, so re-running the same code isn't a new failure
+	FirstTryAt   string `json:"first_try_at,omitempty"`   // RFC3339 of first grade attempt (pity eligibility)
+	WriteupDone  bool   `json:"writeup_done,omitempty"`
+	WriteupText  string `json:"writeup_text,omitempty"` // shown to the A4 mentor; never content-graded
+	MCQCorrect   bool   `json:"mcq_correct,omitempty"`
 }
 
 // Profile is the per-language slot summary shown by profile pickers.

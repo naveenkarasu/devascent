@@ -30,6 +30,10 @@ export function GetGate(arg1) {
   return window['go']['main']['App']['GetGate'](arg1);
 }
 
+export function GetHintInfo(arg1, arg2) {
+  return window['go']['main']['App']['GetHintInfo'](arg1, arg2);
+}
+
 export function GetInstallGuide(arg1) {
   return window['go']['main']['App']['GetInstallGuide'](arg1);
 }

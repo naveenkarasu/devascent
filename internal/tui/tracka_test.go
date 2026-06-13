@@ -124,6 +124,25 @@ func TestTrackA_StatePersistsThroughResume(t *testing.T) {
 	}
 }
 
+func TestRecordFail_CountsDistinctOnly(t *testing.T) {
+	d := newDriver(t)
+	if len(d.m.cat.Problems) == 0 {
+		t.Skip("no bench problems")
+	}
+	d.enterBenchAll()
+	id := d.m.curProblem.ID
+
+	d.m.recordFail(id, "attempt one")
+	d.m.recordFail(id, "attempt one") // identical re-run → must NOT count again
+	if got := d.m.solveRecords[id].FailedRuns; got != 1 {
+		t.Fatalf("re-running the same code counted as a new failure: FailedRuns=%d", got)
+	}
+	d.m.recordFail(id, "attempt two") // genuinely different → counts
+	if got := d.m.solveRecords[id].FailedRuns; got != 2 {
+		t.Fatalf("distinct failure not counted: FailedRuns=%d", got)
+	}
+}
+
 func TestHints_NudgeAndStrategyEconomy(t *testing.T) {
 	d := newDriver(t)
 	if len(d.m.cat.Problems) == 0 {

@@ -133,10 +133,20 @@ func TestNudges_AllBenchCategoriesCovered(t *testing.T) {
 		if _, ok := strategyTemplates[c]; !ok {
 			t.Errorf("category %q has no strategy template", c)
 		}
-		for attempt := 0; attempt < 4; attempt++ {
-			if Nudge(c, attempt) == "" {
+		// 6 distinct nudge levels, then it clamps (repeats the last).
+		seen := map[string]bool{}
+		for attempt := 0; attempt < 6; attempt++ {
+			n := Nudge(c, attempt)
+			if n == "" {
 				t.Errorf("%s attempt %d: empty nudge", c, attempt)
 			}
+			if seen[n] {
+				t.Errorf("%s attempt %d: duplicate nudge within the 6 levels", c, attempt)
+			}
+			seen[n] = true
+		}
+		if Nudge(c, 6) != Nudge(c, 5) {
+			t.Errorf("%s: nudge past level 6 should clamp to the last", c)
 		}
 	}
 	if Nudge("Unknown Category", 1) == "" {

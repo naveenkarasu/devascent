@@ -260,7 +260,7 @@ func (e *Engine) Grade(lang, id, code string) GradeResult {
 		res.NewlyBanked, res.SaveErr = e.bank(lang, id)
 		res.TokensAwarded, res.WriteupPending = e.trackABank(lang, p)
 	} else {
-		e.trackAFail(lang, id)
+		e.trackAFail(lang, id, code)
 	}
 	return res
 }

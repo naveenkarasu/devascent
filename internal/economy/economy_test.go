@@ -94,16 +94,32 @@ func TestPityEligible(t *testing.T) {
 		now  time.Time
 		want bool
 	}{
-		{"eligible", save.SolveRecord{FailedRuns: PityMinFails, FirstTryAt: first}, now, true},
-		{"too few fails", save.SolveRecord{FailedRuns: PityMinFails - 1, FirstTryAt: first}, now, false},
+		{"fails + time", save.SolveRecord{FailedRuns: PityMinFails, FirstTryAt: first}, now, true},
+		{"too few fails (under solo time)", save.SolveRecord{FailedRuns: PityMinFails - 1, FirstTryAt: first}, now, false},
 		{"too soon", save.SolveRecord{FailedRuns: PityMinFails, FirstTryAt: first}, t0.Add(time.Minute), false},
 		{"already used", save.SolveRecord{FailedRuns: PityMinFails, FirstTryAt: first, PityUsed: true}, now, false},
 		{"no first try", save.SolveRecord{FailedRuns: PityMinFails}, now, false},
+		// solo-time path: enough time alone unlocks it even with 0 distinct fails…
+		{"solo time, no fails", save.SolveRecord{FailedRuns: 0, FirstTryAt: first}, t0.Add(PitySoloElapsed), true},
+		// …but below the solo threshold, 0 fails stays locked.
+		{"below solo, no fails", save.SolveRecord{FailedRuns: 0, FirstTryAt: first}, t0.Add(PitySoloElapsed - time.Minute), false},
 	}
 	for _, c := range cases {
 		if got := PityEligible(c.rec, c.now); got != c.want {
 			t.Errorf("%s: got %v want %v", c.name, got, c.want)
 		}
+	}
+}
+
+func TestFailHash_DistinctOnly(t *testing.T) {
+	a := FailHash("def f():\n    return 1")
+	aSpaced := FailHash("  def f():\n    return 1  ") // edge whitespace ignored
+	b := FailHash("def f():\n    return 2")           // a real edit
+	if a != aSpaced {
+		t.Fatal("trailing/leading whitespace should not change the fingerprint")
+	}
+	if a == b {
+		t.Fatal("a genuine code change must change the fingerprint")
 	}
 }
 

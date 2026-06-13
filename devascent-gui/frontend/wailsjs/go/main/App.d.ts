@@ -17,6 +17,8 @@ export function GetAdvancedTopics(arg1:string):Promise<Array<guiapi.AdvTopicSumm
 
 export function GetGate(arg1:string):Promise<guiapi.GateView>;
 
+export function GetHintInfo(arg1:string,arg2:string):Promise<guiapi.HintInfo>;
+
 export function GetInstallGuide(arg1:string):Promise<guiapi.InstallGuideView>;
 
 export function GetLangPresence():Promise<Array<guiapi.LangStatus>>;

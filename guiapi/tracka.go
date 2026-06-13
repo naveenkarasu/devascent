@@ -46,8 +46,10 @@ func (sl *slot) setRecord(id string, rec save.SolveRecord) {
 	sl.st.SolveRecords[id] = rec
 }
 
-// trackAFail records a failed grading attempt (pity-rule bookkeeping).
-func (e *Engine) trackAFail(lang, id string) {
+// trackAFail records a failed grading attempt (pity-rule bookkeeping). The
+// failure counter only advances on a DISTINCT attempt — re-running the same
+// broken code doesn't count toward the free-strategy unlock.
+func (e *Engine) trackAFail(lang, id, code string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	sl := e.getSlot(lang)
@@ -55,7 +57,10 @@ func (e *Engine) trackAFail(lang, id string) {
 		return // re-running an already banked problem
 	}
 	rec := sl.record(id)
-	rec.FailedRuns++
+	if h := economy.FailHash(code); h != rec.LastFailHash {
+		rec.FailedRuns++
+		rec.LastFailHash = h
+	}
 	if rec.FirstTryAt == "" {
 		rec.FirstTryAt = time.Now().UTC().Format(time.RFC3339)
 	}
@@ -110,6 +115,34 @@ func (e *Engine) Wallet(lang string) WalletView {
 	w.Store(&sl.st)
 	_ = save.SaveLang(lang, sl.st)
 	return walletView(&w, now)
+}
+
+// HintInfo is the per-problem hint state the panel needs to render: the wallet
+// plus which paid tiers are already owned (free to re-show) and whether the
+// earned free Strategy is currently on offer.
+type HintInfo struct {
+	Wallet           WalletView `json:"wallet"`
+	StrategyOwned    bool       `json:"strategyOwned"` // already paid on this problem → re-show is free
+	WalkthroughOwned bool       `json:"walkthroughOwned"`
+	PityStrategyFree bool       `json:"pityStrategyFree"` // stuck long enough → Strategy offered free (player chooses)
+}
+
+// HintInfo returns the per-problem hint state for the hint panel.
+func (e *Engine) HintInfo(lang, id string) HintInfo {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	now := time.Now()
+	sl := e.getSlot(lang)
+	w := economy.Load(&sl.st, now)
+	w.Store(&sl.st)
+	_ = save.SaveLang(lang, sl.st)
+	rec := sl.record(id)
+	return HintInfo{
+		Wallet:           walletView(&w, now),
+		StrategyOwned:    rec.HintTier >= economy.TierStrategy,
+		WalkthroughOwned: rec.HintTier >= economy.TierWalkthrough,
+		PityStrategyFree: rec.HintTier < economy.TierStrategy && economy.PityEligible(rec, now),
+	}
 }
 
 // HintResult is one answered hint request.
