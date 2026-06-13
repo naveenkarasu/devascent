@@ -136,6 +136,20 @@ func TestHints_NudgeAndStrategyEconomy(t *testing.T) {
 	if !d.m.hintMode {
 		t.Fatal("[h] should open the hint picker")
 	}
+
+	// [p] preview: shows EXACTLY the context pack, costs nothing, and never
+	// contains the hidden tests / canonical solution / MCQ answer.
+	d.runes("p")
+	if !strings.Contains(d.m.hintText, prob.Title) {
+		t.Fatalf("preview missing the problem: %q", d.m.hintText)
+	}
+	if prob.Solution != "" && strings.Contains(d.m.hintText, prob.Solution) {
+		t.Fatal("preview leaked the canonical solution")
+	}
+	if d.m.wallet.Tokens != economy.StartTokens || d.m.wallet.NudgeCharges != economy.NudgeMax {
+		t.Fatalf("preview was not free: %+v", d.m.wallet)
+	}
+
 	d.runes("1")
 	if d.m.hintText == "" || d.m.wallet.NudgeCharges != economy.NudgeMax-1 {
 		t.Fatalf("nudge: text %q charges %d", d.m.hintText, d.m.wallet.NudgeCharges)

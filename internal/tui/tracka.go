@@ -134,6 +134,16 @@ func (m Model) handleHintKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.hintMode = false
 		m.hintArm = 0
 		return m, nil
+	case "p": // transparency: show EXACTLY what a paid hint would send the mentor
+		m.hintArm = 0
+		m.hintText = tuiMentor().Preview(mentor.Request{
+			Kind: mentor.KindStrategy, Lang: m.lang, Title: m.curProblem.Title,
+			Prompt: m.curProblem.Prompt, Category: m.curProblem.Category,
+			Difficulty: m.curProblem.Difficulty, PlayerCode: m.task.code,
+			FailedRuns: rec.FailedRuns,
+		})
+		m.hintNote = "↓ exactly what the mentor receives — never the hidden tests, the solution, or the quiz answer"
+		return m, nil
 	case "1":
 		m.hintArm = 0
 		if !m.wallet.SpendNudge(time.Now()) {
@@ -226,7 +236,7 @@ func (m Model) renderHintPanel() string {
 		b.WriteString("  [1] Nudge — free (uses a nudge charge)\n")
 		b.WriteString(fmt.Sprintf("  [2] Strategy — %d ⬡ (mastery ×%.1f)\n", economy.StrategyCost, economy.MasteryWeight(economy.TierStrategy)))
 		b.WriteString(fmt.Sprintf("  [3] Walkthrough — %d ⬡ (mastery ×%.1f)\n", economy.WalkthroughCost, economy.MasteryWeight(economy.TierWalkthrough)))
-		b.WriteString(dimStyle.Render("  [esc] close") + "\n")
+		b.WriteString(dimStyle.Render("  [p] preview what the mentor sees   ·   [esc] close") + "\n")
 	}
 	if m.hintBusy {
 		b.WriteString(dimStyle.Render("…the mentor is thinking") + "\n")
