@@ -13,9 +13,21 @@ const ICONS: Record<string, string> = {
     <path fill="#3776AB" fill-rule="evenodd" d="M11.9 1.5c-3 0-4.6 1-4.6 3v2.2h4.8v.9H5.3c-2.2 0-3.3 1.9-3.3 4.4 0 2.5 1.1 4.4 3.3 4.4h2v-2.8c0-1.8 1.5-3.3 3.3-3.3h4.4c1.5 0 2.7-1.2 2.7-2.7v-3c0-2.1-2.7-3.1-5.8-3.1zm-2.2 1.6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
     <path fill="#FFD43B" fill-rule="evenodd" d="M12.1 22.5c3 0 4.6-1 4.6-3v-2.2h-4.8v-.9h6.8c2.2 0 3.3-1.9 3.3-4.4 0-2.5-1.1-4.4-3.3-4.4h-2v2.8c0 1.8-1.5 3.3-3.3 3.3H9c-1.5 0-2.7 1.2-2.7 2.7v3c0 2.1 2.7 3.1 5.8 3.1zm2.2-1.6a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
   </svg>`,
-  // The gopher doesn't survive small sizes — the "GO" wordmark in Go cyan does.
+  // The Go gopher — a real symbol (not the "GO" wordmark, which read redundantly
+  // beside the "Go" label). Simplified: blue face, big eyes, ears, tiny teeth.
   go: `<svg ${ICO}>
-    <text x="12" y="18.5" text-anchor="middle" font-family="'Arial Black',Arial,sans-serif" font-weight="800" font-size="17" letter-spacing="-1" fill="#00ADD8">GO</text>
+    <ellipse cx="7.6" cy="5" rx="2" ry="2.5" fill="#5DC9E2"/>
+    <ellipse cx="16.4" cy="5" rx="2" ry="2.5" fill="#5DC9E2"/>
+    <ellipse cx="7.6" cy="5.2" rx="0.8" ry="1.1" fill="#2A4D57"/>
+    <ellipse cx="16.4" cy="5.2" rx="0.8" ry="1.1" fill="#2A4D57"/>
+    <rect x="3.4" y="6" width="17.2" height="15" rx="7.6" fill="#5DC9E2"/>
+    <circle cx="9.3" cy="11" r="3.6" fill="#fff" stroke="#2A4D57" stroke-width="0.55"/>
+    <circle cx="14.7" cy="11" r="3.6" fill="#fff" stroke="#2A4D57" stroke-width="0.55"/>
+    <circle cx="10.2" cy="11.2" r="1.5" fill="#10242A"/>
+    <circle cx="13.8" cy="11.2" r="1.5" fill="#10242A"/>
+    <circle cx="12" cy="14.7" r="0.95" fill="#10242A"/>
+    <rect x="10.7" y="15.6" width="2.6" height="2.7" rx="0.5" fill="#fff" stroke="#2A4D57" stroke-width="0.5"/>
+    <line x1="12" y1="15.7" x2="12" y2="18.2" stroke="#2A4D57" stroke-width="0.5"/>
   </svg>`,
   // Gear ring (toothed stroke) with the serif R hint.
   rust: `<svg ${ICO}>
