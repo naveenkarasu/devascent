@@ -226,7 +226,7 @@ type GradeResult struct {
 	Passed      bool         `json:"passed"`
 	CasesTotal  int          `json:"casesTotal"`
 	CasesFailed int          `json:"casesFailed"`
-	Err         string       `json:"err"` // compile/runtime/harness error (empty on normal completion)
+	Err         string       `json:"err"`    // compile/runtime/harness error (empty on normal completion)
 	Stdout      string       `json:"stdout"` // the player's own print/log output, for debugging
 	Results     []CaseResult `json:"results"`
 
