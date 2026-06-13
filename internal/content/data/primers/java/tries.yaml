@@ -1,0 +1,138 @@
+- category: Tries
+  lang: java
+  title: Tries (Prefix Trees) — Java refresher
+  summary: |
+    A trie ("try", from reTRIEval) stores strings by their characters, one node per
+    character, sharing common prefixes. The word "cat" and "car" share the path c -> a,
+    then branch at t / r. Each node marks whether a word ENDS there. This makes prefix
+    queries — "does any stored word start with 'ca'?" — O(length of the prefix),
+    independent of how many words you stored.
+
+    Use a trie for autocomplete, spell-check, "search words by prefix", and word-grid
+    puzzles. The structure is just nodes linked by character.
+
+    Java notes:
+      - Each node holds children (a TrieNode[26] for lowercase letters, or a
+        Map<Character,TrieNode> for arbitrary chars) and a boolean isWord flag.
+      - c - 'a' indexes the array for lowercase letters.
+      - Insert and search both just walk the characters, creating nodes on insert.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'trie node (array children, fast for a-z)'
+          code: |
+            class TrieNode {
+                TrieNode[] kids = new TrieNode[26];
+                boolean isWord;
+            }
+        - label: 'trie node (map children, arbitrary chars)'
+          code: |
+            class TrieNode {
+                Map<Character, TrieNode> kids = new HashMap<>();
+                boolean isWord;
+            }
+        - label: 'trie root'
+          code: 'private final TrieNode root = new TrieNode();'
+        - label: 'working pointer for traversal'
+          code: 'TrieNode node = root;'
+    - title: Basic operations
+      ops:
+        - label: 'compute array index from lowercase char'
+          code: 'int idx = c - ''a'';'
+        - label: 'create child if absent (insert step)'
+          code: 'if (node.kids[idx] == null) node.kids[idx] = new TrieNode();'
+        - label: 'descend to child'
+          code: 'node = node.kids[idx];'
+        - label: 'mark end of word'
+          code: 'node.isWord = true;'
+        - label: 'check: is path a complete word?'
+          code: 'return node.isWord;'
+    - title: Iteration & loops
+      ops:
+        - label: 'insert a word (walk and grow)'
+          code: |
+            for (char c : word.toCharArray()) {
+                int idx = c-'a';
+                if (node.kids[idx]==null) node.kids[idx]=new TrieNode();
+                node=node.kids[idx];
+            }
+            node.isWord=true;
+        - label: 'search / startsWith (walk and return false if link missing)'
+          code: |
+            for (char c : word.toCharArray()) {
+                int idx = c-'a';
+                if (node.kids[idx]==null) return false;
+                node=node.kids[idx];
+            }
+        - label: 'collect all words with a given prefix (DFS from prefix end)'
+          code: |
+            void dfs(TrieNode n, StringBuilder sb, List<String> out) {
+                if (n.isWord) out.add(sb.toString());
+                for (int i=0; i<26; i++) {
+                    if (n.kids[i]!=null) {
+                        sb.append((char)('a'+i));
+                        dfs(n.kids[i], sb, out);
+                        sb.deleteCharAt(sb.length()-1);
+                    }
+                }
+            }
+    - title: Special operations (tries)
+      ops:
+        - label: 'startsWith — prefix check (same as search but no isWord check)'
+          code: |
+            for (char c : prefix.toCharArray()) {
+                int idx=c-'a';
+                if (node.kids[idx]==null) return false;
+                node=node.kids[idx];
+            }
+            return true;
+        - label: 'wildcard search (dot matches any char)'
+          code: |
+            if (c == '.') {
+                for (TrieNode child : node.kids)
+                    if (child!=null && dfs(child, word, i+1)) return true;
+                return false;
+            }
+        - label: 'count words with prefix (store count in node)'
+          code: 'node.count++;   // increment on each insert pass-through'
+        - label: 'delete a word (set isWord = false at end node)'
+          code: 'node.isWord = false;   // simple delete; nodes remain for shared prefixes'
+  example: |
+    Worked example — insert words and test exact-word lookup:
+
+      insert walks the characters, creating any missing child node, and flags the
+      final node as a complete word. search walks the same way; if any link is missing
+      the word is not present, and at the end isWord must be true (so "ca" is not a
+      word just because "cat" is).
+
+        class Trie {
+            private final TrieNode root = new TrieNode();
+
+            void insert(String word) {
+                TrieNode node = root;
+                for (char c : word.toCharArray()) {
+                    int idx = c - 'a';
+                    if (node.kids[idx] == null) {
+                        node.kids[idx] = new TrieNode();   // grow the path
+                    }
+                    node = node.kids[idx];
+                }
+                node.isWord = true;                        // word ends here
+            }
+
+            boolean search(String word) {
+                TrieNode node = root;
+                for (char c : word.toCharArray()) {
+                    int idx = c - 'a';
+                    if (node.kids[idx] == null) {
+                        return false;                      // path breaks -> absent
+                    }
+                    node = node.kids[idx];
+                }
+                return node.isWord;                        // reached, but is it a word?
+            }
+        }
+
+    A startsWith(prefix) method is identical to search but returns true at the end
+    instead of checking isWord. Takeaway: a trie trades extra nodes for prefix
+    lookups that cost only the length of the query, not the size of the dictionary.

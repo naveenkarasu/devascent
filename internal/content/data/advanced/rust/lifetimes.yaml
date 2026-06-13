@@ -1,0 +1,191 @@
+lang: rust
+group: Lifetimes
+title: "Lifetimes — proving references never outlive their data"
+tag: E
+summary: |
+  Lifetimes are the compile-time mechanism that proves references never outlive the data
+  they point to. They add zero runtime overhead — they exist purely for the borrow
+  checker. Annotations like 'a describe relationships between reference durations; they
+  do not extend or shrink those durations.
+
+  Lifetime elision rules let the compiler infer lifetimes in common patterns:
+  1. Each reference parameter gets its own lifetime parameter.
+  2. If there is exactly one input reference, the output lifetime equals it.
+  3. In methods, if &self is a parameter, the output lifetime equals self's lifetime.
+
+  When elision is ambiguous — for instance a function with two reference inputs returning
+  a reference — explicit annotations are required. Structs that hold references must
+  carry lifetime parameters to prove the struct cannot outlive its borrowed data.
+
+  'static means the reference is valid for the entire program lifetime; all string
+  literals are 'static. The compiler sometimes suggests adding 'static when the real fix
+  is restructuring ownership — treat this suggestion skeptically.
+
+  (Reference-only for now: Rust is not graded yet. When the toolchain is wired these
+  exercises auto-grade against the exact compiler errors they carry.)
+exercises:
+  - prompt: |
+      The compiler cannot figure out which input reference the return value comes from.
+      Add the correct lifetime annotation so the function compiles, and add a comment
+      explaining what 'a means in this context.
+    kind: fix-it
+    broken_code: |
+      fn longest(x: &str, y: &str) -> &str {
+          if x.len() > y.len() { x } else { y }
+      }
+
+      fn main() {
+          println!("{}", longest("hello", "hi"));
+      }
+    fixed_code: |
+      // 'a means: the returned reference lives at least as long as the shorter of x and y.
+      fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+          if x.len() > y.len() { x } else { y }
+      }
+
+      fn main() {
+          println!("{}", longest("hello", "hi"));
+      }
+    bug: |
+      The return type is &str but the compiler does not know whether it is derived from
+      x or y (elision rule 2 only applies when there is exactly one input reference).
+      Without a lifetime annotation the return lifetime is ambiguous, so E0106 fires.
+      Adding 'a to both parameters and the return type tells the borrow checker: the
+      returned reference is valid for the shorter of the two input lifetimes.
+    check: compile-error
+    signal: "E0106"
+  - prompt: |
+      The struct Excerpt holds a string slice but has no lifetime parameter. Add the
+      lifetime annotation to the struct and its impl block, then write a main function
+      that demonstrates the struct cannot outlive the String it borrows from.
+    kind: fix-it
+    broken_code: |
+      struct Excerpt {
+          part: &str,
+      }
+
+      impl Excerpt {
+          fn announce(&self) -> &str {
+              self.part
+          }
+      }
+    fixed_code: |
+      struct Excerpt<'a> {
+          part: &'a str,
+      }
+
+      impl<'a> Excerpt<'a> {
+          fn announce(&self) -> &str {
+              self.part
+          }
+      }
+
+      fn main() {
+          let text = String::from("Call me Ishmael. Some years ago...");
+          let first_sentence;
+          {
+              let i = text.find('.').unwrap_or(text.len());
+              first_sentence = &text[..i];
+          }
+          let excerpt = Excerpt { part: first_sentence };
+          println!("{}", excerpt.announce());
+      }
+    bug: |
+      A struct that stores a reference must declare a lifetime parameter so the compiler
+      can ensure the struct does not outlive the borrowed data. Without 'a on the field
+      &str the compiler has no way to track the relationship, and E0106 fires. The impl
+      block also needs impl<'a> Excerpt<'a> to bring 'a into scope.
+    check: compile-error
+    signal: "E0106"
+  - prompt: |
+      This code creates a reference inside an inner scope, stores it, then tries to use
+      it after the inner scope ends. The compiler rejects it. Explain the error and fix it
+      by restructuring the scopes so the data outlives the reference.
+    kind: fix-it
+    broken_code: |
+      fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+          if x.len() > y.len() { x } else { y }
+      }
+
+      fn main() {
+          let result;
+          {
+              let s = String::from("short-lived");
+              result = longest(&s, "long-lived");
+          }
+          println!("{result}");   // s is already dropped here
+      }
+    fixed_code: |
+      fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+          if x.len() > y.len() { x } else { y }
+      }
+
+      fn main() {
+          let s = String::from("short-lived");
+          let result = longest(&s, "long-lived");
+          println!("{result}");   // s still alive — ok
+      }
+    bug: |
+      The lifetime of result is constrained to be no longer than the shorter input
+      lifetime. s is allocated inside the inner block and dropped when that block ends,
+      but result is used outside it. The compiler detects that s does not live long
+      enough and fires E0597. Moving s to the outer scope so it outlives result resolves
+      the conflict.
+    check: compile-error
+    signal: "E0597"
+  - prompt: |
+      Three function signatures are shown below. For each one, state whether the compiler
+      can elide the lifetime annotations or whether explicit annotations are required.
+      Then write the fully explicit lifetime version of each.
+    kind: spot-the-bug
+    broken_code: |
+      // Signature A — one input reference
+      fn first_char(s: &str) -> &str {
+          &s[..1]
+      }
+
+      // Signature B — method returning a field reference
+      struct Config {
+          name: String,
+      }
+      impl Config {
+          fn name(&self) -> &str {
+              &self.name
+          }
+      }
+
+      // Signature C — two input references, returning one
+      fn choose(a: &str, b: &str, use_a: bool) -> &str {
+          if use_a { a } else { b }
+      }
+
+      fn main() {}
+    fixed_code: |
+      // A — elision is sufficient (rule 2: single input ref → output inherits it)
+      fn first_char<'a>(s: &'a str) -> &'a str {
+          &s[..1]
+      }
+
+      // B — elision is sufficient (rule 3: &self is present → output inherits self's lifetime)
+      struct Config {
+          name: String,
+      }
+      impl Config {
+          fn name<'a>(&'a self) -> &'a str {
+              &self.name
+          }
+      }
+
+      // C — explicit annotation required (two input refs, ambiguous which the output comes from)
+      fn choose<'a>(a: &'a str, b: &'a str, use_a: bool) -> &'a str {
+          if use_a { a } else { b }
+      }
+
+      fn main() {}
+    bug: |
+      Signature C does not compile without explicit annotations because elision cannot
+      determine which input the return value is derived from. A and B are handled by
+      elision rules 2 and 3 respectively. The exercise highlights that the compiler only
+      infers lifetimes when exactly one candidate exists.
+    check: compile-error
+    signal: "E0106"

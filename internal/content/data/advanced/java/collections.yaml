@@ -1,0 +1,266 @@
+lang: java
+group: Collections
+title: "Collections — choosing implementations, ordering & thread safety"
+tag: E
+summary: |
+  The Java Collections Framework provides unified interfaces (List, Set, Map, Queue)
+  backed by implementations with different performance profiles:
+  - ArrayList: O(1) random access, amortised O(1) append. Default list choice.
+  - LinkedList: O(1) head/tail add — but poor cache locality makes it rarely faster
+    than ArrayList in practice.
+  - HashMap: O(1) average get/put, no iteration order guarantee.
+  - LinkedHashMap: HashMap + insertion-order iteration.
+  - TreeMap: O(log n) get/put, keys sorted by natural order or Comparator.
+  - HashSet / LinkedHashSet / TreeSet: analogues for sets.
+  - ConcurrentHashMap: lock-striped; safe for concurrent reads and writes without
+    external synchronisation.
+
+  Ordering tools:
+  - Comparable<T>: implemented by a class to define its natural ordering (used by
+    Collections.sort, TreeSet, TreeMap).
+  - Comparator<T>: pluggable, ad-hoc ordering. Comparator.comparing() +
+    .thenComparing() is the modern idiomatic chain.
+
+  Unmodifiable collections:
+  - Collections.unmodifiableList(list): unmodifiable view over a mutable backing list.
+  - List.of(...) / Map.of(...) (Java 9+): truly unmodifiable and null-hostile (NPE
+    on null elements).
+
+  Gotchas:
+  - Arrays.asList() returns a fixed-size list backed by the array — add/remove throw
+    UnsupportedOperationException; set() is allowed.
+  - Mutable keys in a HashMap whose hashCode changes after insertion silently lose
+    their entries — the bucket is no longer found.
+  - List.of() / Map.of() are both unmodifiable AND null-hostile — they throw NPE on
+    null elements, unlike ArrayList or HashMap which accept nulls.
+exercises:
+  - prompt: |
+      Given a List<Person> where each Person has getLastName() and getFirstName()
+      methods, sort the list first by last name (ascending), then by first name
+      (ascending) as a tiebreaker. Use Comparator.comparing() with method references.
+      Print the sorted names in the format "Last, First".
+    kind: implement
+    broken_code: |
+      import java.util.*;
+
+      public class Main {
+          record Person(String lastName, String firstName) {}
+
+          public static void main(String[] args) {
+              List<Person> people = new ArrayList<>(List.of(
+                  new Person("Smith",  "Bob"),
+                  new Person("Jones",  "Alice"),
+                  new Person("Smith",  "Alice"),
+                  new Person("Jones",  "Charlie")
+              ));
+
+              // TODO: sort by lastName then firstName
+              people.sort(/* ??? */);
+              people.forEach(p -> System.out.println(p.lastName() + ", " + p.firstName()));
+          }
+      }
+    fixed_code: |
+      import java.util.*;
+
+      public class Main {
+          record Person(String lastName, String firstName) {}
+
+          public static void main(String[] args) {
+              List<Person> people = new ArrayList<>(List.of(
+                  new Person("Smith",  "Bob"),
+                  new Person("Jones",  "Alice"),
+                  new Person("Smith",  "Alice"),
+                  new Person("Jones",  "Charlie")
+              ));
+
+              people.sort(
+                  Comparator.comparing(Person::lastName)
+                            .thenComparing(Person::firstName)
+              );
+              people.forEach(p -> System.out.println(p.lastName() + ", " + p.firstName()));
+          }
+      }
+    bug: |
+      Hand-written comparators using ternary/integer subtraction are error-prone
+      (integer overflow, sign errors). Comparator.comparing() with method references
+      is null-safe, composable, and clearly expresses multi-key sort intent.
+      thenComparing() chains a secondary comparator that is only consulted when the
+      primary yields 0.
+    check: stdout
+    signal: "Jones, Alice\nJones, Charlie\nSmith, Alice\nSmith, Bob"
+
+  - prompt: |
+      Implement Comparable<Task> on the Task class so that Collections.sort(tasks)
+      orders by priority ascending (lower number = higher priority), and alphabetically
+      by name as a tiebreaker. Verify with a sorted list printout.
+    kind: implement
+    broken_code: |
+      import java.util.*;
+
+      public class Main {
+          static class Task {
+              int priority;
+              String name;
+              Task(int priority, String name) {
+                  this.priority = priority;
+                  this.name = name;
+              }
+              // TODO: implement Comparable<Task> (priority asc, then name)
+          }
+
+          public static void main(String[] args) {
+              List<Task> tasks = new ArrayList<>(List.of(
+                  new Task(2, "Deploy"),
+                  new Task(1, "Write tests"),
+                  new Task(2, "Review PR"),
+                  new Task(1, "Fix bug")
+              ));
+              Collections.sort(tasks);   // won't compile until Task is Comparable
+              tasks.forEach(System.out::println);
+          }
+      }
+    fixed_code: |
+      import java.util.*;
+
+      public class Main {
+          static class Task implements Comparable<Task> {
+              final int priority;
+              final String name;
+
+              Task(int priority, String name) {
+                  this.priority = priority;
+                  this.name = name;
+              }
+
+              @Override
+              public int compareTo(Task other) {
+                  int cmp = Integer.compare(this.priority, other.priority);
+                  if (cmp != 0) return cmp;
+                  return this.name.compareTo(other.name);
+              }
+
+              @Override public String toString() { return priority + ":" + name; }
+          }
+
+          public static void main(String[] args) {
+              List<Task> tasks = new ArrayList<>(List.of(
+                  new Task(2, "Deploy"),
+                  new Task(1, "Write tests"),
+                  new Task(2, "Review PR"),
+                  new Task(1, "Fix bug")
+              ));
+              Collections.sort(tasks);
+              tasks.forEach(System.out::println);
+          }
+      }
+    bug: |
+      Using subtraction (this.priority - other.priority) as a compareTo return value
+      is a classic bug: it overflows for large negative values. Integer.compare() is
+      the correct, overflow-safe idiom. Also important: if compareTo returns 0 for two
+      tasks that are not equals(), they will be treated as duplicates in a TreeSet,
+      which may silently discard one — always keep compareTo consistent with equals().
+    check: stdout
+    signal: "1:Fix bug\n1:Write tests\n2:Deploy\n2:Review PR"
+
+  - prompt: |
+      Count word frequencies in the sentence below using a HashMap<String, Integer>,
+      then print the top-3 most frequent words (word: count) sorted by count
+      descending, breaking ties alphabetically so the order is deterministic.
+      Use getOrDefault() or computeIfAbsent() — avoid raw get/put pairs with null checks.
+    kind: implement
+    broken_code: |
+      import java.util.*;
+      import java.util.stream.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              String sentence = "to be or not to be that is the question to be";
+              Map<String, Integer> freq = new HashMap<>();
+
+              // TODO: count frequencies without raw null-check pattern
+              // TODO: print top-3 words by count desc, ties broken alphabetically
+          }
+      }
+    fixed_code: |
+      import java.util.*;
+      import java.util.stream.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              String sentence = "to be or not to be that is the question to be";
+              Map<String, Integer> freq = new HashMap<>();
+
+              for (String word : sentence.split(" ")) {
+                  freq.merge(word, 1, Integer::sum);
+                  // or: freq.put(word, freq.getOrDefault(word, 0) + 1);
+              }
+
+              freq.entrySet().stream()
+                  .sorted(Map.Entry.<String, Integer>comparingByValue().reversed()
+                          .thenComparing(Map.Entry.comparingByKey()))
+                  .limit(3)
+                  .forEach(e -> System.out.println(e.getKey() + ": " + e.getValue()));
+          }
+      }
+    bug: |
+      The naive pattern `Integer count = map.get(word); if (count == null) count = 0;
+      map.put(word, count + 1);` works but is verbose and error-prone. map.merge(key,
+      1, Integer::sum) is the idiomatic atomic alternative: if the key is absent it
+      inserts 1; if present it applies the merge function. getOrDefault() is also
+      acceptable. computeIfAbsent() is best when the default value is expensive to
+      construct (e.g., a new list).
+    check: stdout
+    signal: "be: 3\nto: 3\nis: 1"
+
+  - prompt: |
+      For each of these three scenarios, choose the most appropriate collection type
+      and justify your choice. Write a short code snippet for each, then explain what
+      goes wrong if you use a plain HashMap with external synchronisation for scenario (c).
+      (a) Iteration order must match insertion order.
+      (b) Deduplicated set of strings in alphabetical order.
+      (c) Cache shared by multiple threads with concurrent reads and writes.
+    kind: explain-and-implement
+    broken_code: |
+      // (a) Using plain HashMap — insertion order is NOT preserved:
+      Map<String, Integer> scores = new HashMap<>();
+      scores.put("Alice", 90);
+      scores.put("Bob",   85);
+      scores.put("Carol", 92);
+      // iteration order is unpredictable
+
+      // (b) Using HashSet — no sort guarantee:
+      Set<String> names = new HashSet<>(List.of("Banana", "Apple", "Cherry"));
+
+      // (c) Using synchronized HashMap — technically safe but suboptimal:
+      Map<String, Object> cache = Collections.synchronizedMap(new HashMap<>());
+    fixed_code: |
+      // (a) LinkedHashMap — preserves insertion order:
+      Map<String, Integer> scores = new LinkedHashMap<>();
+      scores.put("Alice", 90);
+      scores.put("Bob",   85);
+      scores.put("Carol", 92);
+      scores.forEach((k, v) -> System.out.println(k + "=" + v));
+      // prints in insertion order: Alice=90, Bob=85, Carol=92
+
+      // (b) TreeSet — deduplicates AND keeps natural (alphabetical) sort order:
+      Set<String> names = new TreeSet<>(List.of("Banana", "Apple", "Cherry"));
+      System.out.println(names);  // [Apple, Banana, Cherry]
+
+      // (c) ConcurrentHashMap — designed for concurrent access;
+      //     reads are mostly lock-free, writes are lock-striped:
+      Map<String, Object> cache = new ConcurrentHashMap<>();
+      // Use computeIfAbsent for atomic check-then-put:
+      cache.computeIfAbsent("key", k -> expensiveLoad(k));
+    bug: |
+      (a) HashMap gives no iteration-order guarantee; LinkedHashMap adds a linked list
+      tracking insertion order with negligible overhead.
+      (b) HashSet uses equals/hashCode for deduplication but has no order; TreeSet uses
+      compareTo (natural order or Comparator) for both deduplication and sorting.
+      (c) Collections.synchronizedMap wraps every method in a single lock, serialising
+      ALL reads — terrible throughput under contention. ConcurrentHashMap uses lock
+      striping (many small locks over bucket segments), allowing truly concurrent reads
+      and fine-grained writes. Also critical: even with synchronizedMap, compound
+      operations like check-then-put are NOT atomic unless you synchronise on the map
+      object yourself. ConcurrentHashMap's computeIfAbsent is atomic.
+    check: none
+    signal: ""

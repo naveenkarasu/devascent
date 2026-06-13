@@ -1,0 +1,66 @@
+id: read-the-crash
+lang: rust
+order: 9
+title: Read the Crash
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      Errors are clues, not failures. Rust catches many mistakes at compile time
+      before the program ever runs. At runtime a panic prints a reason and a
+      backtrace. Common ones: "index out of bounds" (a Vec position that doesn't
+      exist) and "attempt to divide by zero". Read the FIRST line of the panic.
+
+          let s: Vec<i64> = vec![];
+          let _ = s[0];  // panic: index out of bounds: the len is 0 but the index is 0
+
+      The fix: check the length before you index with  if items.is_empty()  or
+      if items.len() == 0.
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: 'Returning items[0] panics on an empty Vec. Rust has no "null", so signal "empty" with -1 instead.'
+    task:
+      prompt: Return the first item, or -1 if the Vec is empty.
+      func_name: safe_first
+      starter: |
+        fn safe_first(items: Vec<i64>) -> i64 {
+            // buggy: items[0]  -- panics when empty
+            // hint: guard first — if items.is_empty() { return -1; }
+        }
+      solution: |
+        fn safe_first(items: Vec<i64>) -> i64 {
+            if items.is_empty() {
+                return -1;
+            }
+            items[0]
+        }
+      tests:
+        - {name: 'safe_first([5,6])', input: [[5, 6]], expected: 5}
+        - {name: 'safe_first([])', input: [[]], expected: -1}
+        - {name: 'safe_first([7])', input: [[7]], expected: 7}
+  - kind: you_do
+    title: You do — solo
+    body: Dividing by len panics (divide by zero) on an empty Vec. Make empty → 0, otherwise the true average.
+    task:
+      prompt: Return the average of the Vec; empty Vec → 0.
+      func_name: average
+      starter: |
+        fn average(numbers: Vec<i64>) -> f64 {
+            // <- guard the empty case, else  sum as f64 / numbers.len() as f64
+        }
+      solution: |
+        fn average(numbers: Vec<i64>) -> f64 {
+            if numbers.is_empty() {
+                return 0.0;
+            }
+            let mut s = 0i64;
+            for n in &numbers {
+                s += n;
+            }
+            s as f64 / numbers.len() as f64
+        }
+      tests:
+        - {name: 'average([1,2])', input: [[1, 2]], expected: 1.5}
+        - {name: 'average([2,4])', input: [[2, 4]], expected: 3.0}
+        - {name: 'average([])', input: [[]], expected: 0.0}
+        - {name: 'average([10])', input: [[10]], expected: 10.0}

@@ -1,0 +1,135 @@
+lang: python
+group: Typing
+title: "Typing — annotations, generics, Protocol, TypeGuard"
+tag: E
+summary: |
+  Type hints are optional annotations used by static checkers (mypy, pyright) and
+  IDEs at development time — they are NOT enforced at runtime by default.
+  Calling `f("hello")` where `f(x: int)` is annotated raises nothing unless you
+  add a runtime guard yourself.
+
+  Modern Python (3.10+) style:
+    - `X | None` instead of `Optional[X]`
+    - Built-in generics: `list[int]`, `dict[str, int]` (3.9+ at runtime)
+    - `type Vector = list[float]` (type alias, 3.12+)
+    - `class Stack[T]:` (PEP 695 generic syntax, 3.12+)
+    - `TypeVar` is still used for older-style generics but is largely superseded
+      by the 3.12 `[T]` syntax.
+
+  `Protocol` enables structural subtyping (duck typing with static verification):
+  a class satisfies a `Protocol` simply by having the right methods — no
+  inheritance required. Add `@runtime_checkable` to allow `isinstance` checks.
+
+  `TypeGuard[T]` (3.10+) lets you write a predicate function that narrows a type:
+  `def is_list_of_str(v: list[object]) -> TypeGuard[list[str]]`. After calling it
+  in an `if`, the type checker knows the narrowed type.
+
+  `Any` is infectious: a variable typed `Any` disables checking on ALL operations
+  performed with it. Use `object` when you mean "some unknown type but I still want
+  type-safe access to its common interface".
+
+  Deprecations to know:
+    - `typing.TypeAlias`: deprecated 3.12 (use `type` statement)
+    - `typing.AnyStr`: deprecated 3.13
+    - `Optional[X]` and `Union[X, Y]`: not deprecated but the `|` syntax is preferred
+
+  Common mistakes:
+    - `list[int]` in an annotation on Python 3.8 raises `TypeError` at runtime —
+      use `from __future__ import annotations` or `typing.List`.
+    - `Protocol` without `@runtime_checkable` cannot be used with `isinstance()`.
+    - `Optional[X]` is identical to `X | None`.
+exercises:
+  - prompt: |
+      `first_truthy(items, default)` should return the first truthy item from
+      `items`, or `default` if none exists.
+
+      The broken version is missing type annotations entirely. Add modern (3.10+)
+      annotations: `items` is `list[object]`, `default` is `object`, and the
+      return type is `object`. Use the `|` union syntax for any optionals.
+
+      Predict: does calling `first_truthy([0, "", None, 42], "fallback")` raise
+      a TypeError at runtime? Why or why not?
+    kind: fix-it
+    broken_code: |
+      def first_truthy(items, default):
+          for item in items:
+              if item:
+                  return item
+          return default
+    fixed_code: |
+      def first_truthy(items: list[object], default: object) -> object:
+          for item in items:
+              if item:
+                  return item
+          return default
+    bug: |
+      The function lacks type annotations entirely — no static checker can verify
+      callers. Adding `list[object]` for `items` and `object` for `default` and the
+      return type documents the contract. Type hints are NOT enforced at runtime;
+      `first_truthy(42, "x")` would still execute (raising `TypeError` at the `for`
+      loop, not at the annotation).
+    check: none
+    signal: ""
+
+  - prompt: |
+      `all_positive(nums)` should return `True` if every number in `nums` is
+      positive (> 0), and `False` otherwise.
+
+      The broken version annotates the parameter as `list[Any]`, which disables
+      type checking for everything done with the elements. Fix the annotation to
+      `list[int | float]` and the return type to `-> bool`.
+    kind: fix-it
+    broken_code: |
+      from typing import Any
+
+      def all_positive(nums: list[Any]) -> Any:
+          return all(n > 0 for n in nums)
+    fixed_code: |
+      def all_positive(nums: list[int | float]) -> bool:
+          return all(n > 0 for n in nums)
+    bug: |
+      `list[Any]` and `-> Any` tell the type checker "don't check anything about
+      the elements or the return value". `Any` is infectious — comparisons like
+      `n > 0` become unverified because `n` is `Any`. Changing to `list[int | float]`
+      lets the checker verify `>` is valid for the element type, and `-> bool`
+      correctly types the return so callers know what to expect. The logic is
+      unchanged; this is an annotation discipline exercise.
+    check: none
+    signal: ""
+
+  - prompt: |
+      `is_list_of_str(val)` should return `True` if EVERY element of `val` is a
+      `str`, and `False` if ANY element is not.
+
+      The broken version uses `any(isinstance(x, str) for x in val)` — it returns
+      `True` when AT LEAST ONE element is a string, which is the opposite of the
+      intended check. Fix it to use `all(...)`.
+    kind: fix-it
+    broken_code: |
+      def is_list_of_str(val):
+          # Bug: `any` returns True if ANY element is a str — wrong direction
+          return any(isinstance(x, str) for x in val)
+    fixed_code: |
+      def is_list_of_str(val: list[object]) -> bool:
+          return all(isinstance(x, str) for x in val)
+    bug: |
+      `any(isinstance(x, str) for x in val)` returns `True` when at least one
+      element is a string — so `["hello", 42]` returns `True`, but it should
+      return `False` because not ALL elements are strings. The correct form is
+      `all(isinstance(x, str) for x in val)`, which returns `True` only when
+      every element passes the check.
+    check: tests
+    func_name: is_list_of_str
+    tests:
+      - name: "all strings returns True"
+        input: [["hello", "world"]]
+        expected: true
+      - name: "mixed list returns False (any would wrongly return True)"
+        input: [["hello", 42]]
+        expected: false
+      - name: "empty list returns True (vacuously)"
+        input: [[]]
+        expected: true
+      - name: "all non-strings returns False"
+        input: [[1, 2, 3]]
+        expected: false

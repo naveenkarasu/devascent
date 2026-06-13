@@ -1,0 +1,274 @@
+# NeetCode 150 advanced graph problems — plain I/O, no shape field.
+# Authored original; all test cases hand-traced.
+
+- id: nc-reconstruct-itinerary
+  time_complexity: "O(n log n)"
+  space_complexity: "O(V+E)"
+  title: Reconstruct Itinerary
+  difficulty: hard
+  pattern: graph
+  category: Advanced Graphs
+  lists: [neetcode150]
+  func_name: find_itinerary
+  prompt: |
+    Reconstruct Itinerary
+
+    You are given a list of airline tickets where each ticket is [from, to].
+    Starting from "JFK", use every ticket exactly once and return the itinerary
+    as a list of airport codes. If multiple valid itineraries exist, return the
+    one that is lexicographically smallest.
+
+    Example:
+      find_itinerary([["MUC","LHR"],["JFK","MUC"],["SFO","SJC"],["LHR","SFO"]])
+      -> ["JFK","MUC","LHR","SFO","SJC"]
+
+      find_itinerary([["JFK","SFO"],["JFK","ATL"],["SFO","ATL"],["ATL","JFK"],["ATL","SFO"]])
+      -> ["JFK","ATL","JFK","SFO","ATL","SFO"]
+  starter: |
+    def find_itinerary(tickets):
+        pass  # write your solution; delete this line
+  solution: |
+    from collections import defaultdict
+
+    def find_itinerary(tickets):
+        graph = defaultdict(list)
+        for src, dst in sorted(tickets, reverse=True):
+            graph[src].append(dst)
+        # Each adjacency list is reverse-sorted so pop() yields smallest first.
+        result = []
+
+        def dfs(airport):
+            while graph[airport]:
+                dfs(graph[airport].pop())
+            result.append(airport)
+
+        dfs("JFK")
+        return result[::-1]
+  tests:
+    - name: case 1
+      input: [[["MUC","LHR"],["JFK","MUC"],["SFO","SJC"],["LHR","SFO"]]]
+      expected: ["JFK","MUC","LHR","SFO","SJC"]
+    - name: case 2
+      input: [[["JFK","SFO"],["JFK","ATL"],["SFO","ATL"],["ATL","JFK"],["ATL","SFO"]]]
+      expected: ["JFK","ATL","JFK","SFO","ATL","SFO"]
+    - name: case 3
+      input: [[["JFK","AAA"],["AAA","JFK"],["JFK","BBB"]]]
+      expected: ["JFK","AAA","JFK","BBB"]
+
+- id: nc-min-cost-connect-points
+  time_complexity: "O(n^2)"
+  space_complexity: "O(n)"
+  title: Min Cost to Connect Points
+  difficulty: medium
+  pattern: graph
+  category: Advanced Graphs
+  lists: [neetcode150]
+  func_name: min_cost_connect_points
+  prompt: |
+    Min Cost to Connect Points
+
+    Given a list of points on a 2-D plane, return the minimum cost to connect
+    all points. The cost of connecting two points is their Manhattan distance
+    |x1-x2| + |y1-y2|. You must connect all points with no cycles (minimum
+    spanning tree over Manhattan distances).
+
+    Example:
+      min_cost_connect_points([[0,0],[2,2],[3,10],[5,2],[7,0]]) -> 20
+
+      min_cost_connect_points([[3,12],[-2,5],[-4,1]]) -> 18
+  starter: |
+    def min_cost_connect_points(points):
+        pass  # write your solution; delete this line
+  solution: |
+    import heapq
+
+    def min_cost_connect_points(points):
+        n = len(points)
+        visited = set()
+        # min-heap: (cost, point_index)
+        heap = [(0, 0)]
+        total = 0
+        while len(visited) < n:
+            cost, i = heapq.heappop(heap)
+            if i in visited:
+                continue
+            visited.add(i)
+            total += cost
+            xi, yi = points[i]
+            for j in range(n):
+                if j not in visited:
+                    xj, yj = points[j]
+                    heapq.heappush(heap, (abs(xi - xj) + abs(yi - yj), j))
+        return total
+  tests:
+    - name: case 1
+      input: [[[0,0],[2,2],[3,10],[5,2],[7,0]]]
+      expected: 20
+    - name: case 2
+      input: [[[3,12],[-2,5],[-4,1]]]
+      expected: 18
+    - name: case 3
+      input: [[[0,0],[0,3]]]
+      expected: 3
+
+- id: nc-network-delay-time
+  time_complexity: "O(n log n)"
+  space_complexity: "O(V+E)"
+  title: Network Delay Time
+  difficulty: medium
+  pattern: graph
+  category: Advanced Graphs
+  lists: [neetcode150]
+  func_name: network_delay_time
+  prompt: |
+    Network Delay Time
+
+    A network has n nodes labeled 1 through n. You are given a list of directed
+    weighted edges times where times[i] = [u, v, w] means a signal travels from
+    node u to node v in w milliseconds. Starting from node k, a signal is sent
+    to all nodes. Return the time it takes for all n nodes to receive the signal,
+    or -1 if it is impossible.
+
+    Example:
+      network_delay_time([[2,1,1],[2,3,1],[3,4,1]], 4, 2) -> 2
+
+      network_delay_time([[1,2,1]], 2, 1) -> 1
+
+      network_delay_time([[1,2,1]], 2, 2) -> -1
+  starter: |
+    def network_delay_time(times, n, k):
+        pass  # write your solution; delete this line
+  solution: |
+    import heapq
+    from collections import defaultdict
+
+    def network_delay_time(times, n, k):
+        graph = defaultdict(list)
+        for u, v, w in times:
+            graph[u].append((w, v))
+        dist = {}
+        heap = [(0, k)]
+        while heap:
+            d, node = heapq.heappop(heap)
+            if node in dist:
+                continue
+            dist[node] = d
+            for weight, nb in graph[node]:
+                if nb not in dist:
+                    heapq.heappush(heap, (d + weight, nb))
+        return max(dist.values()) if len(dist) == n else -1
+  tests:
+    - name: case 1
+      input: [[[2,1,1],[2,3,1],[3,4,1]], 4, 2]
+      expected: 2
+    - name: case 2
+      input: [[[1,2,1]], 2, 1]
+      expected: 1
+    - name: case 3
+      input: [[[1,2,1]], 2, 2]
+      expected: -1
+
+- id: nc-swim-in-water
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
+  title: Swim in Rising Water
+  difficulty: hard
+  pattern: graph
+  category: Advanced Graphs
+  lists: [neetcode150]
+  func_name: swim_in_water
+  prompt: |
+    Swim in Rising Water
+
+    You are given an n x n grid of distinct integers where grid[i][j] is the
+    elevation of cell (i, j). At time t you can swim from a cell to an adjacent
+    cell (4-directional) if both cells have elevation <= t. Starting at the
+    top-left cell (0, 0), return the minimum time t at which you can reach the
+    bottom-right cell (n-1, n-1).
+
+    Example:
+      swim_in_water([[0,2],[1,3]]) -> 3
+
+      swim_in_water([[0,1,2,3,4],[24,23,22,21,5],[12,13,14,15,16],[11,17,18,19,20],[10,9,8,7,6]]) -> 16
+  starter: |
+    def swim_in_water(grid):
+        pass  # write your solution; delete this line
+  solution: |
+    import heapq
+
+    def swim_in_water(grid):
+        n = len(grid)
+        visited = set()
+        # min-heap: (max_elevation_on_path, row, col)
+        heap = [(grid[0][0], 0, 0)]
+        visited.add((0, 0))
+        while heap:
+            t, i, j = heapq.heappop(heap)
+            if i == n - 1 and j == n - 1:
+                return t
+            for di, dj in [(1,0),(-1,0),(0,1),(0,-1)]:
+                ni, nj = i + di, j + dj
+                if 0 <= ni < n and 0 <= nj < n and (ni, nj) not in visited:
+                    visited.add((ni, nj))
+                    heapq.heappush(heap, (max(t, grid[ni][nj]), ni, nj))
+        return -1
+  tests:
+    - name: case 1
+      input: [[[0,2],[1,3]]]
+      expected: 3
+    - name: case 2
+      input: [[[0,1,2,3,4],[24,23,22,21,5],[12,13,14,15,16],[11,17,18,19,20],[10,9,8,7,6]]]
+      expected: 16
+    - name: case 3
+      input: [[[0,3],[2,1]]]
+      expected: 2
+
+- id: nc-cheapest-flights
+  time_complexity: "O(n^2)"
+  space_complexity: "O(n)"
+  title: Cheapest Flights Within K Stops
+  difficulty: medium
+  pattern: graph
+  category: Advanced Graphs
+  lists: [neetcode150]
+  func_name: find_cheapest_price
+  prompt: |
+    Cheapest Flights Within K Stops
+
+    There are n cities connected by flights. Each flight is [from, to, price].
+    Given a source src, destination dst, and integer k, return the cheapest
+    price to fly from src to dst using at most k stops. Return -1 if no such
+    route exists.
+
+    Example:
+      find_cheapest_price(4, [[0,1,100],[1,2,100],[2,0,100],[1,3,600],[2,3,200]], 0, 3, 1) -> 700
+
+      find_cheapest_price(3, [[0,1,100],[1,2,100],[0,2,500]], 0, 2, 1) -> 200
+
+      find_cheapest_price(3, [[0,1,100],[1,2,100],[0,2,500]], 0, 2, 0) -> 500
+  starter: |
+    def find_cheapest_price(n, flights, src, dst, k):
+        pass  # write your solution; delete this line
+  solution: |
+    def find_cheapest_price(n, flights, src, dst, k):
+        INF = float("inf")
+        prices = [INF] * n
+        prices[src] = 0
+        for _ in range(k + 1):
+            # Snapshot prices so relaxations within one round don't cascade.
+            tmp = prices[:]
+            for u, v, w in flights:
+                if prices[u] != INF and prices[u] + w < tmp[v]:
+                    tmp[v] = prices[u] + w
+            prices = tmp
+        return prices[dst] if prices[dst] != INF else -1
+  tests:
+    - name: case 1
+      input: [4, [[0,1,100],[1,2,100],[2,0,100],[1,3,600],[2,3,200]], 0, 3, 1]
+      expected: 700
+    - name: case 2
+      input: [3, [[0,1,100],[1,2,100],[0,2,500]], 0, 2, 1]
+      expected: 200
+    - name: case 3
+      input: [3, [[0,1,100],[1,2,100],[0,2,500]], 0, 2, 0]
+      expected: 500

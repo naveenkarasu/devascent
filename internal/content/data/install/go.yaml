@@ -1,0 +1,23 @@
+lang: go
+label: Go
+notes: The official Go distribution includes everything you need.
+os:
+  windows:
+    link: https://go.dev/dl/
+    steps:
+      - Download the Windows MSI installer from go.dev/dl.
+      - Run it (it adds Go to PATH automatically).
+      - Restart DevAscent.
+    verify: go version
+  macos:
+    link: https://go.dev/dl/
+    steps:
+      - Download the macOS package from go.dev/dl, or "brew install go".
+      - Restart your terminal.
+    verify: go version
+  linux:
+    link: https://go.dev/doc/install
+    steps:
+      - Download the Linux tarball and extract it to /usr/local per go.dev/doc/install.
+      - Add /usr/local/go/bin to your PATH.
+    verify: go version

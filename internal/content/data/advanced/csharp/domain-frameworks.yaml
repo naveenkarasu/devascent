@@ -1,0 +1,40 @@
+lang: csharp
+group: Domain Frameworks
+title: "Domain Frameworks — ASP.NET Core, EF Core, and Unity"
+tag: P
+summary: |
+  ASP.NET Core is the primary C# web framework. Minimal APIs (introduced .NET 6,
+  matured .NET 8) replace the ceremony of MVC controllers for simple REST endpoints:
+    app.MapGet("/orders/{id}", async (int id, OrdersDb db) => …)
+  Dependency injection is built-in. The middleware pipeline is explicit. OpenAPI /
+  Swagger integration is first-class via the built-in Microsoft.AspNetCore.OpenApi
+  package.
+
+  EF Core is the ORM. It translates LINQ queries to SQL (IQueryable<T> provider).
+  Key concepts:
+  - DbContext: the unit-of-work and identity-map for a database session. Scope it to
+    the request in ASP.NET Core (AddDbContext registers as Scoped by default).
+  - DbSet<T>: represents a table; LINQ queries on it are translated to SQL.
+  - Migrations: dotnet ef migrations add / update-database manages schema evolution.
+  - Change tracking: EF Core tracks entity state (Added/Modified/Deleted/Unchanged).
+    Call SaveChangesAsync() to flush changes to the database.
+  - AsNoTracking(): for read-only queries, disables change tracking and reduces
+    memory overhead.
+  - Records and EF Core: record types should not be used as EF Core entities —
+    records use value equality, which conflicts with EF's reference-equality-based
+    change tracker. Use regular classes with primary constructors instead.
+
+  Unity uses a fork of Mono/.NET Standard 2.1 with its own async runtime (no standard
+  Task-based async in game loop code; use Coroutine or async UniTask instead). Value
+  types (structs) matter more in Unity because the GC is a stop-the-world collector
+  that causes frame spikes. Avoid per-frame allocations; pool objects; prefer structs
+  for short-lived data.
+
+  Project-scale exercise (deferred — [P] build exercise, not a snippet problem).
+  Proj 10-A: CRUD REST API with EF Core.
+  Build a minimal ASP.NET Core 8 REST API for a Product entity: GET /products,
+  GET /products/{id}, POST /products, PUT /products/{id}, DELETE /products/{id}.
+  Use EF Core with SQLite, include a migration, write three xUnit integration tests
+  using WebApplicationFactory. Scope: approximately 200 lines, runs with dotnet run.
+  Concepts exercised: Minimal APIs, DI, EF Core LINQ queries, async handlers, using
+  declaration for DbContext scoping.

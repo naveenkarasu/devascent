@@ -1,0 +1,66 @@
+id: collections
+lang: javascript
+order: 6
+title: Collections
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      An array holds many values in order:  [10, 20, 30].  Read by position with
+      numbers[0] (positions start at 0). Loop over every item with
+      for (const x of numbers) (the for...of loop). Arrays power the accumulator
+      pattern over real data.
+
+          function count_items(items) {
+              let c = 0;
+              for (const x of items) {
+                  c++;
+              }
+              return c;
+          }
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: Add up all numbers in an array. An empty array totals 0.
+    task:
+      prompt: Return the sum of the array (empty array → 0).
+      func_name: sum_list
+      starter: |
+        function sum_list(numbers) {
+            // hint: let total = 0; for (const n of numbers) { total += n; } return total;
+        }
+      solution: |
+        function sum_list(numbers) {
+            let total = 0;
+            for (const n of numbers) {
+                total += n;
+            }
+            return total;
+        }
+      tests:
+        - {name: 'sum_list([1,2,3])', input: [[1, 2, 3]], expected: 6}
+        - {name: 'sum_list([])', input: [[]], expected: 0}
+        - {name: 'sum_list([10,-4,4])', input: [[10, -4, 4]], expected: 10}
+  - kind: you_do
+    title: You do — solo
+    body: Find the biggest value (array is non-empty).
+    task:
+      prompt: Return the largest number in a non-empty array.
+      func_name: largest
+      starter: |
+        function largest(numbers) {
+            // <- start with the first item, then loop and keep the bigger one
+        }
+      solution: |
+        function largest(numbers) {
+            let biggest = numbers[0];
+            for (const n of numbers) {
+                if (n > biggest) {
+                    biggest = n;
+                }
+            }
+            return biggest;
+        }
+      tests:
+        - {name: 'largest([3,9,2])', input: [[3, 9, 2]], expected: 9}
+        - {name: 'largest([-5,-1,-10])', input: [[-5, -1, -10]], expected: -1}
+        - {name: 'largest([42])', input: [[42]], expected: 42}

@@ -1,0 +1,110 @@
+- category: 'Math & Bit'
+  lang: typescript
+  title: 'Math & Bit — TypeScript refresher'
+  summary: |
+    Math and bit-manipulation problems exploit arithmetic properties and binary
+    representation to achieve O(1) or O(log n) solutions where loops would be O(n).
+
+    TypeScript / JavaScript number model:
+      - All numbers are IEEE-754 64-bit doubles. Bitwise operators (`&`, `|`, `^`,
+        `~`, `<<`, `>>`, `>>>`) COERCE operands to 32-bit signed integers, so results
+        are always 32-bit. This can surprise you with negative numbers and large values.
+      - `n >>> 0` converts to an UNSIGNED 32-bit integer (useful after `~`).
+      - `Math.floor`, `Math.ceil`, `Math.round`, `Math.abs`, `Math.pow` — all standard.
+      - `Number.MAX_SAFE_INTEGER` = 2^53 - 1. For truly large integers, use `BigInt`.
+      - `n & 1` checks odd/even (0 = even, 1 = odd).
+      - `n & (n - 1)` clears the lowest set bit — classic trick to check power-of-two.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'integer variable (all numbers are floats at runtime)'
+          code: 'const n: number = 42;'
+        - label: 'bit mask'
+          code: 'const mask: number = 0b10110;'
+        - label: 'BigInt for values > 2^53'
+          code: 'const big: bigint = 9007199254740993n;'
+    - title: Basic operations
+      ops:
+        - label: 'integer division (truncate toward zero)'
+          code: 'const q = Math.trunc(a / b);   // or (a / b) | 0 for 32-bit'
+        - label: 'modulo (result has sign of dividend in JS)'
+          code: 'const r = a % b;'
+        - label: 'absolute value'
+          code: 'const abs = Math.abs(x);'
+        - label: 'integer square root'
+          code: 'const sq = Math.floor(Math.sqrt(n));'
+        - label: 'power'
+          code: 'const p = Math.pow(base, exp);   // or base ** exp'
+        - label: 'max of two numbers'
+          code: 'Math.max(a, b);'
+        - label: 'min of two numbers'
+          code: 'Math.min(a, b);'
+    - title: Iteration & loops
+      ops:
+        - label: 'iterate all set bits of n'
+          code: |
+            let tmp = n;
+            while (tmp !== 0) {
+              const lsb = tmp & -tmp;   // lowest set bit
+              // process lsb
+              tmp &= tmp - 1;           // clear lowest set bit
+            }
+        - label: 'enumerate subsets of a bitmask'
+          code: |
+            for (let sub = mask; sub > 0; sub = (sub - 1) & mask) {
+              // sub is a subset of mask
+            }
+    - title: Special operations (Math & Bit)
+      ops:
+        - label: 'check if n is even / odd'
+          code: 'const isEven = (n & 1) === 0;'
+        - label: 'check if n is a power of two'
+          code: 'const isPow2 = n > 0 && (n & (n - 1)) === 0;'
+        - label: 'count set bits (popcount)'
+          code: |
+            function countBits(n: number): number {
+              let count = 0;
+              while (n !== 0) {
+                n &= n - 1;
+                count++;
+              }
+              return count;
+            }
+        - label: 'XOR trick: find the single non-duplicate'
+          code: |
+            let xor = 0;
+            for (const n of nums) xor ^= n;
+            return xor;
+        - label: 'greatest common divisor (Euclidean)'
+          code: |
+            function gcd(a: number, b: number): number {
+              return b === 0 ? a : gcd(b, a % b);
+            }
+        - label: 'reverse bits of a 32-bit unsigned integer'
+          code: |
+            function reverseBits(n: number): number {
+              let result = 0;
+              for (let i = 0; i < 32; i++) {
+                result = (result << 1) | (n & 1);
+                n >>>= 1;
+              }
+              return result >>> 0;
+            }
+  example: |
+    Worked example — count the number of 1 bits in a 32-bit integer (Hamming weight).
+
+      Each iteration of `n &= n - 1` clears the lowest set bit of n. So the loop
+      runs exactly as many times as there are set bits — no need to check all 32
+      positions. After 32-bit coercion use `n >>> 0` to keep values unsigned.
+
+        function hammingWeight(n: number): number {
+            let count = 0;
+            while (n !== 0) {
+                n &= n - 1;   // clear the lowest set bit
+                count++;
+            }
+            return count;
+        }
+
+    Takeaway: `n & (n - 1)` is the go-to bit trick. Remember all bitwise ops in JS/TS
+    coerce to signed 32-bit; use `>>> 0` when you need unsigned semantics.

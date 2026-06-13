@@ -1,0 +1,124 @@
+- category: 'Binary Search'
+  lang: csharp
+  title: 'Binary Search — C# refresher'
+  summary: |
+    Binary search finds a target in a SORTED array in O(log n) by repeatedly halving
+    the search range. Look at the middle: if it is the target you are done; if the
+    target is smaller, throw away the right half; if larger, throw away the left half.
+
+    The pattern generalizes far beyond "find this number": any time the answer space
+    is monotonic ("works for everything >= X, fails below X"), you can binary-search
+    the smallest X that works. That is the real superpower.
+
+    C# notes:
+      - Compute mid as lo + (hi - lo) / 2, NOT (lo + hi) / 2. The naive version can
+        OVERFLOW int when lo + hi exceeds ~2.1 billion. This is the most famous bug.
+      - Array.BinarySearch(arr, key) is built-in, but write your own for lower/upper
+        bounds or answer-space searches.
+      - A negative return from Array.BinarySearch means not found; ~result gives the
+        insertion point (bitwise NOT), which is useful for lower-bound queries.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'standard inclusive bounds'
+          code: 'int lo = 0, hi = arr.Length - 1;'
+        - label: 'answer-space search (search on a value range)'
+          code: 'int lo = minPossible, hi = maxPossible;'
+        - label: 'overflow-safe midpoint'
+          code: 'int mid = lo + (hi - lo) / 2;'
+    - title: Basic operations
+      ops:
+        - label: 'loop condition (inclusive both ends)'
+          code: |
+            while (lo <= hi)
+            {
+                // ...
+            }
+        - label: 'check middle'
+          code: 'if (arr[mid] == target) return mid;'
+        - label: 'discard left half (target is right)'
+          code: 'lo = mid + 1;'
+        - label: 'discard right half (target is left)'
+          code: 'hi = mid - 1;'
+        - label: 'library exact search (negative if absent)'
+          code: 'int idx = Array.BinarySearch(arr, target);'
+    - title: Iteration & loops
+      ops:
+        - label: 'standard binary search loop'
+          code: |
+            while (lo <= hi)
+            {
+                int mid = lo + (hi - lo) / 2;
+                if (arr[mid] == target) return mid;
+                else if (arr[mid] < target) lo = mid + 1;
+                else hi = mid - 1;
+            }
+        - label: 'left-boundary (first index >= target)'
+          code: |
+            while (lo < hi)
+            {
+                int mid = lo + (hi - lo) / 2;
+                if (arr[mid] < target) lo = mid + 1; else hi = mid;
+            }
+        - label: 'answer-space: keep lo as best valid'
+          code: |
+            if (Feasible(mid))
+            {
+                best = mid;
+                hi = mid - 1;
+            }
+            else
+            {
+                lo = mid + 1;
+            }
+    - title: Special operations (binary search)
+      ops:
+        - label: 'find first true in boolean space (lower bound)'
+          code: |
+            int lo = 0, hi = n;
+            while (lo < hi)
+            {
+                int mid = lo + (hi - lo) / 2;
+                if (Cond(mid)) hi = mid; else lo = mid + 1;
+            }
+            return lo;
+        - label: 'rotated sorted array: which half is ordered?'
+          code: |
+            if (arr[lo] <= arr[mid])
+            {
+                // left half sorted
+            }
+            else
+            {
+                // right half sorted
+            }
+        - label: 'search 2-D matrix (flatten index)'
+          code: |
+            int mid = lo + (hi - lo) / 2;
+            int val = matrix[mid / cols][mid % cols];
+        - label: 'avoid overflow when returning "not found"'
+          code: 'return -1;   // lo > hi means the element is absent'
+  example: |
+    Worked example — find the index of target, or -1 if absent:
+
+      Keep an inclusive range [lo..hi]. Each step look at the middle and drop the
+      half that cannot contain the target. The range shrinks by half every step, so
+      a million elements take only ~20 checks.
+
+        int Search(int[] arr, int target) {
+            int lo = 0, hi = arr.Length - 1;
+            while (lo <= hi) {
+                int mid = lo + (hi - lo) / 2;   // overflow-safe
+                if (arr[mid] == target) {
+                    return mid;
+                } else if (arr[mid] < target) {
+                    lo = mid + 1;               // answer is to the right
+                } else {
+                    hi = mid - 1;               // answer is to the left
+                }
+            }
+            return -1;
+        }
+
+    Takeaway: the invariant is "if target exists, it is inside [lo..hi]." Every line
+    must preserve that. When the range is empty (lo > hi), the target is not there.

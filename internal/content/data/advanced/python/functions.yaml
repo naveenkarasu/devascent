@@ -1,0 +1,134 @@
+lang: python
+group: Functions
+title: "Functions — first-class, decorators, closures, *args/**kwargs"
+tag: E
+summary: |
+  Python functions are first-class objects: they can be stored in variables,
+  passed as arguments, returned from other functions, and inspected at runtime
+  via `__name__`, `__doc__`, and `inspect`.
+
+  Key mechanics:
+
+  `*args` / `**kwargs` enable variadic signatures. `*args` collects extra
+  positional arguments as a tuple; `**kwargs` collects extra keyword arguments
+  as a dict. A bare `*` in a signature makes all following parameters
+  keyword-only, enforcing call-site explicitness.
+
+  Closures capture free variables by REFERENCE, not by value — this is the
+  source of the late-binding bug (see Gotchas). The enclosing scope's variable
+  is shared by every closure created in that scope.
+
+  Decorators are syntactic sugar for higher-order function application:
+  `@decorator` above `def f` is equivalent to `f = decorator(f)`. Decorator
+  factories (`@retry(n)`) add an extra layer: `@retry(3)` calls `retry(3)` which
+  returns a decorator, which then wraps `f`. Always use `functools.wraps` on the
+  inner wrapper to preserve `__name__` and `__doc__`.
+
+  Default argument expressions are evaluated ONCE at function definition time.
+  Mutable defaults (e.g. `def f(x, lst=[])`) persist across calls — see Gotchas
+  for the canonical exercise.
+
+  Common mistakes:
+  - Forgetting `functools.wraps` on a decorator wrapper clobbers `__name__` and
+    `__doc__` — introspection and tooling break silently.
+  - `lambda` bodies are limited to a single expression; complex logic belongs in
+    a named function.
+  - Mutable default args and late-binding closures are exercised in gotchas.yaml.
+exercises:
+  - prompt: |
+      `log_call` is supposed to wrap any callable: print `"Calling <name>"`,
+      invoke it with the forwarded arguments, print the return value, and
+      return it.
+
+      The broken version fails to forward `**kwargs` to the underlying function,
+      so keyword arguments are silently dropped and the call raises a TypeError
+      for functions that require them.
+
+      Fix it so `log_call(func, *args, **kwargs)` correctly forwards all
+      positional and keyword arguments.
+    kind: fix-it
+    broken_code: |
+      def log_call(func, *args, **kwargs):
+          print(f"Calling {func.__name__}")
+          result = func(*args)      # kwargs are dropped!
+          print(f"  -> {result!r}")
+          return result
+
+      def greet(name, greeting="Hello"):
+          return f"{greeting}, {name}!"
+
+      log_call(greet, "Alice", greeting="Hi")
+    fixed_code: |
+      def log_call(func, *args, **kwargs):
+          print(f"Calling {func.__name__}")
+          result = func(*args, **kwargs)
+          print(f"  -> {result!r}")
+          return result
+
+      def greet(name, greeting="Hello"):
+          return f"{greeting}, {name}!"
+
+      log_call(greet, "Alice", greeting="Hi")
+    bug: |
+      `func(*args)` discards `kwargs` entirely. Any keyword argument passed to
+      `log_call` is collected into `**kwargs` but never forwarded. The fix is
+      `func(*args, **kwargs)`, which unpacks and forwards both positional and
+      keyword arguments verbatim.
+    check: stdout
+    signal: "Calling greet\n  -> 'Hi, Alice!'"
+
+  - prompt: |
+      `make_multiplier(factor)` is a decorator factory: the returned decorator
+      should multiply whatever the wrapped function returns by `factor`.
+
+      The broken version applies the multiplier to the ARGUMENTS instead of the
+      RETURN VALUE, and also forgets `functools.wraps`, clobbering the wrapped
+      function's `__name__`.
+
+      Fix both problems.
+    kind: fix-it
+    broken_code: |
+      import functools
+
+      def make_multiplier(factor):
+          def decorator(func):
+              def wrapper(*args, **kwargs):
+                  # Bug: applies factor to args, not to the return value
+                  new_args = tuple(a * factor for a in args)
+                  return func(*new_args, **kwargs)
+              return wrapper       # missing functools.wraps
+          return decorator
+
+      @make_multiplier(3)
+      def double(x):
+          return x * 2
+
+      print(double(4))
+      print(double.__name__)
+    fixed_code: |
+      import functools
+
+      def make_multiplier(factor):
+          def decorator(func):
+              @functools.wraps(func)
+              def wrapper(*args, **kwargs):
+                  result = func(*args, **kwargs)
+                  return result * factor
+              return wrapper
+          return decorator
+
+      @make_multiplier(3)
+      def double(x):
+          return x * 2
+
+      print(double(4))
+      print(double.__name__)
+    bug: |
+      Two bugs: (1) the wrapper multiplies the input arguments rather than the
+      return value — `make_multiplier(3)` applied to `double(4)` should give
+      `(4*2)*3 = 24`, not `double(4*3) = 24` (same result here but wrong for
+      other functions). (2) Missing `@functools.wraps(func)` means `double.__name__`
+      becomes `"wrapper"` instead of `"double"`, breaking introspection and stack
+      traces.
+    check: stdout
+    signal: "24\ndouble"

@@ -1,0 +1,35 @@
+fn dfs(grid: &Vec<Vec<i64>>, seen: &mut Vec<Vec<bool>>, i: i64, j: i64, m: i64, n: i64) -> i64 {
+    if i < 0 || j < 0 || i >= m || j >= n {
+        return 0;
+    }
+    let (ui, uj) = (i as usize, j as usize);
+    if grid[ui][uj] == 0 || seen[ui][uj] {
+        return 0;
+    }
+    seen[ui][uj] = true;
+    1 + dfs(grid, seen, i + 1, j, m, n)
+      + dfs(grid, seen, i - 1, j, m, n)
+      + dfs(grid, seen, i, j + 1, m, n)
+      + dfs(grid, seen, i, j - 1, m, n)
+}
+
+fn max_area_of_island(grid: Vec<Vec<i64>>) -> i64 {
+    if grid.is_empty() {
+        return 0;
+    }
+    let m = grid.len() as i64;
+    let n = grid[0].len() as i64;
+    let mut seen = vec![vec![false; grid[0].len()]; grid.len()];
+    let mut best = 0i64;
+    for i in 0..m {
+        for j in 0..n {
+            if grid[i as usize][j as usize] == 1 && !seen[i as usize][j as usize] {
+                let a = dfs(&grid, &mut seen, i, j, m, n);
+                if a > best {
+                    best = a;
+                }
+            }
+        }
+    }
+    best
+}

@@ -1,0 +1,170 @@
+lang: python
+group: Error Handling
+title: "Error Handling — try/else/finally, custom exceptions, chaining"
+tag: E
+summary: |
+  Python uses exceptions pervasively and idiomatically. The `try/except/else/finally`
+  structure is fully expressive:
+    - `except` runs only when an exception is raised.
+    - `else` runs ONLY when NO exception was raised in `try` — useful for separating
+      happy-path code from error recovery.
+    - `finally` ALWAYS runs — even after a `return` inside `try` (the `finally`
+      return value wins if it also returns).
+
+  Exception hierarchy matters:
+    - `BaseException` is the root — `KeyboardInterrupt`, `SystemExit`, and
+      `GeneratorExit` inherit from it.
+    - `Exception` is the base for all normal errors — `except Exception` does NOT
+      catch `KeyboardInterrupt` or `SystemExit`.
+    - Custom exceptions should inherit from `Exception` (or a suitable subclass),
+      never from `BaseException`.
+
+  Exception chaining:
+    - `raise NewError("...") from original` sets `__cause__` and prints both
+      tracebacks (explicit chaining).
+    - A bare `raise NewError("...")` inside an `except` block sets `__context__`
+      implicitly — Python still shows both tracebacks.
+    - `raise NewError("...") from None` suppresses the chained context entirely.
+
+  Common mistakes:
+  - Bare `except:` catches `KeyboardInterrupt` and `SystemExit` — almost always
+    wrong.
+  - Catching `Exception` and doing nothing silently swallows bugs.
+  - `finally` runs even if there is a `return` inside `try`.
+exercises:
+  - prompt: |
+      `safe_parse_int(s)` should parse a string to int, doubling it on success
+      (the `else` clause), returning 0 on `ValueError`, and always printing "done"
+      (the `finally` clause).
+
+      The broken version puts the doubling inside the `try` block instead of the
+      `else` block, which means it could be doubled even if parsing failed (if
+      `result` happened to have a value from a previous call), and it conflates
+      the happy path with the error-handling path.
+
+      Move the doubling into the `else` clause.
+    kind: fix-it
+    broken_code: |
+      def safe_parse_int(s):
+          try:
+              result = int(s)
+              result = result * 2     # Bug: belongs in else, not try
+          except ValueError:
+              result = 0
+          finally:
+              print("done")
+          return result
+    fixed_code: |
+      def safe_parse_int(s):
+          try:
+              result = int(s)
+          except ValueError:
+              result = 0
+          else:
+              result = result * 2    # only runs when no exception was raised
+          finally:
+              print("done")
+          return result
+    bug: |
+      Putting `result = result * 2` inside the `try` block means it only works
+      correctly by accident — if `int(s)` raises, `result` is set to 0 in the
+      `except` block AFTER the try body is abandoned, so the doubling is skipped.
+      But the intent of `else` is precisely this: code that should run on the happy
+      path, separate from the `try` body so readers can clearly see which lines can
+      raise and which lines are post-success logic.
+    check: none
+    signal: ""
+
+  - prompt: |
+      `load_config(path)` should wrap a `json.JSONDecodeError` in a custom
+      `ConfigError` using explicit exception chaining (`raise ... from`).
+
+      The broken version raises `ConfigError` without chaining — the original
+      `JSONDecodeError` is lost from the traceback, making debugging much harder.
+
+      Fix it to use `raise ConfigError(f"Bad config: {path}") from e`.
+    kind: fix-it
+    broken_code: |
+      import json
+
+      class ConfigError(Exception):
+          pass
+
+      def load_config(path):
+          try:
+              with open(path) as fh:
+                  return json.load(fh)
+          except json.JSONDecodeError:
+              # Bug: swallows the original exception context
+              raise ConfigError(f"Bad config: {path}")
+    fixed_code: |
+      import json
+
+      class ConfigError(Exception):
+          pass
+
+      def load_config(path):
+          try:
+              with open(path) as fh:
+                  return json.load(fh)
+          except json.JSONDecodeError as e:
+              raise ConfigError(f"Bad config: {path}") from e
+    bug: |
+      `raise ConfigError(...)` without `from e` raises the new exception while the
+      original `JSONDecodeError` is attached as `__context__` (implicit chaining),
+      but Python may suppress its display depending on the context. More critically,
+      the intent is lost — using `raise ... from e` sets `__cause__` explicitly,
+      ensuring the original decode error always appears in the traceback with the
+      message "The above exception was the direct cause of…".
+    check: none
+    signal: ""
+
+  - prompt: |
+      `parse_int_or_default(s, default)` should return `int(s)` if `s` is a valid
+      integer string, or `default` if not. It should ALWAYS print "done" (via
+      `finally`).
+
+      The broken version puts `return default` inside `finally`, which causes
+      `finally` to override the successful return from `try`. Fix it so `return
+      default` is only in the `except` block, and `finally` only prints.
+    kind: fix-it
+    broken_code: |
+      def parse_int_or_default(s, default):
+          try:
+              result = int(s)
+              return result
+          except ValueError:
+              result = default
+          finally:
+              print("done")
+              return default    # Bug: finally return overrides the try return!
+    fixed_code: |
+      def parse_int_or_default(s, default):
+          try:
+              result = int(s)
+              return result
+          except ValueError:
+              return default
+          finally:
+              print("done")
+    bug: |
+      A `return` inside `finally` always wins — it overrides any `return` from
+      the `try` or `except` block. So `parse_int_or_default("42", 0)` returns `0`
+      (the `finally` return) instead of `42`. Removing the `return` from `finally`
+      lets `finally` execute its side effects (printing) while the original return
+      value from `try` or `except` is preserved.
+    check: tests
+    func_name: parse_int_or_default
+    tests:
+      - name: "valid string returns int, not default"
+        input: ["42", 0]
+        expected: 42
+      - name: "negative valid string"
+        input: ["-7", 99]
+        expected: -7
+      - name: "invalid string returns default"
+        input: ["abc", 0]
+        expected: 0
+      - name: "invalid string returns custom default"
+        input: ["xyz", -1]
+        expected: -1

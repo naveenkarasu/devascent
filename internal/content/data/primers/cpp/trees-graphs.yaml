@@ -1,0 +1,165 @@
+- category: 'Trees & Graphs'
+  lang: cpp
+  title: Trees & Graphs — C++ refresher
+  summary: |
+    Trees are connected acyclic graphs; a binary tree has at most two children per
+    node. Graphs are the general case: nodes connected by edges, possibly cyclic.
+
+    Tree traversals: in-order (left-root-right, gives sorted output for BST),
+    pre-order (root-left-right, good for copying), post-order (left-right-root,
+    good for deletion/height). All three are O(n).
+
+    Graph search: BFS with a queue (shortest path in unweighted graph), DFS with
+    recursion or an explicit stack (connectivity, cycle detection, topological sort).
+
+    C++ notes:
+      - Hand-roll TreeNode and ListNode structs — there are no stdlib tree/graph types.
+      - Represent graphs as vector<vector<int>> adj(n) adjacency lists.
+      - Mark visited nodes to avoid infinite loops: vector<bool> visited(n, false).
+      - BFS queue: std::queue<int>; DFS stack: std::stack<int> or recursion.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'binary tree node'
+          code: |
+            struct TreeNode {
+                int val;
+                TreeNode *left, *right;
+                TreeNode(int v) : val(v), left(nullptr), right(nullptr) {}
+            };
+        - label: 'adjacency list graph (undirected)'
+          code: |
+            vector<vector<int>> adj(n);
+            adj[u].push_back(v);
+            adj[v].push_back(u);
+        - label: 'adjacency list with weights'
+          code: |
+            vector<vector<pair<int,int>>> adj(n);
+            adj[u].push_back({v, weight});
+        - label: 'visited array'
+          code: 'vector<bool> visited(n, false);'
+        - label: 'distance array for BFS'
+          code: 'vector<int> dist(n, INT_MAX);'
+    - title: Basic operations
+      ops:
+        - label: 'check if node exists (non-null)'
+          code: 'if (node) { ... }   // or if (node != nullptr)'
+        - label: 'access left child'
+          code: 'node->left;'
+        - label: 'access right child'
+          code: 'node->right;'
+        - label: 'add edge to adjacency list'
+          code: 'adj[u].push_back(v);'
+        - label: 'mark node visited'
+          code: 'visited[node] = true;'
+    - title: Most-used built-in functions
+      ops:
+        - label: 'BFS with queue'
+          code: |
+            queue<int> q;
+            q.push(start);
+            visited[start] = true;
+            while (!q.empty()) {
+                int u = q.front();
+                q.pop();
+                for (int v : adj[u]) {
+                    if (!visited[v]) {
+                        visited[v] = true;
+                        q.push(v);
+                    }
+                }
+            }
+        - label: 'DFS recursive'
+          code: |
+            void dfs(int u, vector<vector<int>>& adj, vector<bool>& visited) {
+                visited[u] = true;
+                for (int v : adj[u]) if (!visited[v]) dfs(v, adj, visited);
+            }
+        - label: 'tree height (recursive)'
+          code: |
+            int height(TreeNode* node) {
+                if (!node) return 0;
+                return 1 + max(height(node->left), height(node->right));
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'BFS level-order traversal (collect each level)'
+          code: |
+            queue<TreeNode*> q;
+            q.push(root);
+            while (!q.empty()) {
+                int sz = (int)q.size();
+                for (int i = 0; i < sz; i++) {
+                    auto* node = q.front();
+                    q.pop();
+                    if (node->left) q.push(node->left);
+                    if (node->right) q.push(node->right);
+                }
+            }
+        - label: 'in-order traversal (recursive)'
+          code: |
+            void inorder(TreeNode* node, vector<int>& res) {
+                if (!node) return;
+                inorder(node->left, res);
+                res.push_back(node->val);
+                inorder(node->right, res);
+            }
+        - label: 'topological sort (Kahn BFS)'
+          code: |
+            vector<int> indegree(n, 0);
+            for (int u = 0; u < n; u++) {
+                for (int v : adj[u]) indegree[v]++;
+            }
+            queue<int> q;
+            for (int i = 0; i < n; i++) if (indegree[i] == 0) q.push(i);
+            while (!q.empty()) {
+                int u = q.front();
+                q.pop();
+                order.push_back(u);
+                for (int v : adj[u]) if (--indegree[v] == 0) q.push(v);
+            }
+    - title: Special operations (trees & graphs)
+      ops:
+        - label: 'lowest common ancestor (BST)'
+          code: |
+            TreeNode* lca(TreeNode* root, TreeNode* p, TreeNode* q) {
+                if (root->val > p->val && root->val > q->val) return lca(root->left, p, q);
+                if (root->val < p->val && root->val < q->val) return lca(root->right, p, q);
+                return root;
+            }
+        - label: 'number of islands (DFS sink pattern)'
+          code: |
+            void dfs(vector<vector<char>>& g, int r, int c) {
+                if (r < 0 || r >= (int)g.size() || c < 0 || c >= (int)g[0].size() || g[r][c] != '1') return;
+                g[r][c] = '0';
+                dfs(g,r+1,c);
+                dfs(g,r-1,c);
+                dfs(g,r,c+1);
+                dfs(g,r,c-1);
+            }
+        - label: 'detect cycle in undirected graph (DFS with parent)'
+          code: |
+            bool hasCycle(int u, int parent, vector<vector<int>>& adj, vector<bool>& vis) {
+                vis[u] = true;
+                for (int v : adj[u]) {
+                    if (!vis[v]) {
+                        if (hasCycle(v, u, adj, vis)) return true;
+                    } else if (v != parent) return true;
+                }
+                return false;
+            }
+  example: |
+    Worked example — maximum depth of a binary tree:
+
+      The depth of an empty tree is 0. The depth of a non-empty tree is 1 plus
+      the maximum depth of its two subtrees. This recurrence evaluates in a single
+      post-order pass over all nodes — O(n) time, O(h) stack space.
+
+        int maxDepth(TreeNode* root) {
+            if (!root) return 0;
+            return 1 + max(maxDepth(root->left), maxDepth(root->right));
+        }
+
+    Takeaway: most tree problems are just this template — handle the null base case,
+    recurse on children, combine results. For graphs, always track visited[] to
+    prevent infinite loops.

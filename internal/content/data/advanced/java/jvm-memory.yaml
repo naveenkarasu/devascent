@@ -1,0 +1,38 @@
+lang: java
+group: JVM & Memory
+title: "JVM & Memory — heap, stack, GC, and metaspace"
+tag: C
+summary: |
+  Java programs compile to platform-neutral bytecode (.class files) run by the JVM.
+  The JVM's class loader subsystem loads, links, and initialises classes on first use
+  (lazy loading). At runtime the JVM JIT-compiles hot bytecode paths to native
+  machine instructions.
+
+  Memory regions:
+  - Heap: object instances and arrays — garbage collected. Divided into young
+    generation (most objects die here) and old generation (survivors promoted from
+    young gen). GC algorithms in Java 21: G1 (default, low-pause), ZGC
+    (sub-millisecond pauses, highly scalable), Shenandoah (concurrent, low-pause).
+  - Stack: per-thread frames holding local variables, operand stacks, and partial
+    results. Auto-managed — frame pushed on call, popped on return. Deep recursion
+    exhausts the stack → StackOverflowError.
+  - Metaspace: class metadata (replaced PermGen in Java 8+). Grows in native memory;
+    no hard cap by default.
+  - Code cache: JIT-compiled native code segments.
+
+  Key implication of the heap/stack split: primitives and object references live on
+  the stack; object contents always live on the heap. A reference going out of scope
+  does not free the object — it only removes a root; the GC frees memory when no
+  live reference chain reaches the object. Static references that outlive their
+  usefulness are the most common source of Java memory leaks — the GC cannot collect
+  objects that remain reachable through a static field.
+
+  Concrete errors explained by these regions:
+  - StackOverflowError — call stack depth exceeded (infinite recursion is the usual cause).
+  - OutOfMemoryError: Java heap space — heap exhausted; too many live objects.
+  - OutOfMemoryError: Metaspace — class metadata space exhausted (rare; often from
+    excessive dynamic class generation or classloader leaks).
+
+  You rarely tune GC flags directly unless building latency-sensitive services, but
+  understanding this model is essential for reading heap dumps, diagnosing memory
+  leaks, and interpreting profiler output.

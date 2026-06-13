@@ -1,0 +1,43 @@
+id: loops
+order: 4
+title: Repeat Until Done
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A loop repeats a block.  for i in range(1, n + 1):  runs once for each i
+      from 1 up to n. The *accumulator* pattern: start a variable at 0 (or ""),
+      update it each pass. range(1, 4) yields 1,2,3 — the stop value is excluded,
+      so we write n + 1 to include n.
+
+          def count_to(n):
+              c = 0
+              for i in range(1, n + 1):
+                  c = c + 1
+              return c
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: Add up every whole number from 1 to n (inclusive).
+    task:
+      prompt: Return the sum of 1..n inclusive.
+      func_name: count_up
+      starter: |
+        def count_up(n):
+            pass  # hint: result = 0; for i in range(1, n+1): result += i; return result AFTER the loop
+      tests:
+        - {name: 'count_up(5)', input: [5], expected: 15}
+        - {name: 'count_up(1)', input: [1], expected: 1}
+        - {name: 'count_up(10)', input: [10], expected: 55}
+  - kind: you_do
+    title: You do — solo
+    body: Build a string this time.
+    task:
+      prompt: Return ch repeated 'times' times. If times is 0, return "".
+      func_name: repeat_char
+      starter: |
+        def repeat_char(ch, times):
+            pass  # <- a string times an int repeats it:  "ab" * 3 == "ababab"
+      tests:
+        - {name: 'repeat_char(a, 3)', input: ["a", 3], expected: "aaa"}
+        - {name: 'repeat_char(x, 0)', input: ["x", 0], expected: ""}
+        - {name: 'repeat_char(*, 5)', input: ["*", 5], expected: "*****"}

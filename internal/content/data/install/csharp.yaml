@@ -1,0 +1,21 @@
+lang: csharp
+label: C#
+notes: You need the .NET SDK (which includes the compiler), NOT just the .NET Runtime. "dotnet --list-sdks" must show at least one entry.
+os:
+  windows:
+    link: https://dotnet.microsoft.com/download
+    steps:
+      - Download the .NET SDK (not the Runtime) installer from dotnet.microsoft.com/download.
+      - Run it, then restart DevAscent.
+    verify: dotnet --list-sdks
+  macos:
+    link: https://dotnet.microsoft.com/download
+    steps:
+      - Download the .NET SDK .pkg from dotnet.microsoft.com/download, or "brew install --cask dotnet-sdk".
+      - Restart your terminal.
+    verify: dotnet --list-sdks
+  linux:
+    link: https://learn.microsoft.com/dotnet/core/install/linux
+    steps:
+      - Install the .NET SDK via your distro's package feed (see Microsoft's Linux install docs).
+    verify: dotnet --list-sdks

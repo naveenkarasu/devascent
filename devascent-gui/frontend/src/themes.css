@@ -1,0 +1,124 @@
+/* DevAscent themes — switch by setting data-theme on <html>.
+   Every component uses var(--x), so switching recolors the whole UI instantly.
+
+   Each theme keeps the same surface ladder — canvas < base < panel <
+   panelStrong — with PERCEPTIBLE luminance steps: a flat ladder reads as a
+   grey film laid over the app instead of a theme. --accent / --onAccent /
+   --selection feed the theme-scoped chrome rules at the bottom of this file;
+   Monaco syntax colors are authored per theme in monaco-setup.ts. */
+:root, html[data-theme="prismatic"] {
+  --canvas:#0E1116; --base:#11161D; --panel:#161D27; --panelStrong:#202A36;
+  --borderSubtle:#293445; --borderStrong:#3B4A61;
+  --textPrimary:#F5F7FA; --textSecondary:#C8D1DD; --textMuted:#94A2B8;
+  --blue:#61AFEF; --green:#98C379; --yellow:#E5C07B; --red:#E06C75;
+  --magenta:#C678DD; --cyan:#56B6C2;
+  --accent:#61AFEF; --onAccent:#08111C; --selection:#61AFEF4D;
+}
+/* Dracula — vivid purple. Crisp by design (fg #f8f8f2 ≈ 13:1): pink keywords,
+   green functions, purple accent. Surface ladder bg → a lighter panel → the
+   currentLine elevation (#44475a); borders use comment-blue #6272a4. */
+html[data-theme="dracula"] {
+  --canvas:#21222c; --base:#282a36; --panel:#343746; --panelStrong:#44475a;
+  --borderSubtle:#44475a; --borderStrong:#6272a4;
+  --textPrimary:#f8f8f2; --textSecondary:#d4d6e4; --textMuted:#9aa0c4;
+  --blue:#bd93f9; --green:#50fa7b; --yellow:#f1fa8c; --red:#ff5555;
+  --magenta:#ff79c6; --cyan:#8be9fd;
+  --accent:#bd93f9; --onAccent:#282a36; --selection:#bd93f94d;
+}
+/* Monokai — warm + saturated (the classic Sublime palette). Crisp fg #f8f8f2
+   (≈ 14:1): pink keywords, lime functions, green accent. Surface ladder warms
+   from #272822 up through olive panels. */
+html[data-theme="monokai"] {
+  --canvas:#1e1f1c; --base:#272822; --panel:#33342c; --panelStrong:#414339;
+  --borderSubtle:#414339; --borderStrong:#5a5c4e;
+  --textPrimary:#f8f8f2; --textSecondary:#d8d8cc; --textMuted:#a39d89;
+  --blue:#66d9ef; --green:#a6e22e; --yellow:#e6db74; --red:#f92672;
+  --magenta:#ae81ff; --cyan:#66d9ef;
+  --accent:#a6e22e; --onAccent:#272822; --selection:#a6e22e4d;
+}
+:root {
+  --font-ui:"Segoe UI Variable","Segoe UI",system-ui,Roboto,sans-serif;
+  --font-mono:"Cascadia Mono","Cascadia Code","JetBrains Mono",Consolas,monospace;
+}
+
+/* ── Accent chrome (theme-scoped) ────────────────────────────────────────
+   Selectors here are global, so every rule is gated on html[data-theme=…]:
+   each theme owns its accent treatment, and an unknown future theme simply
+   falls back to the neutral styles in style.css / workbench.css. */
+
+/* text selection carries the accent */
+html[data-theme="prismatic"] ::selection,
+html[data-theme="dracula"] ::selection,
+html[data-theme="monokai"] ::selection { background:var(--selection); }
+
+/* active top-nav entry: accent text + underline instead of a grey pill */
+html[data-theme="prismatic"] .nav button.on,
+html[data-theme="dracula"] .nav button.on,
+html[data-theme="monokai"] .nav button.on {
+  color:var(--accent);
+  box-shadow:inset 0 -2px 0 0 var(--accent);
+}
+
+/* primary action is THE accent surface */
+html[data-theme="prismatic"] .btn.primary,
+html[data-theme="dracula"] .btn.primary,
+html[data-theme="monokai"] .btn.primary {
+  background:var(--accent); border-color:var(--accent); color:var(--onAccent);
+}
+
+/* keyboard focus ring (Monaco's hidden .inputarea draws its own cursor) */
+html[data-theme="prismatic"] :is(button,select,a,input,textarea):not(.inputarea):focus-visible,
+html[data-theme="dracula"] :is(button,select,a,input,textarea):not(.inputarea):focus-visible,
+html[data-theme="monokai"] :is(button,select,a,input,textarea):not(.inputarea):focus-visible {
+  outline:2px solid var(--accent); outline-offset:1px;
+}
+
+/* focused inputs pick up the accent (instead of the generic --blue) */
+html[data-theme="prismatic"] :is(.search,.specinput,.minput):focus,
+html[data-theme="dracula"] :is(.search,.specinput,.minput):focus,
+html[data-theme="monokai"] :is(.search,.specinput,.minput):focus {
+  border-color:var(--accent);
+}
+
+/* theme switcher's active pill */
+html[data-theme="prismatic"] .themesw button.on,
+html[data-theme="dracula"] .themesw button.on,
+html[data-theme="monokai"] .themesw button.on {
+  border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset;
+}
+
+/* status-bar accent, terminal caret, scorecard progress fill */
+html[data-theme="prismatic"] .status .s-accent,
+html[data-theme="dracula"] .status .s-accent,
+html[data-theme="monokai"] .status .s-accent { color:var(--accent); }
+html[data-theme="prismatic"] .caret,
+html[data-theme="dracula"] .caret,
+html[data-theme="monokai"] .caret { background:var(--accent); }
+html[data-theme="prismatic"] .scfill,
+html[data-theme="dracula"] .scfill,
+html[data-theme="monokai"] .scfill { background:var(--accent); }
+
+/* scrollbars: quiet thumb, accent on hover */
+html[data-theme="prismatic"] ::-webkit-scrollbar,
+html[data-theme="dracula"] ::-webkit-scrollbar,
+html[data-theme="monokai"] ::-webkit-scrollbar { width:10px; height:10px; }
+html[data-theme="prismatic"] ::-webkit-scrollbar-track,
+html[data-theme="dracula"] ::-webkit-scrollbar-track,
+html[data-theme="monokai"] ::-webkit-scrollbar-track { background:transparent; }
+html[data-theme="prismatic"] ::-webkit-scrollbar-thumb,
+html[data-theme="dracula"] ::-webkit-scrollbar-thumb,
+html[data-theme="monokai"] ::-webkit-scrollbar-thumb {
+  background:var(--borderStrong); border-radius:5px;
+  border:2px solid transparent; background-clip:padding-box;
+}
+html[data-theme="prismatic"] ::-webkit-scrollbar-thumb:hover,
+html[data-theme="dracula"] ::-webkit-scrollbar-thumb:hover,
+html[data-theme="monokai"] ::-webkit-scrollbar-thumb:hover {
+  background:var(--accent); background-clip:padding-box;
+}
+
+/* monokai's brand mark runs warm (green→pink) instead of blue→magenta */
+html[data-theme="monokai"] .titlebar .mark,
+html[data-theme="monokai"] .brandmark {
+  background:linear-gradient(135deg,var(--green),var(--red));
+}

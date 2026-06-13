@@ -1,0 +1,67 @@
+id: collections
+lang: go
+order: 6
+title: Collections
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A slice holds many values in order:  []int{10, 20, 30}.  Read by position
+      with numbers[0] (positions start at 0). Loop over every item with
+      for _, x := range numbers (the _ ignores the index). Slices power the
+      accumulator pattern over real data.
+
+          func count_items(items []int) int {
+              c := 0
+              for _, x := range items {
+                  _ = x
+                  c++
+              }
+              return c
+          }
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: Add up all numbers in a slice. An empty slice totals 0.
+    task:
+      prompt: Return the sum of the slice (empty slice → 0).
+      func_name: sum_list
+      starter: |
+        func sum_list(numbers []int) int {
+            // hint: total := 0; for _, n := range numbers { total += n }; return total
+        }
+      solution: |
+        func sum_list(numbers []int) int {
+            total := 0
+            for _, n := range numbers {
+                total += n
+            }
+            return total
+        }
+      tests:
+        - {name: 'sum_list([1,2,3])', input: [[1, 2, 3]], expected: 6}
+        - {name: 'sum_list([])', input: [[]], expected: 0}
+        - {name: 'sum_list([10,-4,4])', input: [[10, -4, 4]], expected: 10}
+  - kind: you_do
+    title: You do — solo
+    body: Find the biggest value (slice is non-empty).
+    task:
+      prompt: Return the largest number in a non-empty slice.
+      func_name: largest
+      starter: |
+        func largest(numbers []int) int {
+            // <- start with the first item, then loop and keep the bigger one
+        }
+      solution: |
+        func largest(numbers []int) int {
+            biggest := numbers[0]
+            for _, n := range numbers {
+                if n > biggest {
+                    biggest = n
+                }
+            }
+            return biggest
+        }
+      tests:
+        - {name: 'largest([3,9,2])', input: [[3, 9, 2]], expected: 9}
+        - {name: 'largest([-5,-1,-10])', input: [[-5, -1, -10]], expected: -1}
+        - {name: 'largest([42])', input: [[42]], expected: 42}

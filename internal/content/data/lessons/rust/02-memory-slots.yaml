@@ -1,0 +1,57 @@
+id: memory-slots
+lang: rust
+order: 2
+title: Memory Slots
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A variable is a named box that stores a value. In Rust, let declares a
+      variable and binds it to a value:  let name = value;  Function parameters
+      arrive as ready-made variables.
+
+          fn triple(x: i64) -> i64 {
+              let result = x * 3;
+              result
+          }
+
+      triple(4) gives 12.  Math uses + - * / .  Here x and result are both i64
+      (64-bit integers). The last expression in a block without a semicolon is
+      the return value — or you can write return explicitly.
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: You're given a number score. Store double the score, then hand it back.
+    task:
+      prompt: Return double the given score.
+      func_name: double_score
+      starter: |
+        fn double_score(score: i64) -> i64 {
+            // hint:  let total = score * 2;  then  total
+        }
+      solution: |
+        fn double_score(score: i64) -> i64 {
+            let total = score * 2;
+            total
+        }
+      tests:
+        - {name: 'double_score(5)', input: [5], expected: 10}
+        - {name: 'double_score(0)', input: [0], expected: 0}
+        - {name: 'double_score(21)', input: [21], expected: 42}
+  - kind: you_do
+    title: You do — solo
+    body: Now on your own.
+    task:
+      prompt: Given price and quantity, return the total cost (price times quantity).
+      func_name: total_cost
+      starter: |
+        fn total_cost(price: i64, quantity: i64) -> i64 {
+            // <- delete this line and write your code
+        }
+      solution: |
+        fn total_cost(price: i64, quantity: i64) -> i64 {
+            price * quantity
+        }
+      tests:
+        - {name: 'total_cost(3, 4)', input: [3, 4], expected: 12}
+        - {name: 'total_cost(10, 0)', input: [10, 0], expected: 0}
+        - {name: 'total_cost(7, 2)', input: [7, 2], expected: 14}

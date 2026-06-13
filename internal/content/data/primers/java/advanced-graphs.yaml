@@ -1,0 +1,139 @@
+- category: Advanced Graphs
+  lang: java
+  title: Advanced Graphs — Java refresher
+  summary: |
+    Beyond plain DFS/BFS, a few named graph tools cover most "advanced" problems:
+
+      - Topological sort: order tasks so every prerequisite comes before what needs it
+        (course schedules, build order). Works only on a DAG (no cycles). Kahn's
+        algorithm repeatedly removes nodes whose in-degree is 0.
+      - Union-Find (Disjoint Set Union): near-O(1) "are these two in the same group?"
+        and "merge two groups." Great for counting connected components and detecting
+        cycles in an undirected graph.
+      - Dijkstra: shortest path from a source when edges have NON-NEGATIVE weights.
+        It is BFS with a min-heap (PriorityQueue) ordered by distance so far.
+
+    Pick by the question: "valid ordering / cycle in directed graph?" -> topo sort;
+    "connectivity / grouping?" -> union-find; "cheapest path with weights?" -> Dijkstra.
+
+    Java notes:
+      - Adjacency list: Map<Integer, List<int[]>> where int[] is {neighbor, weight}.
+      - Union-Find is just an int[] parent array plus find() with path compression.
+      - Dijkstra uses a PriorityQueue ordered by distance.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'weighted adjacency list (node -> {neighbor, weight})'
+          code: 'Map<Integer, List<int[]>> g = new HashMap<>();'
+        - label: 'unweighted adjacency list (array-of-lists form)'
+          code: |
+            List<List<Integer>> g = new ArrayList<>();
+            for (int i=0; i<n; i++) g.add(new ArrayList<>());
+        - label: 'in-degree array (topological sort)'
+          code: 'int[] indeg = new int[n];'
+        - label: 'union-find parent array'
+          code: |
+            int[] parent = new int[n];
+            for (int i=0; i<n; i++) parent[i]=i;
+        - label: 'Dijkstra distance array'
+          code: |
+            int[] dist = new int[n];
+            Arrays.fill(dist, Integer.MAX_VALUE);
+            dist[src] = 0;
+    - title: Basic operations
+      ops:
+        - label: 'record edge and increment in-degree'
+          code: |
+            g.get(from).add(to);
+            indeg[to]++;
+        - label: 'seed topo queue with zero-indegree nodes'
+          code: 'for (int i = 0; i < n; i++) if (indeg[i] == 0) q.offer(i);'
+        - label: 'union-find: find root with path compression'
+          code: |
+            int find(int x) {
+                return parent[x] == x ? x : (parent[x] = find(parent[x]));
+            }
+        - label: 'union-find: merge two components'
+          code: 'parent[find(a)] = find(b);'
+        - label: 'Dijkstra min-heap ordered by distance'
+          code: 'PriorityQueue<int[]> pq = new PriorityQueue<>((a, b) -> Integer.compare(a[1], b[1]));'
+    - title: Iteration & loops
+      ops:
+        - label: 'Kahn topo sort loop'
+          code: |
+            while (!q.isEmpty()) {
+                int v = q.poll();
+                order.add(v);
+                for (int nb : g.get(v))
+                    if (--indeg[nb] == 0) q.offer(nb);
+            }
+        - label: 'Dijkstra relaxation loop'
+          code: |
+            while (!pq.isEmpty()) {
+                int[] cur = pq.poll();
+                int u = cur[0], d = cur[1];
+                if (d > dist[u]) continue;
+                for (int[] e : g.getOrDefault(u, Collections.emptyList())) {
+                    if (dist[u]+e[1] < dist[e[0]]) {
+                        dist[e[0]]=dist[u]+e[1];
+                        pq.offer(new int[]{e[0], dist[e[0]]});
+                    }
+                }
+            }
+        - label: 'count connected components with union-find'
+          code: |
+            int components = n;
+            for (int[] e : edges) {
+                if (find(e[0]) != find(e[1])) {
+                    parent[find(e[0])] = find(e[1]);
+                    components--;
+                }
+            }
+    - title: Special operations (advanced graphs)
+      ops:
+        - label: 'detect cycle in undirected graph via union-find'
+          code: 'if (find(u) == find(v)) return true;   // same component -> cycle'
+        - label: 'topo sort cycle check (took fewer than n nodes?)'
+          code: 'return taken == n;   // false means a cycle prevented full ordering'
+        - label: 'Bellman-Ford: relax all edges n-1 times'
+          code: |
+            for (int i = 0; i < n-1; i++)
+                for (int[] e : edges)
+                    if (dist[e[0]] != INF) dist[e[1]] = Math.min(dist[e[1]], dist[e[0]]+e[2]);
+        - label: 'union-find with rank (union by rank)'
+          code: |
+            if (rank[ra] < rank[rb]) parent[ra]=rb;
+            else if (rank[ra] > rank[rb]) parent[rb]=ra;
+            else { parent[rb]=ra; rank[ra]++; }
+  example: |
+    Worked example — Course Schedule (can you finish all courses given prerequisite
+    pairs?) via Kahn's topological sort:
+
+      Build the graph and count each course's prerequisites (in-degree). Start with
+      every course that has none, and "take" it — removing it lowers its dependents'
+      in-degree. Each time a dependent hits 0, it becomes takeable. If you manage to
+      take all n courses, there was no cycle; if some never reach 0, a cycle blocks them.
+
+        boolean canFinish(int n, int[][] prereqs) {
+            List<List<Integer>> g = new ArrayList<>();
+            for (int i = 0; i < n; i++) g.add(new ArrayList<>());
+            int[] indeg = new int[n];
+            for (int[] p : prereqs) {        // p = {course, needs}
+                g.get(p[1]).add(p[0]);       // needs -> course
+                indeg[p[0]]++;
+            }
+            Queue<Integer> q = new ArrayDeque<>();
+            for (int i = 0; i < n; i++) if (indeg[i] == 0) q.offer(i);
+            int taken = 0;
+            while (!q.isEmpty()) {
+                int course = q.poll();
+                taken++;
+                for (int next : g.get(course)) {
+                    if (--indeg[next] == 0) q.offer(next);
+                }
+            }
+            return taken == n;               // all taken => no cycle
+        }
+
+    Takeaway: topo sort = "peel off whatever has no remaining prerequisites, repeat."
+    If you can peel everything, the graph is a valid DAG; leftovers mean a cycle.

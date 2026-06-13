@@ -1,0 +1,18 @@
+lang: javascript
+group: Positioning & Domains
+title: "Positioning & Domains — where JS lives"
+tag: C
+summary: |
+  JavaScript is the only language that runs natively in every browser, making it
+  unavoidable for frontend work. It also dominates server-side development via Node.js,
+  CLI tooling, and serverless functions. The language is dynamic, event-driven, and
+  single-threaded — properties that shape every other topic in this list.
+
+  JS's single call stack means all code runs to completion before the next event is
+  processed. Its prototype-based object model and dynamic binding of `this` are features
+  of its history as a browser language first. Understanding that history makes the
+  footguns make sense.
+
+  Its ubiquity means knowing JS deeply unlocks both frontend and backend roles. The
+  quirks — coercion, `this`, the async model — reward study rather than avoidance.
+exercises: []

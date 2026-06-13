@@ -1,0 +1,22 @@
+lang: cpp
+group: Positioning & Domains
+title: "C++ — Positioning & Domains"
+tag: C
+summary: |
+  C++ occupies the narrow space where you need both programmer-controlled memory
+  layout and high-level abstraction. Dominant domains: game engines (Unreal Engine),
+  systems software (OS kernels, drivers), embedded/real-time systems, high-frequency
+  trading infrastructure, and performance-critical libraries (databases, compilers,
+  multimedia codecs). The language gives zero-overhead abstractions in principle —
+  the programmer pays only for what they use — but the cost is a steep learning curve
+  and a wide surface for memory-safety bugs.
+
+  Key identity: no garbage collector, deterministic object lifetimes, manual control
+  over allocation. That is both the power and the source of C++'s hardest bugs.
+
+  Sources:
+    - C++ Core Guidelines — Introduction (isocpp.github.io/CppCoreGuidelines) —
+      philosophy, domains, and design intent.
+    - Scott Meyers, Effective Modern C++ (O'Reilly, 2014) — canonical guide to
+      idiomatic C++11/14.
+exercises: []

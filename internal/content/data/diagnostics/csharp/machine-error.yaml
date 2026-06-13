@@ -1,0 +1,102 @@
+# Slot: machine-error (C# variants) — read a small broken C# program and spot the
+# bug. C# catches type errors at COMPILE time; others (null, bad index, divide by
+# zero) throw an exception at runtime.
+- id: cs_err_index
+  slot: machine-error
+  lang: csharp
+  order: 3
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    This C# program crashes when you run it:
+
+        int[] nums = {10, 20, 30};
+        Console.WriteLine(nums[3]);
+
+    It throws: IndexOutOfRangeException. What's wrong?
+  choices:
+    - text: "Index 3 is past the end — a 3-element array has valid indexes 0, 1, 2."
+      correct: true
+      feedback: "Right. The array length is 3, so the last valid index is 2; nums[3] throws at runtime."
+    - text: "You can't print an int with Console.WriteLine."
+      correct: false
+      feedback: "Not it — WriteLine prints ints fine. The out-of-range index 3 is the bug."
+    - text: "The array needs `new int[]` before the braces."
+      correct: false
+      feedback: "Not it — `int[] nums = {10, 20, 30}` is valid. Reading nums[3], which doesn't exist, throws."
+
+- id: cs_err_type
+  slot: machine-error
+  lang: csharp
+  order: 3
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    This C# program won't compile:
+
+        int age = "30";
+        Console.WriteLine(age + 1);
+
+    The compiler says: Cannot implicitly convert type 'string' to 'int'. Why?
+  choices:
+    - text: "\"30\" is a string, but age is declared int — C# won't convert one to the other."
+      correct: true
+      feedback: "Right. C# is statically typed; you'd parse it with int.Parse(\"30\"). The mismatch is caught at compile time."
+    - text: "You can't add 1 to a variable in C#."
+      correct: false
+      feedback: "Not it — age + 1 is fine for an int. Assigning a string to an int is the problem."
+    - text: "Console.WriteLine can't take age + 1."
+      correct: false
+      feedback: "Not it — WriteLine handles the int fine. The string-to-int assignment fails."
+
+- id: cs_err_null
+  slot: machine-error
+  lang: csharp
+  order: 3
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    This C# program crashes when you run it:
+
+        string s = null;
+        Console.WriteLine(s.Length);
+
+    It throws: NullReferenceException. Why?
+  choices:
+    - text: "s is null — there's no string to read .Length from."
+      correct: true
+      feedback: "Right. Accessing a member of a null reference throws NullReferenceException; assign s a real string first (or check for null)."
+    - text: "Length should be a method, written s.Length()."
+      correct: false
+      feedback: "Not it — on a string, Length is a property (no parentheses). The real problem is that s is null."
+    - text: "You can't print the value of Length."
+      correct: false
+      feedback: "Not it — printing an int is fine. Reading .Length on the null s is what throws."
+
+- id: cs_err_divzero
+  slot: machine-error
+  lang: csharp
+  order: 3
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    This C# program crashes when you run it:
+
+        int z = 0;
+        Console.WriteLine(10 / z);
+
+    It throws: DivideByZeroException. Why?
+  choices:
+    - text: "z is 0, and integer division by zero is not allowed — it throws at runtime."
+      correct: true
+      feedback: "Right. 10 / z with z == 0 throws DivideByZeroException; guard the divisor (if z != 0) before dividing."
+    - text: "You can't divide two int variables."
+      correct: false
+      feedback: "Not it — integer division is fine. Dividing by zero specifically is what throws."
+    - text: "10 / z should be written 10 % z."
+      correct: false
+      feedback: "Not it — % (remainder) by zero also throws. The real issue is z is zero."

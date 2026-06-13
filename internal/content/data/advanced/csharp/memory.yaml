@@ -1,0 +1,41 @@
+lang: csharp
+group: Memory
+title: "Memory — GC, boxing, IDisposable, and Span<T>"
+tag: C
+summary: |
+  C# is garbage-collected; the developer does not call free(). But memory behaviour
+  still matters for performance-sensitive code.
+
+  GC basics. The .NET GC is generational (gen 0/1/2 + Large Object Heap). Short-lived
+  objects are cheap — gen 0 collection is fast. Long-lived objects migrate to gen 2
+  and are collected rarely. The LOH (objects larger than approximately 85 KB by
+  default) is rarely compacted, leading to fragmentation.
+
+  Value vs reference. Value types (structs, int, bool, DateTime) are stored inline —
+  on the stack for locals, or embedded in a containing object on the heap. This
+  eliminates indirection and GC pressure. Reference types are heap-allocated; variables
+  hold a pointer.
+
+  Boxing. Assigning a value type to object or an interface type causes boxing: the
+  value is copied to a heap object, incurring allocation and GC pressure. Common
+  sources: adding an int to a non-generic ArrayList, calling methods via a
+  non-constrained generic or interface on a struct, string interpolation with
+  value-type arguments (mitigated by Span-based overloads in .NET 6+ / .NET 8).
+
+  IDisposable and using. For objects that hold unmanaged resources (file handles,
+  database connections, sockets) or expensive managed resources, implement IDisposable.
+  The using statement (block or declaration) guarantees Dispose() is called even if an
+  exception is thrown. The Dispose pattern (Dispose(bool disposing),
+  GC.SuppressFinalize) is the standard template for non-sealed classes.
+  IAsyncDisposable + await using is the async equivalent.
+
+  Span<T> and Memory<T>. Stack-allocated slices over contiguous memory (array, stack
+  buffer, native memory). Span<T> cannot be stored on the heap (it is a ref struct);
+  Memory<T> can. These are the primary tools for zero-allocation string and buffer
+  processing in .NET 8.
+
+  Key framing for the game. The GC handles most memory, but knowing when to use
+  structs (avoid heap allocation), using (deterministic cleanup), and Span<T> (avoid
+  copies) is what separates junior from senior .NET developers. Boxing cost is the
+  most common performance surprise — it appears silently when structs pass through
+  non-generic APIs or old collection types.

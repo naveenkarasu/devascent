@@ -1,0 +1,76 @@
+id: collections
+lang: java
+order: 6
+title: Collections
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      An array holds many values in order:  new long[]{10, 20, 30}.  Read by
+      position with numbers[0] (positions start at 0). Loop over every item with
+      a for-each:  for (long x : numbers) { ... }.  The parameter type long[]
+      means "array of longs". Arrays power the accumulator pattern over real data.
+
+          class Solution {
+              public long count_items(long[] items) {
+                  long c = 0;
+                  for (long x : items) {
+                      c++;
+                  }
+                  return c;
+              }
+          }
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: Add up all numbers in an array. An empty array totals 0.
+    task:
+      prompt: Return the sum of the array (empty array → 0).
+      func_name: sum_list
+      starter: |
+        class Solution {
+            public long sum_list(long[] numbers) {
+                // hint: long total = 0; for (long n : numbers) { total += n; } return total;
+            }
+        }
+      solution: |
+        class Solution {
+            public long sum_list(long[] numbers) {
+                long total = 0;
+                for (long n : numbers) {
+                    total += n;
+                }
+                return total;
+            }
+        }
+      tests:
+        - {name: 'sum_list([1,2,3])', input: [[1, 2, 3]], expected: 6}
+        - {name: 'sum_list([])', input: [[]], expected: 0}
+        - {name: 'sum_list([10,-4,4])', input: [[10, -4, 4]], expected: 10}
+  - kind: you_do
+    title: You do — solo
+    body: Find the biggest value (array is non-empty).
+    task:
+      prompt: Return the largest number in a non-empty array.
+      func_name: largest
+      starter: |
+        class Solution {
+            public long largest(long[] numbers) {
+                // <- start with the first item, then loop and keep the bigger one
+            }
+        }
+      solution: |
+        class Solution {
+            public long largest(long[] numbers) {
+                long biggest = numbers[0];
+                for (long n : numbers) {
+                    if (n > biggest) {
+                        biggest = n;
+                    }
+                }
+                return biggest;
+            }
+        }
+      tests:
+        - {name: 'largest([3,9,2])', input: [[3, 9, 2]], expected: 9}
+        - {name: 'largest([-5,-1,-10])', input: [[-5, -1, -10]], expected: -1}
+        - {name: 'largest([42])', input: [[42]], expected: 42}

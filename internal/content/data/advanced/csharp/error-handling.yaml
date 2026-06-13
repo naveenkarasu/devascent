@@ -1,0 +1,386 @@
+lang: csharp
+group: Error Handling
+title: "Error Handling — exceptions, IDisposable, and AggregateException"
+tag: E
+summary: |
+  C# uses exceptions (all derived from System.Exception) propagated up the call
+  stack. There are no checked exceptions (unlike Java).
+
+  Key constructs:
+  - try/catch/finally: catch the most specific exception type first; finally always
+    runs (for cleanup that cannot use using).
+  - Exception filters (when clause, C# 6+): catch (SqlException ex) when (ex.Number
+    == 1205) — catches only when the condition is true; the stack is not unwound if
+    the filter returns false, preserving the original stack trace for debugging.
+  - using / IDisposable: the primary idiom for deterministic resource cleanup;
+    preferred over try/finally for IDisposable objects. C# 8 introduced the using
+    declaration (using var reader = …) which disposes at end of the enclosing scope.
+  - Re-throwing: throw; (not throw ex;) preserves the original stack trace.
+  - Custom exceptions: derive from Exception (not ApplicationException); add a
+    constructor that passes message and innerException to the base.
+  - AggregateException: wraps one or more exceptions from parallel operations.
+    However, await Task.WhenAll(…) throws the FIRST exception directly (as its
+    original type), NOT AggregateException. A catch (AggregateException) after await
+    never fires. To access all exceptions: var t = Task.WhenAll(…); try { await t; }
+    catch { var all = t.Exception!.InnerExceptions; }
+
+  Common mistakes:
+  - catch (Exception ex) at the top level is acceptable only in framework entry
+    points with logging and re-throw; catching Exception silently in business logic
+    is an antipattern.
+  - finally cannot suppress exceptions; if finally itself throws, the original
+    exception is lost.
+  - Constructors can throw; do not use an object after its constructor throws.
+  - OperationCanceledException should generally not be caught and swallowed — it is
+    the standard cancellation signal and callers expect it to propagate.
+exercises:
+  - prompt: |
+      The catch block uses throw ex instead of throw. Explain why this destroys the
+      original stack trace and rewrite the method using throw (rethrow) and
+      ExceptionDispatchInfo for re-throwing across async boundaries.
+    kind: fix-it
+    broken_code: |
+      try
+      {
+          ParseConfig("config.json");
+      }
+      catch (IOException ex)
+      {
+          // The rethrown stack trace now points at ParseConfig's "throw ex" line,
+          // NOT at ReadConfig where the IOException originated.
+          bool originPreserved = ex.StackTrace?.Contains("ReadConfig") ?? false;
+          Console.WriteLine($"Origin preserved: {originPreserved}");
+      }
+
+      static void ParseConfig(string path)
+      {
+          try
+          {
+              ReadConfig(path);
+          }
+          catch (IOException ex)
+          {
+              // BUG: resets StackTrace to THIS line — the original call site is lost.
+              Log(ex);
+              throw ex;
+          }
+      }
+
+      static void ReadConfig(string path)
+          => throw new IOException("disk read failed");
+
+      static void Log(Exception ex) => Console.WriteLine(ex.Message);
+    fixed_code: |
+      try
+      {
+          ParseConfig("config.json");
+      }
+      catch (IOException ex)
+      {
+          // With bare `throw;` the original throw site (ReadConfig) is retained.
+          bool originPreserved = ex.StackTrace?.Contains("ReadConfig") ?? false;
+          Console.WriteLine($"Origin preserved: {originPreserved}");
+      }
+
+      static void ParseConfig(string path)
+      {
+          try
+          {
+              ReadConfig(path);
+          }
+          catch (IOException ex)
+          {
+              Log(ex);
+              throw;   // preserves the original StackTrace
+          }
+      }
+
+      static void ReadConfig(string path)
+          => throw new IOException("disk read failed");
+
+      // For re-throwing across async/await or thread boundaries, capture the
+      // exception and replay it without losing the original trace:
+      //     var captured = ExceptionDispatchInfo.Capture(ex);
+      //     captured.Throw();
+
+      static void Log(Exception ex) => Console.WriteLine(ex.Message);
+    bug: |
+      throw ex resets the StackTrace property to the current catch site — the
+      original call stack where the exception was thrown is lost, making production
+      debugging much harder. throw (bare) preserves the original StackTrace.
+      ExceptionDispatchInfo.Capture(ex).Throw() is the correct tool when you need
+      to re-throw a captured exception from a different execution context (async,
+      thread boundaries).
+    check: stdout
+    signal: "disk read failed\nOrigin preserved: True"
+
+  - prompt: |
+      Implement IDisposable on DatabaseConnection correctly (full dispose pattern with
+      Dispose(bool) and idempotency guard). Consume it with both a using block and a
+      C# 8 using declaration; prove Dispose is called when an exception is thrown
+      inside the block.
+    kind: fix-it
+    broken_code: |
+      // No IDisposable: nothing closes the connection — it just leaks.
+      var conn = new DatabaseConnection("Server=localhost");
+      conn.ExecuteQuery("SELECT 1");
+      // No way to deterministically release the resource (no Dispose, no using).
+
+      // DatabaseConnection leaks — no IDisposable, no cleanup.
+      public class DatabaseConnection
+      {
+          private bool _open = false;
+
+          public DatabaseConnection(string connectionString)
+          {
+              Console.WriteLine($"Opening connection to {connectionString}");
+              _open = true;
+          }
+
+          public void ExecuteQuery(string sql)
+          {
+              if (!_open) throw new InvalidOperationException("Connection is closed.");
+              Console.WriteLine($"Executing: {sql}");
+          }
+      }
+    fixed_code: |
+      // using block: Dispose runs even though the block throws.
+      try
+      {
+          DatabaseConnection.Demo();
+      }
+      catch (InvalidOperationException ex)
+      {
+          Console.WriteLine($"Caught: {ex.Message}");
+      }
+
+      // using declaration: disposed at end of scope.
+      DatabaseConnection.DemoDeclaration();
+
+      public class DatabaseConnection : IDisposable
+      {
+          private bool _open    = false;
+          private bool _disposed = false;
+
+          public DatabaseConnection(string connectionString)
+          {
+              Console.WriteLine($"Opening connection to {connectionString}");
+              _open = true;
+          }
+
+          public void ExecuteQuery(string sql)
+          {
+              ObjectDisposedException.ThrowIf(_disposed, this);
+              if (!_open) throw new InvalidOperationException("Connection is closed.");
+              Console.WriteLine($"Executing: {sql}");
+          }
+
+          // The public Dispose — call this explicitly or via using.
+          public void Dispose()
+          {
+              Dispose(disposing: true);
+              GC.SuppressFinalize(this);
+          }
+
+          // Protected virtual for inheritance; finaliser calls with false.
+          protected virtual void Dispose(bool disposing)
+          {
+              if (_disposed) return;   // idempotent
+
+              if (disposing)
+              {
+                  // Release managed resources
+                  _open = false;
+                  Console.WriteLine("Connection closed.");
+              }
+
+              _disposed = true;
+          }
+
+          // using block + exception safety:
+          public static void Demo()
+          {
+              // using block
+              using (var conn = new DatabaseConnection("Server=localhost"))
+              {
+                  conn.ExecuteQuery("SELECT 1");
+                  throw new InvalidOperationException("Simulated error");
+                  // Dispose IS called even though we threw — using guarantees it.
+              }
+          }
+
+          // C# 8 using declaration
+          public static void DemoDeclaration()
+          {
+              using var conn = new DatabaseConnection("Server=localhost");
+              conn.ExecuteQuery("SELECT 2");
+              // Disposed at end of enclosing scope (end of method)
+          }
+      }
+    bug: |
+      Not implementing IDisposable on resource-owning classes causes resource leaks.
+      Calling Dispose twice must not throw (idempotency). The full Dispose pattern
+      (Dispose(bool), GC.SuppressFinalize) is required for non-sealed classes so
+      subclasses can override cleanup. The using statement guarantees Dispose runs
+      even if an exception is thrown inside the block.
+    check: stdout
+    signal: "Opening connection to Server=localhost\nExecuting: SELECT 1\nConnection closed.\nCaught: Simulated error\nOpening connection to Server=localhost\nExecuting: SELECT 2\nConnection closed."
+
+  - prompt: |
+      Refactor the catch-then-rethrow into an exception filter using when. Explain
+      why the filter preserves the stack for non-matching cases whereas
+      catch-then-rethrow does not.
+    kind: fix-it
+    broken_code: |
+      using System.Net;
+
+      int attempt = 0;
+      Console.WriteLine(await FetchWithRetryAsync("/api"));
+
+      async Task<string> FetchWithRetryAsync(string url)
+      {
+          try
+          {
+              return await DownloadAsync(url);
+          }
+          catch (HttpRequestException ex)
+          {
+              // Only handle transient errors; rethrow the rest.
+              if (ex.StatusCode is HttpStatusCode.ServiceUnavailable
+                                 or HttpStatusCode.GatewayTimeout)
+              {
+                  Console.WriteLine("Transient error, retrying...");
+                  return await DownloadAsync(url);
+              }
+
+              // Rethrow — BUT this resets the stack trace to HERE even with throw;
+              // because the stack was already unwound entering the catch block.
+              throw;
+          }
+      }
+
+      async Task<string> DownloadAsync(string url)
+      {
+          await Task.Yield();
+          // First call fails with a transient 503; retry succeeds.
+          if (attempt++ == 0)
+              throw new HttpRequestException("503", null, HttpStatusCode.ServiceUnavailable);
+          return "payload";
+      }
+    fixed_code: |
+      using System.Net;
+
+      int attempt = 0;
+      Console.WriteLine(await FetchWithRetryAsync("/api"));
+
+      async Task<string> FetchWithRetryAsync(string url)
+      {
+          try
+          {
+              return await DownloadAsync(url);
+          }
+          catch (HttpRequestException ex)
+              when (ex.StatusCode is HttpStatusCode.ServiceUnavailable
+                                   or HttpStatusCode.GatewayTimeout)
+          {
+              // when filter: stack is NOT unwound for non-matching cases.
+              // Only transient errors enter this block.
+              Console.WriteLine("Transient error, retrying...");
+              return await DownloadAsync(url);
+          }
+          // Non-matching HttpRequestException propagates with its original stack.
+      }
+
+      async Task<string> DownloadAsync(string url)
+      {
+          await Task.Yield();
+          // First call fails with a transient 503; retry succeeds.
+          if (attempt++ == 0)
+              throw new HttpRequestException("503", null, HttpStatusCode.ServiceUnavailable);
+          return "payload";
+      }
+    bug: |
+      When a catch block is entered, the runtime has already unwound the stack to
+      reach it — even a bare throw; re-throws from an already-unwound frame. An
+      exception filter (when) is evaluated BEFORE the stack is unwound: if the filter
+      returns false, the exception continues propagating with its original stack intact.
+      This makes when filters superior for conditional catch logic where preserving
+      the stack for the non-matching case matters (e.g., logging or debugging).
+    check: stdout
+    signal: "Transient error, retrying...\npayload"
+
+  - prompt: |
+      Three tasks run concurrently via Task.WhenAll; two of them throw different
+      exceptions. Show that await Task.WhenAll throws only the FIRST exception (not
+      AggregateException), then demonstrate how to access ALL exceptions via the
+      Task.Exception property.
+    kind: fix-it
+    broken_code: |
+      await RunAsync();
+
+      static async Task RunAsync()
+      {
+          var t1 = Task.FromException(new InvalidOperationException("Error 1"));
+          var t2 = Task.FromException(new ArgumentException("Error 2"));
+          var t3 = Task.CompletedTask;
+
+          try
+          {
+              await Task.WhenAll(t1, t2, t3);
+          }
+          catch (AggregateException aex)
+          {
+              // BUG: this catch block NEVER fires after await.
+              // await unwraps AggregateException and throws the first inner
+              // exception directly as its original type.
+              foreach (var ex in aex.InnerExceptions)
+                  Console.WriteLine(ex.Message);
+          }
+      }
+    fixed_code: |
+      try
+      {
+          await RunAsync();
+      }
+      catch (Exception ex)
+      {
+          // await unwrapped only the FIRST exception, as its original type.
+          Console.WriteLine($"Rethrown: {ex.GetType().Name}");
+      }
+
+      static async Task RunAsync()
+      {
+          var t1 = Task.FromException(new InvalidOperationException("Error 1"));
+          var t2 = Task.FromException(new ArgumentException("Error 2"));
+          var t3 = Task.CompletedTask;
+
+          // Hold a reference to the WhenAll task BEFORE awaiting it.
+          var all = Task.WhenAll(t1, t2, t3);
+
+          try
+          {
+              await all;
+          }
+          catch
+          {
+              // all.Exception is an AggregateException wrapping EVERY exception.
+              // This is the only way to see all of them after await.
+              var exceptions = all.Exception!.InnerExceptions;
+              foreach (var ex in exceptions)
+                  Console.WriteLine($"{ex.GetType().Name}: {ex.Message}");
+              // Prints:
+              //   InvalidOperationException: Error 1
+              //   ArgumentException: Error 2
+
+              // Rethrow the first (or handle as needed)
+              throw;
+          }
+      }
+    bug: |
+      await Task.WhenAll(…) throws the FIRST faulted task's exception directly as its
+      original type (e.g., InvalidOperationException) — NOT AggregateException.
+      A catch (AggregateException) after await never matches and silently discards
+      the block. To access all exceptions, keep a reference to the WhenAll task before
+      awaiting, then read task.Exception.InnerExceptions from the catch block.
+    check: stdout
+    signal: "InvalidOperationException: Error 1\nArgumentException: Error 2\nRethrown: InvalidOperationException"

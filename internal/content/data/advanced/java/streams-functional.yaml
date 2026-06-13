@@ -1,0 +1,283 @@
+lang: java
+group: Streams & Functional
+title: "Streams & Functional — pipelines, Optional & collectors"
+tag: E
+summary: |
+  The java.util.stream package (Java 8+) provides a declarative, lazily-evaluated
+  pipeline model for processing sequences of data. A stream is sourced from a
+  collection, array, or generator; passes through zero or more intermediate
+  operations (lazy: filter, map, flatMap, sorted, distinct, limit); and terminates
+  with a terminal operation (eager: collect, forEach, reduce, count, findFirst).
+
+  Lambdas and method references are the syntax; functional interfaces from
+  java.util.function wire them to stream operations:
+  - Function<T,R>    — maps T → R
+  - Predicate<T>     — tests T, returns boolean
+  - Consumer<T>      — consumes T, returns void
+  - Supplier<T>      — produces T
+  - BiFunction<T,U,R>— maps (T,U) → R
+
+  Optional<T>: a container that may or may not hold a value. Use .map(), .flatMap(),
+  .filter(), .orElse(), .orElseGet(), .orElseThrow() — do not call .get() without
+  checking .isPresent() first (defeats the purpose).
+
+  Gotchas:
+  - Streams are lazy: intermediate operations do nothing until a terminal op is
+    called. An orphaned stream.filter(...) with no terminal op silently does nothing.
+  - Streams are single-use: calling two terminal operations on the same Stream
+    instance throws IllegalStateException.
+  - Optional.orElse(expensiveCall()) ALWAYS evaluates the argument (eager); use
+    orElseGet(() -> expensiveCall()) for lazy evaluation.
+  - forEach in parallel streams is hard to reason about — collect is safer.
+  - Side effects inside intermediate operations (e.g., mutating an external list inside
+    map()) break referential transparency and cause unpredictable results in parallel.
+exercises:
+  - prompt: |
+      The imperative loop below filters orders by status "PENDING", extracts their
+      totals, and sums them. Rewrite it as a single stream pipeline:
+      filter → mapToDouble → sum.
+    kind: fix-it
+    broken_code: |
+      import java.util.*;
+
+      public class Main {
+          record Order(String status, double total) {}
+
+          static double sumPending(List<Order> orders) {
+              double sum = 0;
+              for (Order o : orders) {
+                  if ("PENDING".equals(o.status())) {
+                      sum += o.total();
+                  }
+              }
+              return sum;
+          }
+
+          public static void main(String[] args) {
+              List<Order> orders = List.of(
+                  new Order("PENDING", 10.0),
+                  new Order("SHIPPED", 99.0),
+                  new Order("PENDING", 15.5),
+                  new Order("PENDING", 24.5)
+              );
+              System.out.println(sumPending(orders));
+          }
+      }
+    fixed_code: |
+      import java.util.*;
+
+      public class Main {
+          record Order(String status, double total) {}
+
+          static double sumPending(List<Order> orders) {
+              return orders.stream()
+                           .filter(o -> "PENDING".equals(o.status()))
+                           .mapToDouble(Order::total)
+                           .sum();
+          }
+
+          public static void main(String[] args) {
+              List<Order> orders = List.of(
+                  new Order("PENDING", 10.0),
+                  new Order("SHIPPED", 99.0),
+                  new Order("PENDING", 15.5),
+                  new Order("PENDING", 24.5)
+              );
+              System.out.println(sumPending(orders));
+          }
+      }
+    bug: |
+      The imperative version is correct but verbose. The stream version is more
+      readable and eliminates the mutable accumulator. mapToDouble produces a
+      DoubleStream whose .sum() terminal op handles the accumulation. One common
+      mistake: storing the stream in a variable and calling filter() on it, then
+      trying to call another terminal operation on the same stream — the second call
+      throws IllegalStateException because streams cannot be reused.
+    check: stdout
+    signal: "50.0"
+
+  - prompt: |
+      A List<Order> where each Order has a List<Item>. Extract all item names into a
+      flat List<String> using flatMap. The broken version uses map() and produces the
+      wrong type — fix it.
+    kind: fix-it
+    broken_code: |
+      import java.util.*;
+      import java.util.stream.*;
+
+      public class Main {
+          record Item(String name) {}
+          record Order(List<Item> items) {}
+
+          public static void main(String[] args) {
+              List<Order> orders = List.of(
+                  new Order(List.of(new Item("Apple"), new Item("Banana"))),
+                  new Order(List.of(new Item("Cherry")))
+              );
+
+              // Wrong: produces Stream<List<String>>, not Stream<String>
+              List<List<String>> names = orders.stream()
+                  .map(o -> o.items().stream().map(Item::name).toList())
+                  .toList();
+              System.out.println(names);
+          }
+      }
+    fixed_code: |
+      import java.util.*;
+      import java.util.stream.*;
+
+      public class Main {
+          record Item(String name) {}
+          record Order(List<Item> items) {}
+
+          public static void main(String[] args) {
+              List<Order> orders = List.of(
+                  new Order(List.of(new Item("Apple"), new Item("Banana"))),
+                  new Order(List.of(new Item("Cherry")))
+              );
+
+              List<String> names = orders.stream()
+                  .flatMap(o -> o.items().stream().map(Item::name))
+                  .toList();
+              System.out.println(names);
+          }
+      }
+    bug: |
+      map() transforms each element individually — applied to a List<Order> it produces
+      a Stream<List<String>>, which is a stream of lists. flatMap() also transforms each
+      element, but it then flattens each returned stream into the main stream, yielding
+      a Stream<String>. The rule: if the mapping function returns a Stream (or collection
+      you want to inline), use flatMap; otherwise use map.
+    check: stdout
+    signal: "[Apple, Banana, Cherry]"
+
+  - prompt: |
+      The method below uses a chain of null checks to navigate to a city name.
+      Rewrite it using Optional so the null checks are gone. Use orElse("Unknown")
+      as the fallback.
+    kind: fix-it
+    broken_code: |
+      import java.util.*;
+
+      public class Main {
+          record Address(String city) {}
+          record User(String name, Address address) {}
+
+          static String getCity(User user) {
+              if (user != null) {
+                  Address addr = user.address();
+                  if (addr != null) {
+                      return addr.city();
+                  }
+              }
+              return "Unknown";
+          }
+
+          public static void main(String[] args) {
+              System.out.println(getCity(new User("Ada", new Address("London"))));
+              System.out.println(getCity(new User("Bob", null)));
+              System.out.println(getCity(null));
+          }
+      }
+    fixed_code: |
+      import java.util.*;
+
+      public class Main {
+          record Address(String city) {}
+          record User(String name, Address address) {}
+
+          static String getCity(User user) {
+              return Optional.ofNullable(user)
+                             .map(User::address)
+                             .map(Address::city)
+                             .orElse("Unknown");
+          }
+
+          public static void main(String[] args) {
+              System.out.println(getCity(new User("Ada", new Address("London"))));
+              System.out.println(getCity(new User("Bob", null)));
+              System.out.println(getCity(null));
+          }
+      }
+    bug: |
+      Nested null checks are verbose and easy to mis-nest. Optional.ofNullable wraps
+      a potentially null value; .map() short-circuits and returns an empty Optional
+      if the current value is null, so the chain is safe at every step. orElse provides
+      the default when the Optional is empty. Common mistakes: calling optional.get()
+      without isPresent() (throws NoSuchElementException — defeats the purpose); using
+      Optional as a method parameter (anti-pattern — use @Nullable or overloads instead).
+    check: stdout
+    signal: "London\nUnknown\nUnknown"
+
+  - prompt: |
+      Given a list of employees, group them by department and find the highest-earning
+      employee per department. The result type is Map<String, Employee> (not
+      Map<String, Optional<Employee>>). Use Collectors.groupingBy with
+      Collectors.collectingAndThen(maxBy(...), Optional::get) as the downstream
+      collector so the Optional is unwrapped in the collector itself.
+    kind: implement
+    broken_code: |
+      import java.util.*;
+      import java.util.stream.*;
+
+      public class Main {
+          record Employee(String name, String department, double salary) {}
+
+          public static void main(String[] args) {
+              List<Employee> employees = List.of(
+                  new Employee("Alice", "Eng",   95000),
+                  new Employee("Bob",   "Eng",   87000),
+                  new Employee("Carol", "Sales", 72000),
+                  new Employee("Dave",  "Sales", 80000)
+              );
+
+              // TODO: produce Map<String, Employee> — top earner per department
+              // Hint: Collectors.groupingBy + collectingAndThen(maxBy(...), Optional::get)
+              Map<String, Employee> topEarners = new HashMap<>();
+
+              topEarners.entrySet().stream()
+                  .sorted(Map.Entry.comparingByKey())
+                  .forEach(e -> System.out.println(e.getKey() + " -> " + e.getValue().name()));
+          }
+      }
+    fixed_code: |
+      import java.util.*;
+      import java.util.stream.*;
+
+      public class Main {
+          record Employee(String name, String department, double salary) {}
+
+          public static void main(String[] args) {
+              List<Employee> employees = List.of(
+                  new Employee("Alice", "Eng",   95000),
+                  new Employee("Bob",   "Eng",   87000),
+                  new Employee("Carol", "Sales", 72000),
+                  new Employee("Dave",  "Sales", 80000)
+              );
+
+              Map<String, Employee> topEarners = employees.stream()
+                  .collect(Collectors.groupingBy(
+                      Employee::department,
+                      Collectors.collectingAndThen(
+                          Collectors.maxBy(Comparator.comparingDouble(Employee::salary)),
+                          Optional::get   // safe here: each group has at least one employee
+                      )
+                  ));
+
+              // Sort by department key for deterministic output:
+              topEarners.entrySet().stream()
+                  .sorted(Map.Entry.comparingByKey())
+                  .forEach(e -> System.out.println(e.getKey() + " -> " + e.getValue().name()));
+          }
+      }
+    bug: |
+      Collectors.maxBy() returns Optional<Employee> because the group could
+      theoretically be empty, giving a raw result type of Map<String, Optional<Employee>>.
+      Using collectingAndThen wraps the maxBy collector and applies Optional::get as a
+      finisher, unwrapping the Optional immediately within the collector. This is safe
+      because groupingBy guarantees every group is non-empty. The alternative — leaving
+      the Optional in place — forces every downstream consumer to unwrap it separately.
+      Note: mutating employees inside intermediate stream operations is a side-effect
+      anti-pattern; streams should be treated as read-only pipelines.
+    check: stdout
+    signal: "Eng -> Alice\nSales -> Dave"

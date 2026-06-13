@@ -1,0 +1,34 @@
+lang: typescript
+group: Tooling
+title: "TypeScript Tooling — tsc, tsconfig, ts-node, @types"
+tag: C
+summary: |
+  TypeScript's compiler (tsc) and its configuration are as much part of the language
+  experience as the syntax itself.
+
+  Key tsconfig.json options:
+  - strict: true — master switch for all strict checks (noImplicitAny,
+    strictNullChecks, useUnknownInCatchVariables, etc.)
+  - target: "ES2020" — output JS syntax level; must match runtime support.
+  - module: "esnext" / "nodenext" — output module format; must align with bundler
+    or runtime.
+  - moduleResolution: "bundler" / "node16" — import resolution algorithm; mismatching
+    with module causes subtle errors.
+  - declaration: true — emit .d.ts files for library publishing.
+  - outDir / rootDir: "dist" / "src" — output location and input root.
+  - esModuleInterop: true — allows default imports from CJS modules.
+  - skipLibCheck: true — skip type-checking node_modules .d.ts (faster builds).
+
+  ts-node executes TypeScript directly without a separate compile step; commonly used
+  for scripts and development. In ESM projects, use tsx (faster, based on esbuild).
+
+  @types packages (DefinitelyTyped) are community-maintained type declarations for JS
+  libraries that don't ship their own types. Install as `npm install -D @types/lodash`.
+  When a library ships its own types ("types" field in package.json), @types is not
+  needed.
+
+  Common mistakes: turning off strict to silence errors rather than fixing types;
+  mismatching module + moduleResolution (e.g. module: "esnext" with moduleResolution:
+  "node" causes runtime import failures in Node.js); setting target higher than the
+  runtime supports; not setting declaration: true when publishing libraries.
+exercises: []

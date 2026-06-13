@@ -1,0 +1,472 @@
+# Hand-authored gap-fill: the pattern categories the mined pool lacks (Intervals,
+# more Greedy, 1-D/2-D DP). Authored as well-known problems with ORIGINAL prompts;
+# all chosen to return scalars or canonically-ordered output (safe for the exact
+# function-call grader). Validated by TestBenchProblemsGradePass like every problem.
+# Credit: pattern ideas reference algomaster/awesome-leetcode-resources (links only).
+
+# ── Intervals ────────────────────────────────────────────────────────────────
+- id: merge-intervals
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
+  title: Merge Intervals
+  difficulty: medium
+  pattern: intervals
+  category: Intervals
+  lists: [blind75, neetcode150]
+  func_name: merge_intervals
+  prompt: |
+    Merge Intervals
+
+    Given a list of intervals [start, end], merge all overlapping intervals and
+    return the merged list, sorted by start.
+
+    Examples:
+      merge_intervals([[1,3],[2,6],[8,10],[15,18]]) -> [[1,6],[8,10],[15,18]]
+      merge_intervals([[1,4],[4,5]]) -> [[1,5]]
+  starter: |
+    def merge_intervals(intervals):
+        pass  # write your solution; delete this line
+  solution: |
+    def merge_intervals(intervals):
+        res = []
+        for s, e in sorted(intervals):
+            if res and s <= res[-1][1]:
+                res[-1][1] = max(res[-1][1], e)
+            else:
+                res.append([s, e])
+        return res
+  tests:
+    - name: case 1
+      input: [[[1,3],[2,6],[8,10],[15,18]]]
+      expected: [[1,6],[8,10],[15,18]]
+    - name: case 2
+      input: [[[1,4],[4,5]]]
+      expected: [[1,5]]
+    - name: case 3
+      input: [[[1,4]]]
+      expected: [[1,4]]
+
+- id: insert-interval
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
+  title: Insert Interval
+  difficulty: medium
+  pattern: intervals
+  category: Intervals
+  lists: [blind75, neetcode150]
+  func_name: insert_interval
+  prompt: |
+    Insert Interval
+
+    Given a list of non-overlapping intervals sorted by start, insert a new
+    interval, merging where needed. Return the resulting list.
+
+    Examples:
+      insert_interval([[1,3],[6,9]], [2,5]) -> [[1,5],[6,9]]
+      insert_interval([], [5,7]) -> [[5,7]]
+  starter: |
+    def insert_interval(intervals, new):
+        pass  # write your solution; delete this line
+  solution: |
+    def insert_interval(intervals, new):
+        res = []
+        i, n = 0, len(intervals)
+        s, e = new[0], new[1]
+        while i < n and intervals[i][1] < s:
+            res.append(intervals[i]); i += 1
+        while i < n and intervals[i][0] <= e:
+            s = min(s, intervals[i][0]); e = max(e, intervals[i][1]); i += 1
+        res.append([s, e])
+        while i < n:
+            res.append(intervals[i]); i += 1
+        return res
+  tests:
+    - name: case 1
+      input: [[[1,3],[6,9]], [2,5]]
+      expected: [[1,5],[6,9]]
+    - name: case 2
+      input: [[[1,2],[3,5],[6,7],[8,10],[12,16]], [4,8]]
+      expected: [[1,2],[3,10],[12,16]]
+    - name: case 3
+      input: [[], [5,7]]
+      expected: [[5,7]]
+
+- id: non-overlapping-intervals
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
+  title: Non-overlapping Intervals
+  difficulty: medium
+  pattern: intervals
+  category: Intervals
+  lists: [blind75, neetcode150]
+  func_name: erase_overlap_intervals
+  prompt: |
+    Non-overlapping Intervals
+
+    Return the minimum number of intervals to remove so the rest are
+    non-overlapping.
+
+    Examples:
+      erase_overlap_intervals([[1,2],[2,3],[3,4],[1,3]]) -> 1
+      erase_overlap_intervals([[1,2],[2,3]]) -> 0
+  starter: |
+    def erase_overlap_intervals(intervals):
+        pass  # write your solution; delete this line
+  solution: |
+    def erase_overlap_intervals(intervals):
+        if not intervals:
+            return 0
+        intervals.sort(key=lambda x: x[1])
+        end = intervals[0][1]
+        count = 0
+        for i in range(1, len(intervals)):
+            if intervals[i][0] < end:
+                count += 1
+            else:
+                end = intervals[i][1]
+        return count
+  tests:
+    - name: case 1
+      input: [[[1,2],[2,3],[3,4],[1,3]]]
+      expected: 1
+    - name: case 2
+      input: [[[1,2],[1,2],[1,2]]]
+      expected: 2
+    - name: case 3
+      input: [[[1,2],[2,3]]]
+      expected: 0
+
+- id: meeting-rooms
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
+  title: Meeting Rooms
+  difficulty: easy
+  pattern: intervals
+  category: Intervals
+  lists: [blind75, neetcode150]
+  func_name: can_attend_meetings
+  prompt: |
+    Meeting Rooms
+
+    Given meeting time intervals, return True if a person can attend all of them
+    (no two overlap), else False.
+
+    Examples:
+      can_attend_meetings([[0,30],[5,10],[15,20]]) -> False
+      can_attend_meetings([[7,10],[2,4]]) -> True
+  starter: |
+    def can_attend_meetings(intervals):
+        pass  # write your solution; delete this line
+  solution: |
+    def can_attend_meetings(intervals):
+        intervals.sort()
+        for i in range(1, len(intervals)):
+            if intervals[i][0] < intervals[i - 1][1]:
+                return False
+        return True
+  tests:
+    - name: case 1
+      input: [[[0,30],[5,10],[15,20]]]
+      expected: false
+    - name: case 2
+      input: [[[7,10],[2,4]]]
+      expected: true
+    - name: case 3
+      input: [[]]
+      expected: true
+
+# ── Greedy ───────────────────────────────────────────────────────────────────
+- id: jump-game
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Jump Game
+  difficulty: medium
+  pattern: greedy
+  category: Greedy
+  lists: [blind75, neetcode150]
+  func_name: can_jump
+  prompt: |
+    Jump Game
+
+    Each element is the maximum jump length from that position. Starting at index
+    0, return True if you can reach the last index.
+
+    Examples:
+      can_jump([2,3,1,1,4]) -> True
+      can_jump([3,2,1,0,4]) -> False
+  starter: |
+    def can_jump(nums):
+        pass  # write your solution; delete this line
+  solution: |
+    def can_jump(nums):
+        reach = 0
+        for i, n in enumerate(nums):
+            if i > reach:
+                return False
+            reach = max(reach, i + n)
+        return True
+  tests:
+    - name: case 1
+      input: [[2,3,1,1,4]]
+      expected: true
+    - name: case 2
+      input: [[3,2,1,0,4]]
+      expected: false
+    - name: case 3
+      input: [[0]]
+      expected: true
+
+- id: gas-station
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Gas Station
+  difficulty: medium
+  pattern: greedy
+  category: Greedy
+  lists: [neetcode150]
+  func_name: can_complete_circuit
+  prompt: |
+    Gas Station
+
+    gas[i] is the fuel at station i; cost[i] is the fuel needed to travel from i
+    to i+1 (circular). Return the starting index from which you can complete the
+    circuit once, or -1 if impossible. A unique answer is guaranteed when it exists.
+
+    Examples:
+      can_complete_circuit([1,2,3,4,5], [3,4,5,1,2]) -> 3
+      can_complete_circuit([2,3,4], [3,4,3]) -> -1
+  starter: |
+    def can_complete_circuit(gas, cost):
+        pass  # write your solution; delete this line
+  solution: |
+    def can_complete_circuit(gas, cost):
+        if sum(gas) < sum(cost):
+            return -1
+        total = 0
+        start = 0
+        for i in range(len(gas)):
+            total += gas[i] - cost[i]
+            if total < 0:
+                start = i + 1
+                total = 0
+        return start
+  tests:
+    - name: case 1
+      input: [[1,2,3,4,5], [3,4,5,1,2]]
+      expected: 3
+    - name: case 2
+      input: [[2,3,4], [3,4,3]]
+      expected: -1
+    - name: case 3
+      input: [[5], [4]]
+      expected: 0
+
+# ── Dynamic Programming (1-D & 2-D) ──────────────────────────────────────────
+- id: climbing-stairs
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Climbing Stairs
+  difficulty: easy
+  pattern: dp
+  category: Dynamic Programming
+  lists: [blind75, neetcode150]
+  func_name: climb_stairs
+  prompt: |
+    Climbing Stairs
+
+    You can climb 1 or 2 steps at a time. Return the number of distinct ways to
+    climb to the top of n steps.
+
+    Examples:
+      climb_stairs(2) -> 2
+      climb_stairs(3) -> 3
+  starter: |
+    def climb_stairs(n):
+        pass  # write your solution; delete this line
+  solution: |
+    def climb_stairs(n):
+        a, b = 1, 1
+        for _ in range(n):
+            a, b = b, a + b
+        return a
+  tests:
+    - name: case 1
+      input: [2]
+      expected: 2
+    - name: case 2
+      input: [3]
+      expected: 3
+    - name: case 3
+      input: [5]
+      expected: 8
+
+- id: coin-change
+  time_complexity: "O(m*n)"
+  space_complexity: "O(n)"
+  title: Coin Change
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [blind75, neetcode150]
+  func_name: coin_change
+  prompt: |
+    Coin Change
+
+    Given coin denominations and a target amount, return the fewest coins needed
+    to make the amount, or -1 if it cannot be made.
+
+    Examples:
+      coin_change([1,2,5], 11) -> 3
+      coin_change([2], 3) -> -1
+  starter: |
+    def coin_change(coins, amount):
+        pass  # write your solution; delete this line
+  solution: |
+    def coin_change(coins, amount):
+        INF = amount + 1
+        dp = [0] + [INF] * amount
+        for a in range(1, amount + 1):
+            for c in coins:
+                if c <= a:
+                    dp[a] = min(dp[a], dp[a - c] + 1)
+        return dp[amount] if dp[amount] != INF else -1
+  tests:
+    - name: case 1
+      input: [[1,2,5], 11]
+      expected: 3
+    - name: case 2
+      input: [[2], 3]
+      expected: -1
+    - name: case 3
+      input: [[1], 0]
+      expected: 0
+
+- id: unique-paths
+  time_complexity: "O(m*n)"
+  space_complexity: "O(n)"
+  title: Unique Paths
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [blind75, neetcode150]
+  func_name: unique_paths
+  prompt: |
+    Unique Paths
+
+    A robot starts at the top-left of an m x n grid and can only move right or
+    down. Return the number of unique paths to the bottom-right.
+
+    Examples:
+      unique_paths(3, 7) -> 28
+      unique_paths(3, 2) -> 3
+  starter: |
+    def unique_paths(m, n):
+        pass  # write your solution; delete this line
+  solution: |
+    def unique_paths(m, n):
+        dp = [1] * n
+        for _ in range(1, m):
+            for j in range(1, n):
+                dp[j] += dp[j - 1]
+        return dp[-1]
+  tests:
+    - name: case 1
+      input: [3, 7]
+      expected: 28
+    - name: case 2
+      input: [3, 2]
+      expected: 3
+    - name: case 3
+      input: [1, 1]
+      expected: 1
+
+- id: longest-common-subsequence
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
+  title: Longest Common Subsequence
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [blind75, neetcode150]
+  func_name: lcs
+  prompt: |
+    Longest Common Subsequence
+
+    Return the length of the longest subsequence common to both strings (a
+    subsequence keeps order but need not be contiguous).
+
+    Examples:
+      lcs("abcde", "ace") -> 3
+      lcs("abc", "def") -> 0
+  starter: |
+    def lcs(a, b):
+        pass  # write your solution; delete this line
+  solution: |
+    def lcs(a, b):
+        m, n = len(a), len(b)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if a[i - 1] == b[j - 1]:
+                    dp[i][j] = dp[i - 1][j - 1] + 1
+                else:
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+        return dp[m][n]
+  tests:
+    - name: case 1
+      input: ["abcde", "ace"]
+      expected: 3
+    - name: case 2
+      input: ["abc", "abc"]
+      expected: 3
+    - name: case 3
+      input: ["abc", "def"]
+      expected: 0
+
+- id: min-path-sum
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
+  title: Minimum Path Sum
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: []
+  func_name: min_path_sum
+  prompt: |
+    Minimum Path Sum
+
+    Given an m x n grid of non-negative numbers, find a path from top-left to
+    bottom-right that minimizes the sum of numbers along the way (move only right
+    or down). Return that minimum sum.
+
+    Examples:
+      min_path_sum([[1,3,1],[1,5,1],[4,2,1]]) -> 7
+      min_path_sum([[1,2,3],[4,5,6]]) -> 12
+  starter: |
+    def min_path_sum(grid):
+        pass  # write your solution; delete this line
+  solution: |
+    def min_path_sum(grid):
+        m, n = len(grid), len(grid[0])
+        dp = [row[:] for row in grid]
+        for i in range(m):
+            for j in range(n):
+                if i == 0 and j == 0:
+                    continue
+                elif i == 0:
+                    dp[i][j] += dp[i][j - 1]
+                elif j == 0:
+                    dp[i][j] += dp[i - 1][j]
+                else:
+                    dp[i][j] += min(dp[i - 1][j], dp[i][j - 1])
+        return dp[-1][-1]
+  tests:
+    - name: case 1
+      input: [[[1,3,1],[1,5,1],[4,2,1]]]
+      expected: 7
+    - name: case 2
+      input: [[[1,2,3],[4,5,6]]]
+      expected: 12
+    - name: case 3
+      input: [[[5]]]
+      expected: 5

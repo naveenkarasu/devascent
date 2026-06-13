@@ -1,0 +1,146 @@
+- category: 'Backtracking'
+  lang: rust
+  title: 'Backtracking — Rust refresher'
+  summary: |
+    Backtracking explores all candidates for a solution by building them
+    incrementally and abandoning (backtracking from) a candidate as soon as it
+    cannot possibly lead to a valid solution.
+
+    The canonical template: choose a candidate, recurse, undo the choice.
+    Common problems: permutations, subsets, combinations, N-queens, Sudoku.
+
+    Rust notes:
+      - Pass the accumulator (path) as a mutable reference: &mut Vec<i32>.
+      - To avoid cloning the path into results, push a clone when a solution
+        is found: results.push(path.clone()).
+      - Use a boolean used[] or a start index to avoid revisiting elements.
+      - Rust closures in recursion are tricky; prefer standalone helper functions.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'accumulator path and results collector'
+          code: |
+            let mut path: Vec<i32> = Vec::new();
+            let mut results: Vec<Vec<i32>> = Vec::new();
+        - label: 'visited array for permutation problems'
+          code: 'let mut used = vec![false; nums.len()];'
+        - label: 'start-index parameter to avoid duplicates in subsets'
+          code: 'fn backtrack(start: usize, path: &mut Vec<i32>, results: &mut Vec<Vec<i32>>, ...) {}'
+    - title: Basic operations
+      ops:
+        - label: 'record a complete solution'
+          code: 'results.push(path.clone());'
+        - label: 'choose and recurse'
+          code: 'path.push(nums[i]); backtrack(...); path.pop();'
+        - label: 'skip duplicate candidates (sorted input)'
+          code: |
+            if i > start && nums[i] == nums[i - 1] {
+                continue;
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'subset/combination loop with start index'
+          code: |
+            for i in start..nums.len() {
+                path.push(nums[i]);
+                backtrack(i + 1, path, results, nums);
+                path.pop();
+            }
+        - label: 'permutation loop with used array'
+          code: |
+            for i in 0..nums.len() {
+                if used[i] { continue; }
+                used[i] = true;
+                path.push(nums[i]);
+                backtrack(path, results, nums, used);
+                path.pop();
+                used[i] = false;
+            }
+    - title: Special operations (backtracking)
+      ops:
+        - label: 'generate all subsets'
+          code: |
+            fn subsets(nums: &[i32]) -> Vec<Vec<i32>> {
+                let mut results = Vec::new();
+                backtrack_sub(0, &mut Vec::new(), &mut results, nums);
+                results
+            }
+            fn backtrack_sub(start: usize, path: &mut Vec<i32>,
+                             results: &mut Vec<Vec<i32>>, nums: &[i32]) {
+                results.push(path.clone());
+                for i in start..nums.len() {
+                    path.push(nums[i]);
+                    backtrack_sub(i + 1, path, results, nums);
+                    path.pop();
+                }
+            }
+        - label: 'generate all permutations'
+          code: |
+            fn permute(nums: &[i32]) -> Vec<Vec<i32>> {
+                let mut results = Vec::new();
+                let mut used = vec![false; nums.len()];
+                backtrack_perm(&mut Vec::new(), &mut results, nums, &mut used);
+                results
+            }
+            fn backtrack_perm(path: &mut Vec<i32>, results: &mut Vec<Vec<i32>>,
+                              nums: &[i32], used: &mut Vec<bool>) {
+                if path.len() == nums.len() {
+                    results.push(path.clone());
+                    return;
+                }
+                for i in 0..nums.len() {
+                    if used[i] { continue; }
+                    used[i] = true;
+                    path.push(nums[i]);
+                    backtrack_perm(path, results, nums, used);
+                    path.pop();
+                    used[i] = false;
+                }
+            }
+        - label: 'N-Queens: check if placement is safe'
+          code: |
+            fn is_safe(board: &[usize], row: usize, col: usize) -> bool {
+                for r in 0..row {
+                    let c = board[r];
+                    if c == col || c + (row - r) == col || c == col + (row - r) {
+                        return false;
+                    }
+                }
+                true
+            }
+        - label: 'combination sum with reuse'
+          code: |
+            fn comb_sum(start: usize, target: i32, path: &mut Vec<i32>,
+                        results: &mut Vec<Vec<i32>>, cands: &[i32]) {
+                if target == 0 { results.push(path.clone()); return; }
+                for i in start..cands.len() {
+                    if cands[i] > target { break; }
+                    path.push(cands[i]);
+                    comb_sum(i, target - cands[i], path, results, cands);
+                    path.pop();
+                }
+            }
+  example: |
+    Worked example — generate all subsets of a list of integers:
+
+      Record the current path (empty is valid), then for each remaining element
+      add it to the path, recurse, and remove it. The start index advances to
+      prevent re-selecting earlier elements, giving 2^n subsets total.
+
+        fn subsets(nums: &[i32]) -> Vec<Vec<i32>> {
+            let mut out: Vec<Vec<i32>> = Vec::new();
+            bt(0, &mut Vec::new(), &mut out, nums);
+            out
+        }
+        fn bt(start: usize, path: &mut Vec<i32>,
+              out: &mut Vec<Vec<i32>>, nums: &[i32]) {
+            out.push(path.clone());
+            for i in start..nums.len() {
+                path.push(nums[i]);
+                bt(i + 1, path, out, nums);
+                path.pop();
+            }
+        }
+
+    Takeaway: choose, recurse, undo is the template. Push a clone to freeze the
+    current path into results — the live path is mutated in place throughout.

@@ -1,0 +1,153 @@
+- category: 'Linked List'
+  lang: rust
+  title: 'Linked List — Rust refresher'
+  summary: |
+    Linked lists are the canonical ownership-challenge structure in Rust. The
+    idiomatic node type is Option<Box<ListNode>>: Box owns the heap allocation,
+    Option represents the nullable next pointer cleanly.
+
+    Most interview problems use a simplified definition:
+        struct ListNode { val: i32, next: Option<Box<ListNode>> }
+
+    Traversal and mutation use .take() to move a node out of an Option without
+    cloning, and while let Some(node) = current { ... } to walk the chain.
+
+    Key patterns:
+      - Reversal: maintain a prev Option<Box<ListNode>>, step with .take().
+      - Fast/slow pointer: two separate &-references into the list.
+      - In practice, Rust interview lists often use Rc<RefCell<>> for shared or
+        doubly-linked structures, but Box suffices for singly-linked.
+
+    Ownership gotcha: you cannot hold two mutable references to the same list.
+    Use indices into a Vec<ListNode> if the borrow checker fights you in complex
+    problems.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'node definition'
+          code: |
+            struct ListNode {
+                val: i32,
+                next: Option<Box<ListNode>>,
+            }
+        - label: 'constructor helper'
+          code: |
+            impl ListNode {
+                fn new(val: i32) -> Self {
+                    ListNode { val, next: None }
+                }
+            }
+        - label: 'build a short list 1 -> 2 -> 3'
+          code: |
+            let mut head = Box::new(ListNode::new(1));
+            head.next = Some(Box::new(ListNode::new(2)));
+            head.next.as_mut().unwrap().next = Some(Box::new(ListNode::new(3)));
+        - label: 'dummy/sentinel head (simplifies insert/delete)'
+          code: 'let mut dummy = Box::new(ListNode::new(0));'
+    - title: Basic operations
+      ops:
+        - label: 'read the head value'
+          code: |
+            if let Some(ref node) = head {
+                println!("{}", node.val);
+            }
+        - label: 'advance a cursor by reference'
+          code: |
+            let mut cur = head.as_deref();
+            while let Some(node) = cur {
+                cur = node.next.as_deref();
+            }
+        - label: 'take (move) a node out of an Option'
+          code: 'let next_node = node.next.take();  // leaves node.next = None'
+        - label: 'append to a mutable tail pointer'
+          code: |
+            let new_node = Some(Box::new(ListNode::new(val)));
+            tail.next = new_node;
+            tail = tail.next.as_mut().unwrap();
+    - title: Iteration & loops
+      ops:
+        - label: 'walk the list (immutable)'
+          code: |
+            let mut cur = head.as_deref();
+            while let Some(node) = cur {
+                println!("{}", node.val);
+                cur = node.next.as_deref();
+            }
+        - label: 'collect values into a Vec'
+          code: |
+            let mut vals = Vec::new();
+            let mut cur = head.as_deref();
+            while let Some(node) = cur {
+                vals.push(node.val);
+                cur = node.next.as_deref();
+            }
+    - title: Special operations (linked list)
+      ops:
+        - label: 'reverse a singly linked list in place'
+          code: |
+            fn reverse(mut head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+                let mut prev: Option<Box<ListNode>> = None;
+                while let Some(mut node) = head {
+                    head = node.next.take();
+                    node.next = prev;
+                    prev = Some(node);
+                }
+                prev
+            }
+        - label: 'find the middle (fast/slow pointer via Vec)'
+          code: |
+            let mut vals = Vec::new();
+            let mut cur = head.as_deref();
+            while let Some(n) = cur { vals.push(n.val); cur = n.next.as_deref(); }
+            let mid = vals[vals.len() / 2];
+        - label: 'delete node with a given value'
+          code: |
+            let mut dummy = Box::new(ListNode::new(0));
+            dummy.next = head;
+            let mut cur = &mut dummy;
+            while cur.next.is_some() {
+                if cur.next.as_ref().unwrap().val == target {
+                    let nxt = cur.next.as_mut().unwrap().next.take();
+                    cur.next = nxt;
+                } else {
+                    cur = cur.next.as_mut().unwrap();
+                }
+            }
+        - label: 'merge two sorted lists'
+          code: |
+            fn merge(l1: Option<Box<ListNode>>, l2: Option<Box<ListNode>>)
+                -> Option<Box<ListNode>>
+            {
+                match (l1, l2) {
+                    (None, r) => r,
+                    (l, None) => l,
+                    (Some(mut a), Some(mut b)) => {
+                        if a.val <= b.val {
+                            a.next = merge(a.next.take(), Some(b));
+                            Some(a)
+                        } else {
+                            b.next = merge(Some(a), b.next.take());
+                            Some(b)
+                        }
+                    }
+                }
+            }
+  example: |
+    Worked example — reverse a singly linked list:
+
+      Walk the list with a while-let loop. Each iteration take() moves the rest
+      of the list out of the current node, point the current node backward at prev,
+      then advance prev. Ownership stays clear: each Box has exactly one owner.
+
+        fn reverse(mut head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+            let mut prev: Option<Box<ListNode>> = None;
+            while let Some(mut node) = head {
+                head = node.next.take();   // detach tail; node.next now None
+                node.next = prev;          // point backward
+                prev = Some(node);         // advance prev
+            }
+            prev
+        }
+
+    Takeaway: .take() is the key move — it extracts ownership from an Option and
+    replaces it with None in one step, keeping the borrow checker happy.

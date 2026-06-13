@@ -1,0 +1,260 @@
+# Canonical NeetCode 150 — Two Pointers & Sliding Window (original prompts, own solutions).
+# Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
+- id: nc-best-time-stock
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Best Time to Buy and Sell Stock
+  difficulty: easy
+  pattern: sliding-window
+  category: Two Pointers & Sliding Window
+  lists: [neetcode150, blind75]
+  func_name: max_profit
+  prompt: |
+    Best Time to Buy and Sell Stock
+
+    You are given an array of prices where prices[i] is the price of a stock on day i.
+    Choose one day to buy and a later day to sell to maximise profit.
+    Return the maximum profit possible, or 0 if no profit can be made.
+
+    Examples:
+      max_profit([7,1,5,3,6,4]) -> 5
+      max_profit([7,6,4,3,1]) -> 0
+  starter: |
+    def max_profit(prices):
+        pass  # write your solution; delete this line
+  solution: |
+    def max_profit(prices):
+        min_price = float('inf')
+        best = 0
+        for p in prices:
+            if p < min_price:
+                min_price = p
+            elif p - min_price > best:
+                best = p - min_price
+        return best
+  tests:
+    - {name: case 1, input: [[7,1,5,3,6,4]], expected: 5}
+    - {name: case 2, input: [[7,6,4,3,1]], expected: 0}
+    - {name: case 3, input: [[2,4,1]], expected: 2}
+
+- id: nc-longest-substring
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
+  title: Longest Substring Without Repeating Characters
+  difficulty: medium
+  pattern: sliding-window
+  category: Two Pointers & Sliding Window
+  lists: [neetcode150, blind75]
+  func_name: length_of_longest_substring
+  prompt: |
+    Longest Substring Without Repeating Characters
+
+    Given a string s, return the length of the longest substring that contains
+    no repeated characters.
+
+    Examples:
+      length_of_longest_substring("abcabcbb") -> 3
+      length_of_longest_substring("pwwkew") -> 3
+  starter: |
+    def length_of_longest_substring(s):
+        pass  # write your solution; delete this line
+  solution: |
+    def length_of_longest_substring(s):
+        last_seen = {}
+        left = 0
+        best = 0
+        for right, ch in enumerate(s):
+            if ch in last_seen and last_seen[ch] >= left:
+                left = last_seen[ch] + 1
+            last_seen[ch] = right
+            if right - left + 1 > best:
+                best = right - left + 1
+        return best
+  tests:
+    - {name: case 1, input: ["abcabcbb"], expected: 3}
+    - {name: case 2, input: ["bbbbb"], expected: 1}
+    - {name: case 3, input: [""], expected: 0}
+
+- id: nc-char-replacement
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
+  title: Longest Repeating Character Replacement
+  difficulty: medium
+  pattern: sliding-window
+  category: Two Pointers & Sliding Window
+  lists: [neetcode150, blind75]
+  func_name: character_replacement
+  prompt: |
+    Longest Repeating Character Replacement
+
+    Given a string s and an integer k, you may change at most k characters in any
+    window to the same letter. Return the length of the longest window that can be
+    made into a single repeated character.
+
+    Examples:
+      character_replacement("ABAB", 2) -> 4
+      character_replacement("AABABBA", 1) -> 4
+  starter: |
+    def character_replacement(s, k):
+        pass  # write your solution; delete this line
+  solution: |
+    def character_replacement(s, k):
+        counts = {}
+        left = 0
+        max_count = 0
+        best = 0
+        for right, ch in enumerate(s):
+            counts[ch] = counts.get(ch, 0) + 1
+            if counts[ch] > max_count:
+                max_count = counts[ch]
+            while (right - left + 1) - max_count > k:
+                counts[s[left]] -= 1
+                left += 1
+            if right - left + 1 > best:
+                best = right - left + 1
+        return best
+  tests:
+    - {name: case 1, input: ["ABAB", 2], expected: 4}
+    - {name: case 2, input: ["AABABBA", 1], expected: 4}
+    - {name: case 3, input: ["A", 0], expected: 1}
+
+- id: nc-permutation-in-string
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Permutation in String
+  difficulty: medium
+  pattern: sliding-window
+  category: Two Pointers & Sliding Window
+  lists: [neetcode150]
+  func_name: check_inclusion
+  prompt: |
+    Permutation in String
+
+    Given strings s1 and s2, return True if any contiguous substring of s2 is a
+    permutation of s1 (same characters, same counts, any order), else False.
+
+    Examples:
+      check_inclusion("ab", "eidbaooo") -> True
+      check_inclusion("ab", "eidboaoo") -> False
+  starter: |
+    def check_inclusion(s1, s2):
+        pass  # write your solution; delete this line
+  solution: |
+    def check_inclusion(s1, s2):
+        if len(s1) > len(s2):
+            return False
+        need = {}
+        for ch in s1:
+            need[ch] = need.get(ch, 0) + 1
+        window = {}
+        k = len(s1)
+        for i, ch in enumerate(s2):
+            window[ch] = window.get(ch, 0) + 1
+            if i >= k:
+                left_ch = s2[i - k]
+                window[left_ch] -= 1
+                if window[left_ch] == 0:
+                    del window[left_ch]
+            if window == need:
+                return True
+        return False
+  tests:
+    - {name: case 1, input: ["ab", "eidbaooo"], expected: true}
+    - {name: case 2, input: ["ab", "eidboaoo"], expected: false}
+    - {name: case 3, input: ["a", "b"], expected: false}
+
+- id: nc-min-window-substring
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
+  title: Minimum Window Substring
+  difficulty: hard
+  pattern: sliding-window
+  category: Two Pointers & Sliding Window
+  lists: [neetcode150, blind75]
+  func_name: min_window
+  prompt: |
+    Minimum Window Substring
+
+    Given strings s and t, return the shortest contiguous substring of s that
+    contains every character of t (including duplicates). Return "" if no such
+    window exists.
+
+    Examples:
+      min_window("ADOBECODEBANC", "ABC") -> "BANC"
+      min_window("a", "a") -> "a"
+  starter: |
+    def min_window(s, t):
+        pass  # write your solution; delete this line
+  solution: |
+    def min_window(s, t):
+        if not t or not s:
+            return ""
+        need = {}
+        for ch in t:
+            need[ch] = need.get(ch, 0) + 1
+        have = {}
+        formed = 0
+        required = len(need)
+        left = 0
+        best_len = float('inf')
+        best_start = 0
+        for right, ch in enumerate(s):
+            have[ch] = have.get(ch, 0) + 1
+            if ch in need and have[ch] == need[ch]:
+                formed += 1
+            while formed == required:
+                if right - left + 1 < best_len:
+                    best_len = right - left + 1
+                    best_start = left
+                left_ch = s[left]
+                have[left_ch] -= 1
+                if left_ch in need and have[left_ch] < need[left_ch]:
+                    formed -= 1
+                left += 1
+        if best_len == float('inf'):
+            return ""
+        return s[best_start:best_start + best_len]
+  tests:
+    - {name: case 1, input: ["ADOBECODEBANC", "ABC"], expected: "BANC"}
+    - {name: case 2, input: ["a", "a"], expected: "a"}
+    - {name: case 3, input: ["a", "aa"], expected: ""}
+
+- id: nc-sliding-window-max
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
+  title: Sliding Window Maximum
+  difficulty: hard
+  pattern: sliding-window
+  category: Two Pointers & Sliding Window
+  lists: [neetcode150]
+  func_name: max_sliding_window
+  prompt: |
+    Sliding Window Maximum
+
+    Given an integer array nums and a window size k, return a list of the maximum
+    value in each contiguous window of size k, in left-to-right order.
+
+    Examples:
+      max_sliding_window([1,3,-1,-3,5,3,6,7], 3) -> [3,3,5,5,6,7]
+      max_sliding_window([1], 1) -> [1]
+  starter: |
+    def max_sliding_window(nums, k):
+        pass  # write your solution; delete this line
+  solution: |
+    def max_sliding_window(nums, k):
+        n = len(nums)
+        result = []
+        dq = []  # indices, decreasing by value
+        for i in range(n):
+            while dq and dq[0] < i - k + 1:
+                dq.pop(0)
+            while dq and nums[dq[-1]] < nums[i]:
+                dq.pop()
+            dq.append(i)
+            if i >= k - 1:
+                result.append(nums[dq[0]])
+        return result
+  tests:
+    - {name: case 1, input: [[1,3,-1,-3,5,3,6,7], 3], expected: [3,3,5,5,6,7]}
+    - {name: case 2, input: [[1], 1], expected: [1]}
+    - {name: case 3, input: [[3,1,2], 2], expected: [3,2]}

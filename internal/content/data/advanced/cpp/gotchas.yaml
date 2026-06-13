@@ -1,0 +1,233 @@
+lang: cpp
+group: Gotchas
+title: "C++ Gotchas — Classic Footguns"
+tag: E
+summary: |
+  This topic consolidates C++-specific footguns that don't fit cleanly into a single
+  other topic — patterns that look plausible to someone coming from Java/Python but
+  silently misbehave in C++. The overlapping topics (Memory, Move Semantics, UB) own
+  the deep exercise content; this section targets the diagnostic — "find and fix the
+  subtle bug."
+
+  Gotchas summary (full C++ section):
+    - std::vector<bool> is a specialisation with proxy references — auto bit = vec[i]
+      does not give a bool&.
+    - Integer promotion: small types (char, short) are promoted to int in arithmetic —
+      unsigned char a = 200; a * a overflows int.
+    - sizeof a C-style array vs a pointer: sizeof(arr) gives the array byte size;
+      sizeof(ptr) gives pointer size (8 on 64-bit) — frequently confused when arrays
+      decay to pointers in function arguments.
+    - Post-std::move usage: a moved-from std::string is in a valid but unspecified
+      state; relying on it being empty is non-portable.
+exercises:
+  - prompt: |
+      A function returns const std::string& and the caller stores the reference. The
+      returned reference is bound to a temporary created inside the expression — the
+      temporary is destroyed at the end of the full expression, leaving a dangling
+      reference. Identify where the lifetime extension rules break down and fix by
+      returning std::string by value.
+    kind: spot-the-bug
+    broken_code: |
+      const std::string& get_label(bool flag) {
+          // Each branch creates a temporary std::string.
+          // The returned const& is bound to that temporary — which dies at the semicolon
+          // in the caller.
+          return flag ? std::string("yes") : std::string("no");
+      }
+
+      void caller() {
+          const std::string& label = get_label(true);
+          std::printf("%s\n", label.c_str());   // UB: label is dangling
+      }
+    fixed_code: |
+      std::string get_label(bool flag) {
+          return flag ? std::string("yes") : std::string("no");
+      }
+
+      void caller() {
+          std::string label = get_label(true);   // owns the value; lifetime is clear
+          std::printf("%s\n", label.c_str());
+      }
+    bug: |
+      Lifetime extension of temporaries bound to const& applies only when the binding
+      occurs at the point of creation — not across a function return boundary. The
+      temporary std::string inside get_label is destroyed when the function returns;
+      the returned const& is immediately dangling. The compiler may warn but does not
+      error. The fix: return std::string by value; NRVO/RVO will usually eliminate the
+      copy entirely.
+    check: none
+    signal: ""
+
+  - prompt: |
+      A class holds a raw int* data allocated in the constructor. Two objects are copy-
+      constructed from each other. Both destructors call delete[] data, causing a double-
+      free detected by ASan. Fix with the Rule of Five or, preferably, the Rule of Zero
+      by switching to std::vector<int>.
+    kind: fix-it
+    broken_code: |
+      class Buffer {
+      public:
+          explicit Buffer(std::size_t n)
+              : size_(n), data_(new int[n]) {}
+
+          ~Buffer() { delete[] data_; }
+
+          // No user-defined copy — compiler generates shallow copy of data_ pointer
+          int* data() { return data_; }
+
+      private:
+          std::size_t size_;
+          int*        data_;
+      };
+
+      void demo() {
+          Buffer a(10);
+          Buffer b = a;     // shallow copy: b.data_ == a.data_
+      }                     // ~Buffer() runs twice on same pointer → double-free
+    fixed_code: |
+      // Rule of Zero: let vector manage the memory
+      class Buffer {
+      public:
+          explicit Buffer(std::size_t n) : data_(n, 0) {}
+
+          int* data() { return data_.data(); }
+          std::size_t size() const { return data_.size(); }
+
+      private:
+          std::vector<int> data_;
+          // No destructor, no copy/move controls needed — vector handles everything
+      };
+
+      // If you must keep raw memory, use the Rule of Five:
+      // delete copy-ctor + copy-assign (or deep-copy them), add noexcept move.
+    bug: |
+      The compiler-generated copy constructor copies data_ (the raw pointer) by value —
+      both objects now point to the same heap block. When both destructors run, delete[]
+      is called twice on the same address: double-free UB, detected by ASan as
+      heap-use-after-free on the second call. The Rule of Zero fix is simplest: store
+      data in std::vector<int> and declare none of the five special members — the
+      vector's copy constructor does a deep copy correctly.
+    check: none
+    signal: ""
+
+  - prompt: |
+      A std::vector<Animal> stores Dog and Cat objects by value. Virtual dispatch is
+      broken — all elements behave as Animal. Change the storage to
+      std::vector<std::unique_ptr<Animal>> and confirm polymorphic dispatch is restored.
+    kind: fix-it
+    broken_code: |
+      class Animal {
+      public:
+          virtual void speak() const { std::puts("..."); }
+          virtual ~Animal() = default;
+      };
+
+      class Dog : public Animal {
+      public:
+          void speak() const override { std::puts("Woof"); }
+      };
+
+      class Cat : public Animal {
+      public:
+          void speak() const override { std::puts("Meow"); }
+      };
+
+      void demo() {
+          std::vector<Animal> zoo;
+          zoo.push_back(Dog{});   // Dog is sliced to Animal on copy
+          zoo.push_back(Cat{});   // Cat is sliced to Animal on copy
+
+          for (const auto& a : zoo)
+              a.speak();          // always prints "..." — derived overrides lost
+      }
+    fixed_code: |
+      void demo() {
+          std::vector<std::unique_ptr<Animal>> zoo;
+          zoo.push_back(std::make_unique<Dog>());
+          zoo.push_back(std::make_unique<Cat>());
+
+          for (const auto& a : zoo)
+              a->speak();   // Woof, Meow — vtable intact
+      }
+    bug: |
+      std::vector<Animal> stores Animal objects by value. Inserting a Dog or Cat copies
+      only the Animal subobject (object slicing) — the derived data and vtable pointer
+      of the stored element belong to Animal, not the derived type. Virtual dispatch
+      silently dispatches to Animal::speak. No warning is issued. Storing
+      unique_ptr<Animal> keeps the full derived object alive on the heap; the vector
+      stores owning pointers, preserving the vtable and enabling correct virtual
+      dispatch.
+    check: none
+    signal: ""
+
+  - prompt: |
+      A non-inline function is defined in a header included by two translation units.
+      The linker errors with "multiple definition". Fix by marking the function inline
+      (or moving the definition to a .cpp). Then add a global variable in a header
+      without inline (pre-C++17 style) and observe the same linker error.
+    kind: spot-the-bug
+    broken_code: |
+      // utils.h — included by both a.cpp and b.cpp
+      // BUG: non-inline function defined in a header
+      void greet() {
+          std::puts("hello");
+      }
+
+      // Also a BUG if both TUs include this:
+      int global_counter = 0;   // multiple definition in pre-C++17
+    fixed_code: |
+      // utils.h — fixed
+      inline void greet() {          // inline allows multiple identical definitions
+          std::puts("hello");
+      }
+
+      inline int global_counter = 0; // C++17: inline variable — one definition across TUs
+
+      // Pre-C++17 pattern for global variables:
+      //   In header:  extern int global_counter;   // declaration only
+      //   In .cpp:    int global_counter = 0;      // single definition
+    bug: |
+      The One Definition Rule (ODR) requires that non-inline, non-template entities
+      have exactly one definition across all translation units. Defining a function or
+      variable in a header that is included in multiple .cpp files produces multiple
+      definitions — the linker rejects this with a "multiple definition" error. The fix:
+      mark functions inline (the compiler may or may not inline the call, but multiple
+      identical definitions are permitted). C++17 introduced inline variables with the
+      same guarantee. Pre-C++17, global variables in headers require extern declaration
+      + a single .cpp definition.
+    check: none
+    signal: ""
+
+  - prompt: |
+      A struct Point { int x; int y; } is declared on the stack without initialisation.
+      Its x and y contain garbage. A comparison if (p.x > 0) fires under UBSan.
+      Fix by value-initialising with Point p{}.
+    kind: fix-it
+    broken_code: |
+      struct Point { int x; int y; };
+
+      void demo() {
+          Point p;          // uninitialized: x and y contain stack garbage
+          if (p.x > 0) {    // UBSan: use of uninitialized value
+              std::printf("positive x\n");
+          }
+      }
+    fixed_code: |
+      struct Point { int x; int y; };
+
+      void demo() {
+          Point p{};        // value-initialization: x = 0, y = 0
+          if (p.x > 0) {
+              std::printf("positive x\n");
+          }
+      }
+    bug: |
+      In C++, variables with automatic storage duration are not zero-initialized by
+      default — they contain whatever bytes happen to be on the stack. Reading an
+      uninitialized variable is undefined behaviour; UBSan reports it at runtime.
+      Debug builds (with MSVC especially) sometimes zero-fill stack memory, hiding the
+      bug in development but not in release. Value-initialization with Point p{} (or
+      Point p = {}) zeroes all members for aggregate types. For class types with
+      constructors, the constructor runs as usual.
+    check: none
+    signal: ""

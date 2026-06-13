@@ -1,0 +1,113 @@
+- category: 'Binary Search'
+  lang: javascript
+  title: 'Binary Search — JavaScript refresher'
+  summary: |
+    Binary search finds a target in a SORTED array in O(log n) by repeatedly halving
+    the search range. Look at the middle: if it is the target you are done; if the
+    target is smaller, throw away the right half; if larger, throw away the left half.
+
+    The pattern generalizes far beyond "find this number": any time the answer space
+    is monotonic ("works for everything >= X, fails below X"), you can binary-search
+    the smallest X that works.
+
+    JavaScript notes:
+      - JS numbers are 64-bit floats — (lo + hi) / 2 does NOT integer-overflow like
+        Java. Use Math.floor((lo + hi) / 2) to get an integer midpoint.
+      - There is no built-in Arrays.binarySearch — write your own.
+      - Always verify the loop invariant: "if the target exists, it is in [lo..hi]."
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'standard inclusive bounds'
+          code: 'let lo = 0, hi = arr.length - 1;'
+        - label: 'answer-space search (search on a value range)'
+          code: 'let lo = minPossible, hi = maxPossible;'
+        - label: 'integer midpoint (Math.floor prevents fractional index)'
+          code: 'const mid = Math.floor((lo + hi) / 2);'
+    - title: Basic operations
+      ops:
+        - label: 'loop condition (inclusive both ends)'
+          code: |
+            while (lo <= hi) {
+              /* ... */
+            }
+        - label: 'check middle'
+          code: 'if (arr[mid] === target) return mid;'
+        - label: 'discard left half (target is to the right)'
+          code: 'lo = mid + 1;'
+        - label: 'discard right half (target is to the left)'
+          code: 'hi = mid - 1;'
+        - label: 'not found sentinel'
+          code: 'return -1;   // lo > hi means absent'
+    - title: Iteration & loops
+      ops:
+        - label: 'standard binary search loop'
+          code: |
+            while (lo <= hi) {
+                const mid = Math.floor((lo + hi) / 2);
+                if (arr[mid] === target) return mid;
+                else if (arr[mid] < target) lo = mid + 1;
+                else hi = mid - 1;
+            }
+        - label: 'left-boundary (first index >= target)'
+          code: |
+            while (lo < hi) {
+                const mid = Math.floor((lo + hi) / 2);
+                if (arr[mid] < target) lo = mid + 1;
+                else hi = mid;
+            }
+        - label: 'answer-space: keep lo as best valid answer'
+          code: |
+            if (feasible(mid)) {
+              best = mid;
+              hi = mid - 1;
+            } else lo = mid + 1;
+    - title: Special operations (binary search)
+      ops:
+        - label: 'find first true in boolean space (lower bound pattern)'
+          code: |
+            let lo = 0, hi = n;
+            while (lo < hi) {
+              const mid = Math.floor((lo + hi) / 2);
+              if (cond(mid)) hi = mid;
+              else lo = mid + 1;
+            }
+            return lo;
+        - label: 'rotated sorted array: which half is ordered?'
+          code: |
+            if (arr[lo] <= arr[mid]) {
+              /* left half sorted */
+            } else {
+              /* right half sorted */
+            }
+        - label: 'search 2-D matrix (flatten to 1-D index)'
+          code: |
+            const mid = Math.floor((lo + hi) / 2);
+            const val = matrix[Math.floor(mid / cols)][mid % cols];
+        - label: 'count occurrences (upperBound - lowerBound)'
+          code: '// run left-boundary search twice: once for target, once for target+1'
+  example: |
+    Worked example — find the index of target in a sorted array, or -1 if absent:
+
+      Keep an inclusive range [lo..hi]. Each step look at the middle element and drop
+      the half that cannot contain the target. The range shrinks by half every step,
+      so a million elements take only ~20 checks. Math.floor gives a valid integer
+      index without any overflow concern in JavaScript.
+
+        function search(arr, target) {
+            let lo = 0, hi = arr.length - 1;
+            while (lo <= hi) {
+                const mid = Math.floor((lo + hi) / 2);
+                if (arr[mid] === target) {
+                    return mid;
+                } else if (arr[mid] < target) {
+                    lo = mid + 1;
+                } else {
+                    hi = mid - 1;
+                }
+            }
+            return -1;
+        }
+
+    Takeaway: the invariant is "if target exists, it is inside [lo..hi]." Every branch
+    must preserve that. When lo > hi the range is empty — the target is absent.

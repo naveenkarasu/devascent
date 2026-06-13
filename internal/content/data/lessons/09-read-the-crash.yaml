@@ -1,0 +1,42 @@
+id: read-the-crash
+order: 9
+title: Read the Crash
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      Errors are clues, not failures. Python prints the error TYPE and a line.
+      Common ones: IndexError (a list position that doesn't exist), KeyError
+      (a missing dict key), TypeError (mixing incompatible types),
+      ZeroDivisionError (dividing by 0). Read the LAST line of the traceback first.
+
+          [][0]   # IndexError: list index out of range  (empty list has no position 0)
+
+      The fix: check the length before you index.
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: This returns the first item but crashes (IndexError) on an empty list. Make an empty list return None instead.
+    task:
+      prompt: Return the first item, or None if the list is empty.
+      func_name: safe_first
+      starter: |
+        def safe_first(items):
+            # buggy: return items[0]  -- crashes when empty
+            pass  # hint: guard first — if len(items) == 0: return None
+      tests:
+        - {name: 'safe_first([5,6])', input: [[5, 6]], expected: 5}
+        - {name: 'safe_first([])', input: [[]], expected: null}
+        - {name: 'safe_first(["a"])', input: [["a"]], expected: "a"}
+  - kind: you_do
+    title: You do — solo
+    body: This crashes (ZeroDivisionError) on an empty list. Make empty → 0, otherwise the true average.
+    task:
+      prompt: Return the average of the list; empty list → 0.
+      func_name: average
+      starter: |
+        def average(numbers):
+            pass  # <- guard the empty case, else  sum(numbers) / len(numbers)
+      tests:
+        - {name: 'average([2,4])', input: [[2, 4]], expected: 3.0}
+        - {name: 'average([])', input: [[]], expected: 0}
+        - {name: 'average([10])', input: [[10]], expected: 10.0}

@@ -1,0 +1,188 @@
+lang: typescript
+group: Generics
+title: "Generics — Generic Functions/Classes, Constraints, Default Type Params"
+tag: E
+summary: |
+  Generics allow writing code that is parameterised over types, avoiding both `any`
+  (which loses type info) and repetition (separate functions for each type).
+
+  - Generic functions: `function identity<T>(arg: T): T` — TS infers T from the call
+    site or you specify it explicitly.
+  - Constraints: `<T extends Lengthwise>` restricts T to types that satisfy the
+    constraint; prevents accessing .length on number.
+  - Multiple type parameters: `<T, K extends keyof T>` — ordering matters
+    (dependencies declared first).
+  - Default type parameters: `<T = string>` makes T optional at the call site.
+  - Generic classes: only the instance side uses the type parameter; static members
+    cannot reference it.
+  - Variance annotations (in/out) — available in TS 4.7+ for explicitly marking
+    co/contravariance; avoid unless you have a specific need.
+
+  Common mistakes: over-constraining (`<T extends string>` when you just want
+  `string`); type inference failing with complex HOFs (prefer explicit annotation over
+  silent any widening); static members in a generic class cannot use the class type
+  parameter; required type params cannot follow optional ones.
+exercises:
+  - prompt: |
+      Implement `pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K>`.
+      Call it with a valid key list and then with an invalid key — verify the invalid
+      call produces a compile error.
+    kind: fix-it
+    broken_code: |
+      function pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
+        const result = {} as Pick<T, K>;
+        for (const k of keys) {
+          result[k] = obj[k];
+        }
+        return result;
+      }
+
+      const user = { id: 1, name: "Alice", role: "admin" };
+      const subset = pick(user, ["id", "oops"]); // error: "oops" is not a key of user
+    fixed_code: |
+      function pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
+        const result = {} as Pick<T, K>;
+        for (const k of keys) {
+          result[k] = obj[k];
+        }
+        return result;
+      }
+
+      const user = { id: 1, name: "Alice", role: "admin" };
+      const subset = pick(user, ["id", "name"]);    // OK
+      // const bad = pick(user, ["id", "oops"]);    // error: "oops" not in keyof typeof user
+    bug: |
+      The constraint `K extends keyof T` restricts the keys array to only known property
+      names of T, so passing the unknown key `"oops"` is a compile-time error — that is
+      the broken call. Correcting the call to valid keys (`["id", "name"]`) compiles,
+      and the return type `Pick<T, K>` accurately narrows the result to only the
+      selected properties. (Avoid `Object.fromEntries` here — it requires the es2019 lib
+      and returns a loosely-typed object; an indexed loop keeps the precise `Pick<T, K>`
+      result.)
+    check: compiles
+    signal: ""
+  - prompt: |
+      Implement a type-safe `pipe` that composes two functions: the output type of
+      the first must match the input type of the second. Show a mismatched call
+      producing a compile error.
+    kind: fix-it
+    broken_code: |
+      function pipe<A, B, C>(f: (a: A) => B, g: (b: B) => C): (a: A) => C {
+        return (a: A) => g(f(a));
+      }
+
+      const result = pipe(
+        (s: string) => s.length,        // A=string, B=number
+        (n: string) => n.toUpperCase(), // expects string, but B is number — mismatch
+      );
+    fixed_code: |
+      function pipe<A, B, C>(f: (a: A) => B, g: (b: B) => C): (a: A) => C {
+        return (a: A) => g(f(a));
+      }
+
+      const result = pipe(
+        (s: string) => s.length,     // A=string, B=number
+        (n: number) => n.toFixed(2), // B=number, C=string — types chain correctly
+      );
+
+      // const bad = pipe(
+      //   (s: string) => s.length,
+      //   (n: string) => n.toUpperCase(), // error: number not assignable to string
+      // );
+    bug: |
+      The generic signature `<A, B, C>` with dependent parameters forces TS to unify B
+      across both functions: the output type of `f` must match the input type of `g`.
+      The broken call gives `f` an output of `number` but types `g`'s parameter as
+      `string`, so unifying B fails and TS reports the mismatch. Matching the second
+      function's parameter to `number` lets the types chain and the code compiles.
+      (Using bare `Function` types instead would lose all type information and catch
+      nothing.)
+    check: compiles
+    signal: ""
+  - prompt: |
+      Create a generic `Stack<T extends { id: string }>` class with `push` and
+      `findById`. Verify that instantiating with a type missing `id` errors.
+    kind: fix-it
+    broken_code: |
+      class Stack<T extends { id: string }> {
+        private items: T[] = [];
+        push(item: T): void {
+          this.items.push(item);
+        }
+        findById(id: string): T | undefined {
+          return this.items.find((item) => item.id === id);
+        }
+      }
+
+      const s = new Stack<number>(); // error: number does not satisfy { id: string }
+      s.push(42);
+      s.findById("1");
+    fixed_code: |
+      class Stack<T extends { id: string }> {
+        private items: T[] = [];
+
+        push(item: T): void {
+          this.items.push(item);
+        }
+
+        findById(id: string): T | undefined {
+          return this.items.find((item) => item.id === id);
+        }
+      }
+
+      interface User {
+        id: string;
+        name: string;
+      }
+
+      const s = new Stack<User>();
+      s.push({ id: "1", name: "Alice" });
+      console.log(s.findById("1"));
+
+      // const bad = new Stack<number>(); // error: number does not satisfy { id: string }
+    bug: |
+      With the constraint `T extends { id: string }`, the class can safely access `.id`
+      inside `findById` without any cast — and the contract is enforced at the
+      instantiation site, so `new Stack<number>()` is rejected because `number` does not
+      satisfy `{ id: string }`. Instantiating with a type that has an `id` (e.g. `User`)
+      compiles. (Without the constraint, an `any` cast inside `findById` would hide the
+      bug and let `Stack<number>` through silently.)
+    check: compiles
+    signal: ""
+  - prompt: |
+      Write `createResponse<T = Record<string, unknown>>(data: T)` with a default
+      type param. Show calling it without a type arg (gets default) and with an
+      explicit one.
+    kind: fix-it
+    broken_code: |
+      function createResponse(data: Record<string, unknown>): {
+        data: Record<string, unknown>;
+        status: number;
+      } {
+        return { data, status: 200 };
+      }
+
+      const r1 = createResponse({ name: "Alice" });
+      // Specificity is lost: r1.data.name is `unknown`, so string methods are rejected.
+      const upper = r1.data.name.toUpperCase(); // error: 'r1.data.name' is of type 'unknown'
+    fixed_code: |
+      function createResponse<T = Record<string, unknown>>(data: T): {
+        data: T;
+        status: number;
+      } {
+        return { data, status: 200 };
+      }
+
+      const r1 = createResponse({ name: "Alice" });       // T inferred as { name: string }
+      const upper = r1.data.name.toUpperCase();           // OK — name is a string
+      const r2 = createResponse<string>("hello");         // explicit T overrides default
+      const r3 = createResponse({} as Record<string, unknown>); // T uses the default shape
+    bug: |
+      The non-generic version locks the input and output to `Record<string, unknown>`,
+      losing specificity — `r1.data.name` is `unknown`, so calling `.toUpperCase()` on
+      it is a compile error. The default type parameter `<T = Record<string, unknown>>`
+      lets TS infer the precise argument type (so `r1.data.name` is `string`) while
+      still allowing an explicit override (`<string>`) or falling back to the default
+      shape. TS infers T from the argument when provided.
+    check: compiles
+    signal: ""

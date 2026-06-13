@@ -1,0 +1,289 @@
+# Data-structure problems (linked list, binary tree) using the node harness:
+# the player receives a real ListNode/TreeNode (built from an array by the grader)
+# and returns one; the grader dumps it back to an array to compare. Examples show
+# the conceptual form (1->2->3); tests carry arrays. Trees use level-order arrays
+# with null for missing children. Authored original; all grader-validated.
+
+# ── Linked List (shape: linkedlist) ──────────────────────────────────────────
+- id: reverse-linked-list
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Reverse Linked List
+  difficulty: easy
+  pattern: linked-list
+  category: Linked List
+  lists: [blind75, neetcode150]
+  func_name: reverse_list
+  shape: linkedlist
+  arg_kinds: [node]
+  ret_kind: node
+  prompt: |
+    Reverse Linked List
+
+    You are given the head of a singly linked list. Reverse it and return the new
+    head. You receive a real ListNode (the class is shown in the editor) and must
+    return a ListNode.
+
+    Example (conceptually):
+      1 -> 2 -> 3 -> 4 -> 5   becomes   5 -> 4 -> 3 -> 2 -> 1
+  starter: |
+    # Definition for singly-linked list (provided by the grader):
+    # class ListNode:
+    #     def __init__(self, val=0, next=None):
+    #         self.val = val
+    #         self.next = next
+
+    def reverse_list(head):
+        pass  # write your solution; delete this line
+  solution: |
+    def reverse_list(head):
+        prev = None
+        while head is not None:
+            nxt = head.next
+            head.next = prev
+            prev = head
+            head = nxt
+        return prev
+  tests:
+    - name: case 1
+      input: [[1,2,3,4,5]]
+      expected: [5,4,3,2,1]
+    - name: case 2
+      input: [[1,2]]
+      expected: [2,1]
+    - name: case 3
+      input: [[]]
+      expected: []
+
+- id: merge-two-sorted-lists
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Merge Two Sorted Lists
+  difficulty: easy
+  pattern: linked-list
+  category: Linked List
+  lists: [blind75, neetcode150]
+  func_name: merge_lists
+  shape: linkedlist
+  arg_kinds: [node, node]
+  ret_kind: node
+  prompt: |
+    Merge Two Sorted Lists
+
+    You are given the heads of two sorted linked lists. Splice them into one
+    sorted list and return its head. Both inputs are real ListNodes; return a
+    ListNode.
+
+    Example:
+      1->2->4  and  1->3->4   becomes   1->1->2->3->4->4
+  starter: |
+    # class ListNode: val, next  (provided by the grader)
+
+    def merge_lists(a, b):
+        pass  # write your solution; delete this line
+  solution: |
+    def merge_lists(a, b):
+        dummy = ListNode()
+        tail = dummy
+        while a is not None and b is not None:
+            if a.val <= b.val:
+                tail.next = a; a = a.next
+            else:
+                tail.next = b; b = b.next
+            tail = tail.next
+        tail.next = a if a is not None else b
+        return dummy.next
+  tests:
+    - name: case 1
+      input: [[1,2,4], [1,3,4]]
+      expected: [1,1,2,3,4,4]
+    - name: case 2
+      input: [[], [0]]
+      expected: [0]
+    - name: case 3
+      input: [[], []]
+      expected: []
+
+- id: remove-nth-from-end
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Remove Nth Node From End of List
+  difficulty: medium
+  pattern: linked-list
+  category: Linked List
+  lists: [blind75, neetcode150]
+  func_name: remove_nth
+  shape: linkedlist
+  arg_kinds: [node, raw]
+  ret_kind: node
+  prompt: |
+    Remove Nth Node From End of List
+
+    Given the head of a linked list and an integer n, remove the nth node from
+    the END of the list and return the head. (head is a ListNode; n is a plain
+    integer.)
+
+    Example:
+      1->2->3->4->5, n=2   becomes   1->2->3->5
+  starter: |
+    # class ListNode: val, next  (provided by the grader)
+
+    def remove_nth(head, n):
+        pass  # write your solution; delete this line
+  solution: |
+    def remove_nth(head, n):
+        dummy = ListNode(0, head)
+        fast = slow = dummy
+        for _ in range(n):
+            fast = fast.next
+        while fast.next is not None:
+            fast = fast.next
+            slow = slow.next
+        slow.next = slow.next.next
+        return dummy.next
+  tests:
+    - name: case 1
+      input: [[1,2,3,4,5], 2]
+      expected: [1,2,3,5]
+    - name: case 2
+      input: [[1], 1]
+      expected: []
+    - name: case 3
+      input: [[1,2], 1]
+      expected: [1]
+
+# ── Binary Tree (shape: tree; arrays are level-order with null) ──────────────
+- id: max-depth-binary-tree
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
+  title: Maximum Depth of Binary Tree
+  difficulty: easy
+  pattern: tree
+  category: Trees & Graphs
+  lists: [blind75, neetcode150]
+  func_name: max_depth
+  shape: tree
+  arg_kinds: [node]
+  ret_kind: raw
+  prompt: |
+    Maximum Depth of Binary Tree
+
+    Given the root of a binary tree, return its maximum depth (the number of
+    nodes along the longest path from the root down to a leaf). You receive a
+    real TreeNode (the class is shown in the editor); return an integer.
+
+    Trees are written level-order with null for a missing child, e.g.
+    [3,9,20,null,null,15,7] is:
+          3
+         / \
+        9  20
+           / \
+          15  7
+  starter: |
+    # Definition for a binary tree node (provided by the grader):
+    # class TreeNode:
+    #     def __init__(self, val=0, left=None, right=None):
+    #         self.val = val
+    #         self.left = left
+    #         self.right = right
+
+    def max_depth(root):
+        pass  # write your solution; delete this line
+  solution: |
+    def max_depth(root):
+        if root is None:
+            return 0
+        return 1 + max(max_depth(root.left), max_depth(root.right))
+  tests:
+    - name: case 1
+      input: [[3,9,20,null,null,15,7]]
+      expected: 3
+    - name: case 2
+      input: [[1,null,2]]
+      expected: 2
+    - name: case 3
+      input: [[]]
+      expected: 0
+
+- id: invert-binary-tree
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
+  title: Invert Binary Tree
+  difficulty: easy
+  pattern: tree
+  category: Trees & Graphs
+  lists: [blind75, neetcode150]
+  func_name: invert_tree
+  shape: tree
+  arg_kinds: [node]
+  ret_kind: node
+  prompt: |
+    Invert Binary Tree
+
+    Given the root of a binary tree, invert it (mirror left/right at every node)
+    and return the root. You receive a TreeNode and return a TreeNode.
+
+    Example: [4,2,7,1,3,6,9] inverts to [4,7,2,9,6,3,1].
+  starter: |
+    # class TreeNode: val, left, right  (provided by the grader)
+
+    def invert_tree(root):
+        pass  # write your solution; delete this line
+  solution: |
+    def invert_tree(root):
+        if root is None:
+            return None
+        root.left, root.right = invert_tree(root.right), invert_tree(root.left)
+        return root
+  tests:
+    - name: case 1
+      input: [[4,2,7,1,3,6,9]]
+      expected: [4,7,2,9,6,3,1]
+    - name: case 2
+      input: [[2,1,3]]
+      expected: [2,3,1]
+    - name: case 3
+      input: [[]]
+      expected: []
+
+- id: same-tree
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
+  title: Same Tree
+  difficulty: easy
+  pattern: tree
+  category: Trees & Graphs
+  lists: [blind75, neetcode150]
+  func_name: is_same_tree
+  shape: tree
+  arg_kinds: [node, node]
+  ret_kind: raw
+  prompt: |
+    Same Tree
+
+    Given the roots of two binary trees, return True if they are structurally
+    identical and have the same values, else False. Both inputs are TreeNodes.
+
+    Example: [1,2,3] and [1,2,3] -> True; [1,2] and [1,null,2] -> False.
+  starter: |
+    # class TreeNode: val, left, right  (provided by the grader)
+
+    def is_same_tree(p, q):
+        pass  # write your solution; delete this line
+  solution: |
+    def is_same_tree(p, q):
+        if p is None and q is None:
+            return True
+        if p is None or q is None or p.val != q.val:
+            return False
+        return is_same_tree(p.left, q.left) and is_same_tree(p.right, q.right)
+  tests:
+    - name: case 1
+      input: [[1,2,3], [1,2,3]]
+      expected: true
+    - name: case 2
+      input: [[1,2], [1,null,2]]
+      expected: false
+    - name: case 3
+      input: [[], []]
+      expected: true

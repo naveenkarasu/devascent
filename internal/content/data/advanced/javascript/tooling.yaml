@@ -1,0 +1,27 @@
+lang: javascript
+group: Tooling
+title: "Tooling — npm, ESLint, Prettier, Jest"
+tag: C
+summary: |
+  Package management: `npm` (comes with Node) and `yarn`/`pnpm` are drop-in alternatives
+  with different caching strategies. `package.json` declares dependencies;
+  `package-lock.json`/`yarn.lock` lock exact versions for reproducible installs. `npx`
+  runs a package binary without a global install.
+
+  Linting and formatting: ESLint enforces code-quality rules — it catches `==` usage,
+  unused variables, `var` declarations, and more. Prettier enforces consistent formatting
+  (indentation, quotes, semicolons). The two compose cleanly: ESLint for logic, Prettier
+  for style. Biome is an emerging all-in-one Rust-based alternative to both.
+
+  Key ESLint rules that encode JS best practices: `no-unused-vars`, `eqeqeq` (enforce
+  `===`), `no-var`, `prefer-const`.
+
+  Testing: Jest (widely used, batteries-included) and Vitest (Vite-native, ESM-first,
+  Jest-compatible API) are the dominant unit-test frameworks. Testing Library is the
+  standard for testing UI components in the browser.
+
+  In professional JS work these tools run in CI on every pull request. Understanding the
+  difference between a lint error (code logic) and a format error (style) — and how each
+  surfaces in CI output — is practical professional knowledge regardless of the specific
+  tool stack.
+exercises: []

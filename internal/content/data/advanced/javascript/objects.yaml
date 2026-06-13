@@ -1,0 +1,220 @@
+lang: javascript
+group: Objects
+title: "Objects — destructuring, spread, optional chaining, classes"
+tag: E
+summary: |
+  Objects are the core data structure of JS. ES2015–ES2022 added a rich set of
+  object-manipulation syntax that is now idiomatic.
+
+  Destructuring (ES6): extract values from objects or arrays into local bindings. Can
+  nest, rename, and set defaults. Works in function parameters, `for...of`, and `import`.
+  Rename syntax: `const { name: userName } = obj` — `name` is not in scope; `userName`
+  is.
+
+  Spread and rest (ES2018 for objects):
+    - Spread (`{ ...obj }`) creates a shallow copy of an object or merges multiple objects.
+    - Rest (`const { a, ...rest } = obj`) collects remaining properties into a new object.
+  Spread is always safer than `Object.assign(target, src)` for immutable patterns because
+  it creates a new object instead of mutating `target`.
+
+  Optional chaining `?.` (ES2020): short-circuits to `undefined` if the left-hand side is
+  `null` or `undefined`. Works for property access, bracket notation, and function calls
+  (`fn?.()`). Use for genuinely optional paths — `?.` can mask programming errors by
+  silently returning `undefined` when a required field is missing.
+
+  Nullish coalescing `??` (ES2020): returns the right operand only if the left is `null`
+  or `undefined` (unlike `||` which also triggers on `0`, `""`, `false`). Often combined
+  with `?.`: `user?.address?.city ?? "Unknown"`.
+
+  Classes (ES6+, private fields ES2022): syntactic sugar over prototypes. Features:
+  `constructor`, methods, static methods/properties, `extends`/`super`,
+  getters/setters, private fields (`#field`). Private fields are truly enforced — not a
+  naming convention — inaccessible even to subclasses.
+
+  Gotchas: spread is shallow — nested objects are still shared by reference. `??` vs
+  `||`: `0 ?? "default"` returns `0`; `0 || "default"` returns `"default"`. Class fields
+  defined without `#` are public and enumerable on the instance, not the prototype.
+exercises:
+  - prompt: |
+      Rewrite `buildDisplay` using nested destructuring with a default, then as a
+      destructured parameter pattern.
+    kind: fix-it
+    broken_code: |
+      function buildDisplay(response) {
+        const title = response.data.post.title;
+        const author = response.data.post.author;
+        const avatarUrl = response.data.post.meta.avatar;
+        console.log(`${title} by ${author} — ${avatarUrl}`);
+      }
+
+      buildDisplay({
+        data: {
+          post: {
+            title: "Hello World",
+            author: "Alice",
+            meta: { avatar: "/img/alice.png" },
+          },
+        },
+      });
+    fixed_code: |
+      function buildDisplay({
+        data: {
+          post: {
+            title,
+            author,
+            meta: { avatar: avatarUrl = "/img/default.png" } = {},
+          },
+        },
+      }) {
+        console.log(`${title} by ${author} — ${avatarUrl}`);
+      }
+
+      buildDisplay({
+        data: {
+          post: {
+            title: "Hello World",
+            author: "Alice",
+            meta: { avatar: "/img/alice.png" },
+          },
+        },
+      });
+    bug: |
+      The original function accesses each level via explicit dot notation — verbose and
+      brittle. Nested destructuring in the parameter list extracts all three values in
+      one pattern. A default at `meta: { ... } = {}` guards against a missing `meta`
+      property; without it, destructuring `undefined` throws a `TypeError`.
+    check: stdout
+    signal: "Hello World by Alice — /img/alice.png"
+
+  - prompt: |
+      Spot the bug: one of these updates silently corrupts shared state. Identify which
+      call is dangerous and why, then fix it.
+    kind: spot-the-bug
+    broken_code: |
+      const defaults = { theme: "light", lang: "en", notifications: true };
+
+      function applyOverrides(overrides) {
+        const config = Object.assign(defaults, overrides); // bug: mutates defaults
+        return config;
+      }
+
+      const cfg1 = applyOverrides({ theme: "dark" });
+      console.log(cfg1.theme);    // "dark" — looks correct
+
+      const cfg2 = applyOverrides({ lang: "fr" });
+      console.log(cfg2.theme);    // should be "light" but is "dark" — defaults corrupted
+      console.log(defaults.theme); // "dark" — defaults mutated!
+    fixed_code: |
+      const defaults = { theme: "light", lang: "en", notifications: true };
+
+      function applyOverrides(overrides) {
+        const config = Object.assign({}, defaults, overrides); // spread an empty target
+        return config;
+      }
+
+      const cfg1 = applyOverrides({ theme: "dark" });
+      console.log(cfg1.theme);
+
+      const cfg2 = applyOverrides({ lang: "fr" });
+      console.log(cfg2.theme);
+      console.log(defaults.theme);
+    bug: |
+      `Object.assign(defaults, overrides)` merges into `defaults` directly, permanently
+      mutating the shared object. Every subsequent call sees the accumulated mutations
+      from all previous calls. The fix is `Object.assign({}, defaults, overrides)` (or
+      spread: `{ ...defaults, ...overrides }`), which creates a new object each time and
+      leaves `defaults` untouched. Always spread into a fresh `{}` for immutable
+      config-merge patterns.
+    check: stdout
+    signal: "dark\nlight\nlight"
+
+  - prompt: |
+      Rewrite the pre-ES2020 guard chain below using optional chaining and nullish
+      coalescing. Then identify a case where `?.` would mask a real programming error.
+    kind: fix-it
+    broken_code: |
+      function getAvatar(user) {
+        let url;
+        if (user && user.profile && user.profile.avatar && user.profile.avatar.url) {
+          url = user.profile.avatar.url;
+        } else {
+          url = "/default.png";
+        }
+        console.log(url);
+      }
+
+      getAvatar({ profile: { avatar: { url: "/img/alice.png" } } });
+      getAvatar({ profile: {} });
+      getAvatar(null);
+    fixed_code: |
+      function getAvatar(user) {
+        const url = user?.profile?.avatar?.url ?? "/default.png";
+        console.log(url);
+      }
+
+      getAvatar({ profile: { avatar: { url: "/img/alice.png" } } });
+      getAvatar({ profile: {} });
+      getAvatar(null);
+    bug: |
+      The pre-ES2020 guard chain is verbose and error-prone (easy to miss a level). `?.`
+      short-circuits to `undefined` at the first `null`/`undefined`, and `??` replaces
+      it with the fallback. Caution: if `profile` should always be present (a required
+      field), using `?.` will silently return the default instead of throwing — masking a
+      data-model bug. Use `?.` only on genuinely optional paths.
+    check: stdout
+    signal: "/img/alice.png\n/default.png\n/default.png"
+
+  - prompt: |
+      Add a `#balance` private field to `BankAccount`. Show that accessing it from
+      outside the class causes a syntax error at parse time, unlike the `_balance`
+      convention.
+    kind: fix-it
+    broken_code: |
+      class BankAccount {
+        constructor(initial) {
+          this._balance = initial; // convention only — accessible from outside
+        }
+
+        deposit(amount) {
+          this._balance += amount;
+        }
+
+        getBalance() {
+          return this._balance;
+        }
+      }
+
+      const account = new BankAccount(100);
+      account.deposit(50);
+      console.log(account.getBalance()); // 150
+      console.log(account._balance);     // 150 — leaks internal state
+    fixed_code: |
+      class BankAccount {
+        #balance;
+
+        constructor(initial) {
+          this.#balance = initial;
+        }
+
+        deposit(amount) {
+          this.#balance += amount;
+        }
+
+        getBalance() {
+          return this.#balance;
+        }
+      }
+
+      const account = new BankAccount(100);
+      account.deposit(50);
+      console.log(account.getBalance()); // 150
+      // console.log(account.#balance);  // SyntaxError: private field outside class
+    bug: |
+      The `_balance` naming convention signals "private" but enforces nothing — any code
+      can read or write `account._balance`. ES2022 private fields (`#balance`) are
+      enforced at the syntax level: `account.#balance` outside the class is a
+      `SyntaxError` caught at parse time, before the program runs. Private fields are
+      also not accessible to subclasses. The `#` prefix is not a convention — it is part
+      of the field's name and a hard language boundary.
+    check: stdout
+    signal: "150"

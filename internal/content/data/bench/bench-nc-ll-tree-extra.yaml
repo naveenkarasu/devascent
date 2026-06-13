@@ -1,0 +1,252 @@
+# Canonical NeetCode 150 — remaining linked-list (node harness / scaffold) + tree.
+- id: nc-add-two-numbers
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
+  title: Add Two Numbers
+  difficulty: medium
+  pattern: linked-list
+  category: Linked List
+  lists: [neetcode150]
+  func_name: add_two_numbers
+  shape: linkedlist
+  arg_kinds: [node, node]
+  ret_kind: node
+  prompt: |
+    Add Two Numbers
+
+    Two non-empty linked lists represent non-negative integers with digits stored
+    in REVERSE order (ones digit first). Add them and return the sum as a linked
+    list, same reverse order. Both inputs are real ListNodes.
+
+    Example: 2->4->3 (342) + 5->6->4 (465) = 7->0->8 (807)
+  starter: |
+    # class ListNode: val, next  (provided by the grader)
+
+    def add_two_numbers(l1, l2):
+        pass  # write your solution; delete this line
+  solution: |
+    def add_two_numbers(l1, l2):
+        dummy = ListNode()
+        cur = dummy
+        carry = 0
+        while l1 is not None or l2 is not None or carry:
+            a = l1.val if l1 is not None else 0
+            b = l2.val if l2 is not None else 0
+            s = a + b + carry
+            carry = s // 10
+            cur.next = ListNode(s % 10)
+            cur = cur.next
+            if l1 is not None:
+                l1 = l1.next
+            if l2 is not None:
+                l2 = l2.next
+        return dummy.next
+  tests:
+    - {name: case 1, input: [[2,4,3], [5,6,4]], expected: [7,0,8]}
+    - {name: case 2, input: [[0], [0]], expected: [0]}
+    - {name: case 3, input: [[9,9,9], [1]], expected: [0,0,0,1]}
+
+- id: nc-reverse-k-group
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Reverse Nodes in k-Group
+  difficulty: hard
+  pattern: linked-list
+  category: Linked List
+  lists: [neetcode150]
+  func_name: reverse_k_group
+  shape: linkedlist
+  arg_kinds: [node, raw]
+  ret_kind: node
+  prompt: |
+    Reverse Nodes in k-Group
+
+    Reverse the nodes of the list k at a time and return the modified list. If the
+    remaining nodes are fewer than k, leave them as is. head is a ListNode; k is
+    a plain integer.
+
+    Example: 1->2->3->4->5, k=2  ->  2->1->4->3->5
+  starter: |
+    # class ListNode: val, next  (provided by the grader)
+
+    def reverse_k_group(head, k):
+        pass  # write your solution; delete this line
+  solution: |
+    def reverse_k_group(head, k):
+        def get_kth(cur, k):
+            while cur is not None and k > 0:
+                cur = cur.next
+                k -= 1
+            return cur
+        dummy = ListNode(0, head)
+        group_prev = dummy
+        while True:
+            kth = get_kth(group_prev, k)
+            if kth is None:
+                break
+            group_next = kth.next
+            prev, cur = group_next, group_prev.next
+            while cur is not group_next:
+                nxt = cur.next
+                cur.next = prev
+                prev = cur
+                cur = nxt
+            tmp = group_prev.next
+            group_prev.next = kth
+            group_prev = tmp
+        return dummy.next
+  tests:
+    - {name: case 1, input: [[1,2,3,4,5], 2], expected: [2,1,4,3,5]}
+    - {name: case 2, input: [[1,2,3,4,5], 3], expected: [3,2,1,4,5]}
+    - {name: case 3, input: [[1,2,3,4,5], 1], expected: [1,2,3,4,5]}
+
+- id: nc-copy-random-list
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
+  title: Copy List with Random Pointer
+  difficulty: medium
+  pattern: linked-list
+  category: Linked List
+  lists: [neetcode150]
+  func_name: copy_list
+  prompt: |
+    Copy List with Random Pointer
+
+    Each node has a next pointer and a random pointer (to any node or null). Return
+    a DEEP COPY. The list is given as [[val, random_index], ...] where
+    random_index is the index of the node random points to (or null). The scaffold
+    builds the Node list and re-serializes your copy; you write
+    copy_random_list(head) using a visited map.
+
+    Example: [[7,null],[13,0],[11,4],[10,2],[1,0]] -> the same structure, copied.
+  starter: |
+    class Node:
+        def __init__(self, val=0, next=None, random=None):
+            self.val = val
+            self.next = next
+            self.random = random
+
+    def copy_random_list(head):
+        pass  # return a deep copy of the list reachable from head
+
+    # built for you — do not change:
+    def copy_list(arr):
+        if not arr:
+            return []
+        nodes = [Node(v) for v, _ in arr]
+        for i, (v, r) in enumerate(arr):
+            nodes[i].next = nodes[i + 1] if i + 1 < len(nodes) else None
+            nodes[i].random = nodes[r] if r is not None else None
+        copy = copy_random_list(nodes[0])
+        orig_ids = set(id(n) for n in nodes)
+        copy_ids = set()
+        c = copy
+        while c is not None:
+            copy_ids.add(id(c))
+            c = c.next
+        assert orig_ids.isdisjoint(copy_ids), "must be a deep copy (new node objects)"
+        order = {}
+        cur = copy
+        idx = 0
+        while cur is not None:
+            order[id(cur)] = idx
+            cur = cur.next
+            idx += 1
+        out = []
+        cur = copy
+        while cur is not None:
+            out.append([cur.val, order[id(cur.random)] if cur.random is not None else None])
+            cur = cur.next
+        return out
+  solution: |
+    class Node:
+        def __init__(self, val=0, next=None, random=None):
+            self.val = val
+            self.next = next
+            self.random = random
+
+    def copy_random_list(head):
+        if head is None:
+            return None
+        mp = {}
+        cur = head
+        while cur is not None:
+            mp[cur] = Node(cur.val)
+            cur = cur.next
+        cur = head
+        while cur is not None:
+            mp[cur].next = mp.get(cur.next)
+            mp[cur].random = mp.get(cur.random)
+            cur = cur.next
+        return mp[head]
+
+    def copy_list(arr):
+        if not arr:
+            return []
+        nodes = [Node(v) for v, _ in arr]
+        for i, (v, r) in enumerate(arr):
+            nodes[i].next = nodes[i + 1] if i + 1 < len(nodes) else None
+            nodes[i].random = nodes[r] if r is not None else None
+        copy = copy_random_list(nodes[0])
+        orig_ids = set(id(n) for n in nodes)
+        copy_ids = set()
+        c = copy
+        while c is not None:
+            copy_ids.add(id(c))
+            c = c.next
+        assert orig_ids.isdisjoint(copy_ids), "must be a deep copy (new node objects)"
+        order = {}
+        cur = copy
+        idx = 0
+        while cur is not None:
+            order[id(cur)] = idx
+            cur = cur.next
+            idx += 1
+        out = []
+        cur = copy
+        while cur is not None:
+            out.append([cur.val, order[id(cur.random)] if cur.random is not None else None])
+            cur = cur.next
+        return out
+  tests:
+    - {name: case 1, input: [[[7,null],[13,0],[11,4],[10,2],[1,0]]], expected: [[7,null],[13,0],[11,4],[10,2],[1,0]]}
+    - {name: case 2, input: [[[1,1],[2,1]]], expected: [[1,1],[2,1]]}
+    - {name: case 3, input: [[]], expected: []}
+
+- id: nc-count-good-nodes
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
+  title: Count Good Nodes in Binary Tree
+  difficulty: medium
+  pattern: tree
+  category: Trees & Graphs
+  lists: [neetcode150]
+  func_name: good_nodes
+  shape: tree
+  arg_kinds: [node]
+  ret_kind: raw
+  prompt: |
+    Count Good Nodes in Binary Tree
+
+    A node is "good" if no node on the path from the root to it has a strictly
+    greater value. Return the number of good nodes. You receive a real TreeNode.
+
+    [3,1,4,3,null,1,5] -> 4
+  starter: |
+    # class TreeNode: val, left, right  (provided by the grader)
+
+    def good_nodes(root):
+        pass  # write your solution; delete this line
+  solution: |
+    def good_nodes(root):
+        def dfs(node, mx):
+            if node is None:
+                return 0
+            count = 1 if node.val >= mx else 0
+            mx = max(mx, node.val)
+            return count + dfs(node.left, mx) + dfs(node.right, mx)
+        return dfs(root, float("-inf"))
+  tests:
+    - {name: case 1, input: [[3,1,4,3,null,1,5]], expected: 4}
+    - {name: case 2, input: [[3,3,null,4,2]], expected: 3}
+    - {name: case 3, input: [[1]], expected: 1}

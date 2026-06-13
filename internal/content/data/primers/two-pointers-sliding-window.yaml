@@ -1,0 +1,118 @@
+- category: "Two Pointers & Sliding Window"
+  lang: python
+  title: "Two Pointers & Sliding Window — Python refresher"
+  summary: |
+    Two pointers maintain two indices into a sorted array (or string) and converge
+    toward each other to avoid O(n^2) pair enumeration. Sliding window extends this
+    to a contiguous subarray: expand the right pointer to include more, shrink the
+    left pointer when a constraint is violated. Reach for it on "find subarray/
+    substring with property X" problems.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'two pointers at ends'
+          code: 'lo, hi = 0, len(a) - 1'
+        - label: 'sliding window left/right'
+          code: 'l, r = 0, 0'
+        - label: 'window frequency map'
+          code: |
+            from collections import defaultdict
+            window = defaultdict(int)
+        - label: 'window character count (Counter)'
+          code: |
+            from collections import Counter
+            window = Counter()
+        - label: 'track window best'
+          code: 'best = 0'
+    - title: Basic operations
+      ops:
+        - label: 'expand right pointer'
+          code: 'window[s[r]] += 1'
+        - label: 'shrink left pointer'
+          code: |
+            window[s[l]] -= 1
+            l += 1
+        - label: 'remove zero-count key (keep window clean)'
+          code: 'if window[s[l]] == 0: del window[s[l]]'
+        - label: 'current window size'
+          code: 'size = r - l + 1'
+        - label: 'update best'
+          code: 'best = max(best, r - l + 1)'
+    - title: Iteration & loops
+      ops:
+        - label: 'two-pointer converging loop'
+          code: |
+            lo, hi = 0, len(a) - 1
+            while lo < hi:
+                lo += 1
+                hi -= 1
+        - label: 'variable-size window (expand r, shrink l when invalid)'
+          code: |
+            l = 0
+            for r in range(len(s)):
+                window[s[r]] += 1
+                while invalid(window):
+                    window[s[l]] -= 1
+                    l += 1
+                best = max(best, r - l + 1)
+        - label: 'fixed-size window (drop leftmost as you advance)'
+          code: 'window += a[r] - a[r - k]'
+        - label: 'two-sum with sorted array (squeeze)'
+          code: |
+            lo, hi = 0, len(a) - 1
+            while lo < hi:
+                s = a[lo] + a[hi]
+                if s == target:
+                    return [lo, hi]
+                elif s < target:
+                    lo += 1
+                else:
+                    hi -= 1
+    - title: Special operations (two pointers & sliding window)
+      ops:
+        - label: 'track distinct chars in window'
+          code: 'have = sum(1 for c in window if window[c] == need[c])'
+        - label: 'minimum window substring skeleton'
+          code: |
+            need = Counter(t)
+            have, formed = 0, len(need)
+            l, res = 0, ""
+            for r in range(len(s)):
+                c = s[r]
+                window[c] += 1
+                if c in need and window[c] == need[c]:
+                    have += 1
+                while have == formed:
+                    if r - l + 1 < len(res) or not res:
+                        res = s[l:r+1]
+                    window[s[l]] -= 1
+                    if s[l] in need and window[s[l]] < need[s[l]]:
+                        have -= 1
+                    l += 1
+        - label: 'partition into two groups with two pointers'
+          code: |
+            lo, hi = 0, len(a) - 1
+            while lo < hi:
+                if a[lo] > pivot:
+                    a[lo], a[hi] = a[hi], a[lo]
+                    hi -= 1
+                else:
+                    lo += 1
+  example: |
+    Worked example — Longest Substring Without Repeating Characters:
+      Maintain a set of chars in the current window [l, r]. Expand r one step at a
+      time. If s[r] is already in the set, shrink l until the duplicate is removed.
+      Track the max window size seen.
+
+        def length_of_longest(s):
+            seen = set()
+            l, best = 0, 0
+            for r in range(len(s)):
+                while s[r] in seen:
+                    seen.remove(s[l])
+                    l += 1
+                seen.add(s[r])
+                best = max(best, r - l + 1)
+            return best
+
+    Takeaway: one expand pointer + one shrink pointer = O(n) instead of O(n^2).

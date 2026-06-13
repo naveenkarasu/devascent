@@ -1,0 +1,307 @@
+# Canonical NeetCode 150 — extras batch 2 (original prompts, own solutions).
+# Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
+- id: nc-subsets-ii
+  time_complexity: "O(2^n)"
+  space_complexity: "O(n)"
+  title: Subsets II
+  difficulty: medium
+  pattern: backtracking
+  category: Backtracking
+  lists: [neetcode150]
+  func_name: subsets_with_dup
+  prompt: |
+    Subsets II
+
+    Given an array of integers that may contain duplicates, return all possible
+    unique subsets (the power set). Results are returned in sorted order: each
+    subset is sorted ascending, and the whole list is sorted. No duplicate
+    subsets.
+
+    Examples:
+      subsets_with_dup([1,2,2]) -> [[],[1],[1,2],[1,2,2],[2],[2,2]]
+      subsets_with_dup([1,2]) -> [[],[1],[1,2],[2]]
+  starter: |
+    def subsets_with_dup(nums):
+        pass  # write your solution; delete this line
+  solution: |
+    def subsets_with_dup(nums):
+        res = []
+        nums.sort()
+        def backtrack(start, current):
+            res.append(list(current))
+            for i in range(start, len(nums)):
+                if i > start and nums[i] == nums[i - 1]:
+                    continue
+                current.append(nums[i])
+                backtrack(i + 1, current)
+                current.pop()
+        backtrack(0, [])
+        res = [sorted(s) for s in res]
+        res.sort()
+        return res
+  tests:
+    - {name: case 1, input: [[1,2,2]], expected: [[],[1],[1,2],[1,2,2],[2],[2,2]]}
+    - {name: case 2, input: [[1,1,1]], expected: [[],[1],[1,1],[1,1,1]]}
+    - {name: case 3, input: [[1,2]], expected: [[],[1],[1,2],[2]]}
+
+- id: nc-combination-sum-ii
+  time_complexity: "O(2^n)"
+  space_complexity: "O(n)"
+  title: Combination Sum II
+  difficulty: medium
+  pattern: backtracking
+  category: Backtracking
+  lists: [neetcode150]
+  func_name: combination_sum2
+  prompt: |
+    Combination Sum II
+
+    Given an array of integers (may contain duplicates) and a target, return
+    all unique combinations where each candidate is used at most once and the
+    chosen numbers sum to the target. Results are returned in sorted order:
+    each combination is sorted ascending, and the whole list is sorted. No
+    duplicate combinations.
+
+    Examples:
+      combination_sum2([10,1,2,7,6,1,5], 8) -> [[1,1,6],[1,2,5],[1,7],[2,6]]
+      combination_sum2([2,5,2,1,2], 5) -> [[1,2,2],[5]]
+  starter: |
+    def combination_sum2(candidates, target):
+        pass  # write your solution; delete this line
+  solution: |
+    def combination_sum2(candidates, target):
+        res = []
+        candidates.sort()
+        def backtrack(start, current, remaining):
+            if remaining == 0:
+                res.append(list(current))
+                return
+            for i in range(start, len(candidates)):
+                if candidates[i] > remaining:
+                    break
+                if i > start and candidates[i] == candidates[i - 1]:
+                    continue
+                current.append(candidates[i])
+                backtrack(i + 1, current, remaining - candidates[i])
+                current.pop()
+        backtrack(0, [], target)
+        res = [sorted(c) for c in res]
+        res.sort()
+        return res
+  tests:
+    - {name: case 1, input: [[10,1,2,7,6,1,5], 8], expected: [[1,1,6],[1,2,5],[1,7],[2,6]]}
+    - {name: case 2, input: [[2,5,2,1,2], 5], expected: [[1,2,2],[5]]}
+    - {name: case 3, input: [[1,1,1], 2], expected: [[1,1]]}
+
+- id: nc-palindrome-partitioning
+  time_complexity: "O(2^n)"
+  space_complexity: "O(n)"
+  title: Palindrome Partitioning
+  difficulty: medium
+  pattern: backtracking
+  category: Backtracking
+  lists: [neetcode150]
+  func_name: partition
+  prompt: |
+    Palindrome Partitioning
+
+    Given a string s, return all possible ways to partition s such that every
+    substring in the partition is a palindrome. Results are returned sorted
+    (res.sort() on the list of partitions).
+
+    Examples:
+      partition("aab") -> [["a","a","b"],["aa","b"]]
+      partition("a") -> [["a"]]
+  starter: |
+    def partition(s):
+        pass  # write your solution; delete this line
+  solution: |
+    def partition(s):
+        res = []
+        def is_palindrome(t):
+            return t == t[::-1]
+        def backtrack(start, current):
+            if start == len(s):
+                res.append(list(current))
+                return
+            for end in range(start + 1, len(s) + 1):
+                substr = s[start:end]
+                if is_palindrome(substr):
+                    current.append(substr)
+                    backtrack(end, current)
+                    current.pop()
+        backtrack(0, [])
+        res.sort()
+        return res
+  tests:
+    - {name: case 1, input: ["aab"], expected: [["a","a","b"],["aa","b"]]}
+    - {name: case 2, input: ["a"], expected: [["a"]]}
+    - {name: case 3, input: ["aa"], expected: [["a","a"],["aa"]]}
+
+- id: nc-min-interval-query
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
+  title: Minimum Interval to Include Each Query
+  difficulty: hard
+  pattern: intervals
+  category: Intervals
+  lists: [neetcode150]
+  func_name: min_interval
+  prompt: |
+    Minimum Interval to Include Each Query
+
+    You are given a 2D array of intervals where intervals[i] = [l, r], and a
+    list of queries. For each query q, find the size (r - l + 1) of the
+    smallest interval [l, r] such that l <= q <= r. If no such interval
+    exists, return -1 for that query. Return a list of answers in the same
+    order as the queries.
+
+    Examples:
+      min_interval([[1,4],[2,4],[3,6],[4,4]], [2,3,4,5]) -> [3,3,1,4]
+      min_interval([[2,3],[2,5],[1,8],[20,25]], [2,19,5,22]) -> [2,-1,4,6]
+  starter: |
+    def min_interval(intervals, queries):
+        pass  # write your solution; delete this line
+  solution: |
+    import heapq
+    def min_interval(intervals, queries):
+        intervals.sort()
+        indexed_queries = sorted(enumerate(queries), key=lambda x: x[1])
+        res = [-1] * len(queries)
+        heap = []  # (size, end)
+        i = 0
+        for orig_idx, q in indexed_queries:
+            while i < len(intervals) and intervals[i][0] <= q:
+                l, r = intervals[i]
+                heapq.heappush(heap, (r - l + 1, r))
+                i += 1
+            while heap and heap[0][1] < q:
+                heapq.heappop(heap)
+            if heap:
+                res[orig_idx] = heap[0][0]
+        return res
+  tests:
+    - {name: case 1, input: [[[1,4],[2,4],[3,6],[4,4]], [2,3,4,5]], expected: [3,3,1,4]}
+    - {name: case 2, input: [[[2,3],[2,5],[1,8],[20,25]], [2,19,5,22]], expected: [2,-1,4,6]}
+    - {name: case 3, input: [[[1,6]], [3]], expected: [6]}
+
+- id: nc-pow
+  time_complexity: "O(log n)"
+  space_complexity: "O(log n)"
+  title: "Pow(x, n)"
+  difficulty: medium
+  pattern: math
+  category: Math & Bit
+  lists: [neetcode150]
+  func_name: my_pow
+  prompt: |
+    Pow(x, n)
+
+    Implement pow(x, n), which calculates x raised to the power n. For this
+    problem, tests use integer base and non-negative exponent so the result
+    is always an integer.
+
+    Examples:
+      my_pow(2, 10) -> 1024
+      my_pow(3, 3) -> 27
+      my_pow(5, 0) -> 1
+  starter: |
+    def my_pow(x, n):
+        pass  # write your solution; delete this line
+  solution: |
+    def my_pow(x, n):
+        if n == 0:
+            return 1
+        if n < 0:
+            x = 1 / x
+            n = -n
+        half = my_pow(x, n // 2)
+        if n % 2 == 0:
+            return half * half
+        else:
+            return half * half * x
+  tests:
+    - {name: case 1, input: [2, 10], expected: 1024}
+    - {name: case 2, input: [3, 3], expected: 27}
+    - {name: case 3, input: [5, 0], expected: 1}
+
+- id: nc-valid-sudoku
+  time_complexity: "O(1)"
+  space_complexity: "O(1)"
+  title: Valid Sudoku
+  difficulty: medium
+  pattern: hashing
+  category: Arrays & Hashing
+  lists: [neetcode150]
+  func_name: is_valid_sudoku
+  prompt: |
+    Valid Sudoku
+
+    Determine if a 9x9 Sudoku board is valid. A board is valid if:
+      - Each row contains no duplicate digits (1-9).
+      - Each column contains no duplicate digits (1-9).
+      - Each of the nine 3x3 sub-boxes contains no duplicate digits (1-9).
+
+    Empty cells are marked with ".". Only filled cells need to be validated.
+    You do not need to check that the board is solvable.
+
+    Examples:
+      is_valid_sudoku(<valid board>) -> true
+      is_valid_sudoku(<board with conflict>) -> false
+  starter: |
+    def is_valid_sudoku(board):
+        pass  # write your solution; delete this line
+  solution: |
+    def is_valid_sudoku(board):
+        rows = [set() for _ in range(9)]
+        cols = [set() for _ in range(9)]
+        boxes = [set() for _ in range(9)]
+        for r in range(9):
+            for c in range(9):
+                val = board[r][c]
+                if val == ".":
+                    continue
+                box_idx = (r // 3) * 3 + (c // 3)
+                if val in rows[r] or val in cols[c] or val in boxes[box_idx]:
+                    return False
+                rows[r].add(val)
+                cols[c].add(val)
+                boxes[box_idx].add(val)
+        return True
+  tests:
+    - name: case 1
+      input:
+        - [["5","3",".",".","7",".",".",".","."],
+           ["6",".",".","1","9","5",".",".","."],
+           [".","9","8",".",".",".",".","6","."],
+           ["8",".",".",".","6",".",".",".","3"],
+           ["4",".",".","8",".","3",".",".","1"],
+           ["7",".",".",".","2",".",".",".","6"],
+           [".","6",".",".",".",".","2","8","."],
+           [".",".",".","4","1","9",".",".","5"],
+           [".",".",".",".","8",".",".","7","9"]]
+      expected: true
+    - name: case 2
+      input:
+        - [["8","3",".",".","7",".",".",".","."],
+           ["6",".",".","1","9","5",".",".","."],
+           [".","9","8",".",".",".",".","6","."],
+           ["8",".",".",".","6",".",".",".","3"],
+           ["4",".",".","8",".","3",".",".","1"],
+           ["7",".",".",".","2",".",".",".","6"],
+           [".","6",".",".",".",".","2","8","."],
+           [".",".",".","4","1","9",".",".","5"],
+           [".",".",".",".","8",".",".","7","9"]]
+      expected: false
+    - name: case 3
+      input:
+        - [["5","3","5",".","7",".",".",".","."],
+           ["6",".",".","1","9","5",".",".","."],
+           [".","9","8",".",".",".",".","6","."],
+           ["8",".",".",".","6",".",".",".","3"],
+           ["4",".",".","8",".","3",".",".","1"],
+           ["7",".",".",".","2",".",".",".","6"],
+           [".","6",".",".",".",".","2","8","."],
+           [".",".",".","4","1","9",".",".","5"],
+           [".",".",".",".","8",".",".","7","9"]]
+      expected: false

@@ -1,0 +1,271 @@
+# Canonical NeetCode 150 — 2-D Dynamic Programming (original prompts, own solutions).
+# Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
+- id: nc-edit-distance
+  time_complexity: "O(m*n)"
+  space_complexity: "O(n)"
+  title: Edit Distance
+  difficulty: hard
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150]
+  func_name: min_distance
+  prompt: |
+    Edit Distance
+
+    Given two strings word1 and word2, return the minimum number of single-character
+    operations (insert, delete, or replace) required to transform word1 into word2.
+
+    Examples:
+      min_distance("horse", "ros") -> 3
+      min_distance("intention", "execution") -> 5
+  starter: |
+    def min_distance(word1, word2):
+        pass  # write your solution; delete this line
+  solution: |
+    def min_distance(word1, word2):
+        m, n = len(word1), len(word2)
+        dp = list(range(n + 1))
+        for i in range(1, m + 1):
+            prev = dp[0]
+            dp[0] = i
+            for j in range(1, n + 1):
+                temp = dp[j]
+                if word1[i - 1] == word2[j - 1]:
+                    dp[j] = prev
+                else:
+                    dp[j] = 1 + min(prev, dp[j], dp[j - 1])
+                prev = temp
+        return dp[n]
+  tests:
+    - {name: case 1, input: ["horse", "ros"], expected: 3}
+    - {name: case 2, input: ["intention", "execution"], expected: 5}
+    - {name: case 3, input: ["", "abc"], expected: 3}
+
+- id: nc-coin-change-ii
+  time_complexity: "O(m*n)"
+  space_complexity: "O(n)"
+  title: Coin Change II
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150]
+  func_name: change
+  prompt: |
+    Coin Change II
+
+    Given an integer amount and a list of coin denominations, return the number of
+    distinct combinations of coins that sum exactly to amount (unlimited supply of each coin).
+
+    Examples:
+      change(5, [1,2,5]) -> 4
+      change(3, [2]) -> 0
+  starter: |
+    def change(amount, coins):
+        pass  # write your solution; delete this line
+  solution: |
+    def change(amount, coins):
+        dp = [0] * (amount + 1)
+        dp[0] = 1
+        for coin in coins:
+            for x in range(coin, amount + 1):
+                dp[x] += dp[x - coin]
+        return dp[amount]
+  tests:
+    - {name: case 1, input: [5, [1,2,5]], expected: 4}
+    - {name: case 2, input: [3, [2]], expected: 0}
+    - {name: case 3, input: [10, [10]], expected: 1}
+
+- id: nc-target-sum
+  time_complexity: "O(n^2)"
+  space_complexity: "O(n)"
+  title: Target Sum
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150]
+  func_name: find_target_sum_ways
+  prompt: |
+    Target Sum
+
+    Given a list of non-negative integers and a target, assign a + or - sign to each
+    number and return how many distinct assignments produce an expression that equals target.
+
+    Examples:
+      find_target_sum_ways([1,1,1,1,1], 3) -> 5
+      find_target_sum_ways([1], 1) -> 1
+  starter: |
+    def find_target_sum_ways(nums, target):
+        pass  # write your solution; delete this line
+  solution: |
+    def find_target_sum_ways(nums, target):
+        dp = {0: 1}
+        for num in nums:
+            next_dp = {}
+            for s, cnt in dp.items():
+                next_dp[s + num] = next_dp.get(s + num, 0) + cnt
+                next_dp[s - num] = next_dp.get(s - num, 0) + cnt
+            dp = next_dp
+        return dp.get(target, 0)
+  tests:
+    - {name: case 1, input: [[1,1,1,1,1], 3], expected: 5}
+    - {name: case 2, input: [[1], 1], expected: 1}
+    - {name: case 3, input: [[1,0], 1], expected: 2}
+
+- id: nc-best-time-cooldown
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Best Time to Buy/Sell Stock with Cooldown
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150]
+  func_name: max_profit
+  prompt: |
+    Best Time to Buy/Sell Stock with Cooldown
+
+    Given a list of daily stock prices, return the maximum profit you can earn by buying
+    and selling, where you must wait one cooldown day after every sale before buying again.
+
+    Examples:
+      max_profit([1,2,3,0,2]) -> 3
+      max_profit([1]) -> 0
+  starter: |
+    def max_profit(prices):
+        pass  # write your solution; delete this line
+  solution: |
+    def max_profit(prices):
+        hold = float('-inf')
+        sold = 0
+        rest = 0
+        for price in prices:
+            prev_sold = sold
+            sold = hold + price
+            hold = max(hold, rest - price)
+            rest = max(rest, prev_sold)
+        return max(sold, rest)
+  tests:
+    - {name: case 1, input: [[1,2,3,0,2]], expected: 3}
+    - {name: case 2, input: [[1]], expected: 0}
+    - {name: case 3, input: [[2,1,4]], expected: 3}
+
+- id: nc-longest-increasing-path
+  time_complexity: "O(m*n)"
+  space_complexity: "O(m*n)"
+  title: Longest Increasing Path in a Matrix
+  difficulty: hard
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150]
+  func_name: longest_increasing_path
+  prompt: |
+    Longest Increasing Path in a Matrix
+
+    Given an m x n integer matrix, return the length of the longest path along which
+    each step moves to a strictly larger adjacent cell (up, down, left, right).
+
+    Examples:
+      longest_increasing_path([[9,9,4],[6,6,8],[2,1,1]]) -> 4
+      longest_increasing_path([[3,4,5],[3,2,6],[2,2,1]]) -> 4
+  starter: |
+    def longest_increasing_path(matrix):
+        pass  # write your solution; delete this line
+  solution: |
+    def longest_increasing_path(matrix):
+        if not matrix or not matrix[0]:
+            return 0
+        m, n = len(matrix), len(matrix[0])
+        memo = {}
+
+        def dfs(r, c):
+            if (r, c) in memo:
+                return memo[(r, c)]
+            best = 1
+            for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < m and 0 <= nc < n and matrix[nr][nc] > matrix[r][c]:
+                    best = max(best, 1 + dfs(nr, nc))
+            memo[(r, c)] = best
+            return best
+
+        return max(dfs(r, c) for r in range(m) for c in range(n))
+  tests:
+    - {name: case 1, input: [[[9,9,4],[6,6,8],[2,1,1]]], expected: 4}
+    - {name: case 2, input: [[[3,4,5],[3,2,6],[2,2,1]]], expected: 4}
+    - {name: case 3, input: [[[1]]], expected: 1}
+
+- id: nc-distinct-subsequences
+  time_complexity: "O(m*n)"
+  space_complexity: "O(n)"
+  title: Distinct Subsequences
+  difficulty: hard
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150]
+  func_name: num_distinct
+  prompt: |
+    Distinct Subsequences
+
+    Given strings s and t, return the number of distinct ways to delete characters from
+    s so that the remaining characters spell t (order preserved).
+
+    Examples:
+      num_distinct("rabbbit", "rabbit") -> 3
+      num_distinct("babgbag", "bag") -> 5
+  starter: |
+    def num_distinct(s, t):
+        pass  # write your solution; delete this line
+  solution: |
+    def num_distinct(s, t):
+        m, n = len(s), len(t)
+        dp = [0] * (n + 1)
+        dp[0] = 1
+        for i in range(1, m + 1):
+            for j in range(n, 0, -1):
+                if s[i - 1] == t[j - 1]:
+                    dp[j] += dp[j - 1]
+        return dp[n]
+  tests:
+    - {name: case 1, input: ["rabbbit", "rabbit"], expected: 3}
+    - {name: case 2, input: ["babgbag", "bag"], expected: 5}
+    - {name: case 3, input: ["aaa", "aa"], expected: 3}
+
+- id: nc-interleaving-string
+  time_complexity: "O(m*n)"
+  space_complexity: "O(n)"
+  title: Interleaving String
+  difficulty: medium
+  pattern: dp
+  category: Dynamic Programming
+  lists: [neetcode150]
+  func_name: is_interleave
+  prompt: |
+    Interleaving String
+
+    Given strings s1, s2, and s3, return true if s3 can be formed by interleaving s1 and
+    s2 — i.e. splitting each into substrings and merging them while preserving relative order.
+
+    Examples:
+      is_interleave("aabcc", "dbbca", "aadbbcbcac") -> true
+      is_interleave("aabcc", "dbbca", "aadbbbaccc") -> false
+  starter: |
+    def is_interleave(s1, s2, s3):
+        pass  # write your solution; delete this line
+  solution: |
+    def is_interleave(s1, s2, s3):
+        m, n = len(s1), len(s2)
+        if m + n != len(s3):
+            return False
+        dp = [False] * (n + 1)
+        dp[0] = True
+        for j in range(1, n + 1):
+            dp[j] = dp[j - 1] and s2[j - 1] == s3[j - 1]
+        for i in range(1, m + 1):
+            dp[0] = dp[0] and s1[i - 1] == s3[i - 1]
+            for j in range(1, n + 1):
+                dp[j] = (dp[j] and s1[i - 1] == s3[i + j - 1]) or \
+                        (dp[j - 1] and s2[j - 1] == s3[i + j - 1])
+        return dp[n]
+  tests:
+    - {name: case 1, input: ["aabcc", "dbbca", "aadbbcbcac"], expected: true}
+    - {name: case 2, input: ["aabcc", "dbbca", "aadbbbaccc"], expected: false}
+    - {name: case 3, input: ["", "", ""], expected: true}

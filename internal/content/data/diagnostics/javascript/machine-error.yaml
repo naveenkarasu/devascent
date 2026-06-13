@@ -1,0 +1,102 @@
+# Slot: machine-error (JavaScript variants) — read a small broken JS program and
+# spot the bug. JavaScript is dynamically typed, so most mistakes surface at
+# RUNTIME (a TypeError, or a silently wrong value from type coercion).
+- id: js_err_const
+  slot: machine-error
+  lang: javascript
+  order: 3
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    This JavaScript program crashes when you run it:
+
+        const count = 0;
+        count = count + 1;
+
+    It throws: TypeError: Assignment to constant variable. Why?
+  choices:
+    - text: "count was declared with const, which can't be reassigned — use let instead."
+      correct: true
+      feedback: "Right. const binds a value once; to reassign, declare it with let count = 0."
+    - text: "You can't add 1 to zero."
+      correct: false
+      feedback: "Not it — the arithmetic is fine. Reassigning a const binding is what throws."
+    - text: "count needs a type like `const count: number`."
+      correct: false
+      feedback: "Not it — that's TypeScript syntax. Plain JS has no types here; the issue is reassigning a const."
+
+- id: js_err_index
+  slot: machine-error
+  lang: javascript
+  order: 3
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    This JavaScript program prints "undefined" instead of a number:
+
+        const nums = [10, 20, 30];
+        console.log(nums[3]);
+
+    Why?
+  choices:
+    - text: "Index 3 is past the end — a 3-element array has indexes 0, 1, 2; nums[3] is undefined."
+      correct: true
+      feedback: "Right. Reading past the end doesn't throw in JS — it returns undefined. The last valid index is 2."
+    - text: "console.log can't print numbers from an array."
+      correct: false
+      feedback: "Not it — console.log prints array elements fine. Index 3 simply doesn't exist."
+    - text: "Arrays in JS start at index 1, so nums[3] skips a value."
+      correct: false
+      feedback: "Not it — JS arrays start at 0. A 3-item array has 0, 1, 2; index 3 is past the end."
+
+- id: js_err_null
+  slot: machine-error
+  lang: javascript
+  order: 3
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    This JavaScript program crashes when you run it:
+
+        const user = null;
+        console.log(user.name);
+
+    It throws: TypeError: Cannot read properties of null (reading 'name'). Why?
+  choices:
+    - text: "user is null — there's no object to read .name from."
+      correct: true
+      feedback: "Right. Reading a property off null (or undefined) throws; give user a real object first, or guard with if (user)."
+    - text: "name must be quoted: user.\"name\"."
+      correct: false
+      feedback: "Not it — user.name is correct property syntax. The problem is user is null."
+    - text: "You can't store null in a const."
+      correct: false
+      feedback: "Not it — null is a valid value to store. Reading .name off it is what throws."
+
+- id: js_err_concat
+  slot: machine-error
+  lang: javascript
+  order: 3
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    This JavaScript program prints "301" instead of 31:
+
+        const age = "30";
+        console.log(age + 1);
+
+    Why?
+  choices:
+    - text: "age is a string, so + joins text — \"30\" + 1 becomes \"301\", not 31."
+      correct: true
+      feedback: "Right. With a string operand, + concatenates. Convert first: Number(age) + 1, which gives 31."
+    - text: "console.log always turns numbers into strings."
+      correct: false
+      feedback: "Not it — console.log shows numbers as numbers. The string age makes + concatenate."
+    - text: "1 should be written as \"1\" to add it."
+      correct: false
+      feedback: "Not it — that would give \"301\" too. The fix is to make age a number: Number(age) + 1."

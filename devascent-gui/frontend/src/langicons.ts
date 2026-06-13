@@ -1,0 +1,69 @@
+// Inline SVG language marks for the header, status bar and home chip.
+// Hand-authored simplified-but-recognizable brand marks, tuned for 16–20px
+// legibility, each in its conventional brand hue. Sized via the .langico
+// class (~1em, vertical-align tuned to sit on the text baseline).
+
+const ICO = `class="langico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"`;
+
+// Marks are drawn to FILL the 24×24 box (no internal padding) so they read as
+// proper logos beside the language name rather than small marks in whitespace.
+const ICONS: Record<string, string> = {
+  // The two-snake interlocked mark — blue over yellow, eyes cut out (evenodd).
+  python: `<svg ${ICO}>
+    <path fill="#3776AB" fill-rule="evenodd" d="M11.9 1.5c-3 0-4.6 1-4.6 3v2.2h4.8v.9H5.3c-2.2 0-3.3 1.9-3.3 4.4 0 2.5 1.1 4.4 3.3 4.4h2v-2.8c0-1.8 1.5-3.3 3.3-3.3h4.4c1.5 0 2.7-1.2 2.7-2.7v-3c0-2.1-2.7-3.1-5.8-3.1zm-2.2 1.6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+    <path fill="#FFD43B" fill-rule="evenodd" d="M12.1 22.5c3 0 4.6-1 4.6-3v-2.2h-4.8v-.9h6.8c2.2 0 3.3-1.9 3.3-4.4 0-2.5-1.1-4.4-3.3-4.4h-2v2.8c0 1.8-1.5 3.3-3.3 3.3H9c-1.5 0-2.7 1.2-2.7 2.7v3c0 2.1 2.7 3.1 5.8 3.1zm2.2-1.6a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+  </svg>`,
+  // The Go gopher — a real symbol (not the "GO" wordmark, which read redundantly
+  // beside the "Go" label). Simplified: blue face, big eyes, ears, tiny teeth.
+  go: `<svg ${ICO}>
+    <ellipse cx="7.6" cy="5" rx="2" ry="2.5" fill="#5DC9E2"/>
+    <ellipse cx="16.4" cy="5" rx="2" ry="2.5" fill="#5DC9E2"/>
+    <ellipse cx="7.6" cy="5.2" rx="0.8" ry="1.1" fill="#2A4D57"/>
+    <ellipse cx="16.4" cy="5.2" rx="0.8" ry="1.1" fill="#2A4D57"/>
+    <rect x="3.4" y="6" width="17.2" height="15" rx="7.6" fill="#5DC9E2"/>
+    <circle cx="9.3" cy="11" r="3.6" fill="#fff" stroke="#2A4D57" stroke-width="0.55"/>
+    <circle cx="14.7" cy="11" r="3.6" fill="#fff" stroke="#2A4D57" stroke-width="0.55"/>
+    <circle cx="10.2" cy="11.2" r="1.5" fill="#10242A"/>
+    <circle cx="13.8" cy="11.2" r="1.5" fill="#10242A"/>
+    <circle cx="12" cy="14.7" r="0.95" fill="#10242A"/>
+    <rect x="10.7" y="15.6" width="2.6" height="2.7" rx="0.5" fill="#fff" stroke="#2A4D57" stroke-width="0.5"/>
+    <line x1="12" y1="15.7" x2="12" y2="18.2" stroke="#2A4D57" stroke-width="0.5"/>
+  </svg>`,
+  // Gear ring (toothed stroke) with the serif R hint.
+  rust: `<svg ${ICO}>
+    <circle cx="12" cy="12" r="11" fill="none" stroke="#B7410E" stroke-width="3" stroke-dasharray="2.5 2.4"/>
+    <circle cx="12" cy="12" r="9.1" fill="#B7410E"/>
+    <text x="12" y="17.2" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="14.5" fill="#DEA584">R</text>
+  </svg>`,
+  typescript: `<svg ${ICO}>
+    <rect x="0.5" y="0.5" width="23" height="23" rx="5" fill="#3178C6"/>
+    <text x="12" y="17.2" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="12.5" fill="#FFFFFF">TS</text>
+  </svg>`,
+  javascript: `<svg ${ICO}>
+    <rect x="0.5" y="0.5" width="23" height="23" rx="5" fill="#F7DF1E"/>
+    <text x="12" y="17.2" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="12.5" fill="#111111">JS</text>
+  </svg>`,
+  // Coffee cup with steam — orange cup, red steam (the Java duo-tone), scaled to fill.
+  java: `<svg ${ICO}>
+    <g transform="translate(12,12) scale(1.26) translate(-12,-12)">
+      <path fill="#E76F00" d="M5.4 10h11.2v5.3a4.2 4.2 0 0 1-4.2 4.2H9.6a4.2 4.2 0 0 1-4.2-4.2z"/>
+      <path fill="none" stroke="#E76F00" stroke-width="1.5" d="M16.6 11.3h1.6a2.4 2.4 0 0 1 0 4.8h-1.6"/>
+      <path fill="none" stroke="#EA2D2E" stroke-width="1.5" stroke-linecap="round" d="M9.1 7.8C7.7 6.4 10.5 5.4 9.1 4"/>
+      <path fill="none" stroke="#EA2D2E" stroke-width="1.5" stroke-linecap="round" d="M12.8 8.1c-1.2-1.2 1.1-2 0-3.3"/>
+      <path fill="none" stroke="#E76F00" stroke-width="1.5" stroke-linecap="round" d="M4.6 21.6h12.8"/>
+    </g>
+  </svg>`,
+  csharp: `<svg ${ICO}>
+    <polygon points="12,0.5 1.5,6.25 1.5,17.75 12,23.5 22.5,17.75 22.5,6.25" fill="#68217A"/>
+    <text x="12" y="16.6" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="11.5" fill="#FFFFFF">C#</text>
+  </svg>`,
+  cpp: `<svg ${ICO}>
+    <polygon points="12,0.5 1.5,6.25 1.5,17.75 12,23.5 22.5,17.75 22.5,6.25" fill="#00599C"/>
+    <text x="12" y="16.2" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="10" letter-spacing="-0.5" fill="#FFFFFF">C++</text>
+  </svg>`,
+};
+
+// langIcon returns the inline SVG mark for lang (a neutral ◇ for unknown).
+export function langIcon(lang: string): string {
+  return ICONS[lang] ?? '<span class="langico langico-fb" aria-hidden="true">&#9671;</span>';
+}

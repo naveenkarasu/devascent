@@ -1,0 +1,109 @@
+- category: 'Binary Search'
+  lang: rust
+  title: 'Binary Search — Rust refresher'
+  summary: |
+    Binary search finds a target in a SORTED slice in O(log n) by halving the
+    search range each step. Look at the middle: if it is the target you are done;
+    if the target is smaller, discard the right half; if larger, discard the left.
+
+    The pattern generalizes to any monotonic answer space: if you can write a
+    predicate that is false for small values and true for large ones (or vice versa),
+    you can binary-search the boundary.
+
+    Rust notes:
+      - Rust slices have a built-in slice.binary_search(&x) that returns
+        Ok(idx) if found, or Err(insertion_point) if absent.
+      - For custom logic write the loop manually with usize bounds.
+      - Overflow: in Rust usize arithmetic can panic in debug on overflow; compute
+        mid as lo + (hi - lo) / 2 to be safe and clear.
+      - The half-open variant while lo < hi shrinks toward a single answer and
+        is natural for lower/upper bound searches.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'inclusive bounds over a slice'
+          code: 'let (mut lo, mut hi) = (0usize, nums.len() - 1);'
+        - label: 'answer-space bounds'
+          code: 'let (mut lo, mut hi) = (min_val, max_val);'
+        - label: 'overflow-safe midpoint'
+          code: 'let mid = lo + (hi - lo) / 2;'
+    - title: Basic operations
+      ops:
+        - label: 'built-in exact search'
+          code: 'match nums.binary_search(&target) { Ok(i) => i, Err(_) => usize::MAX }'
+        - label: 'discard left half'
+          code: 'lo = mid + 1;'
+        - label: 'discard right half'
+          code: 'hi = mid - 1;  // wraps if mid==0 on usize — guard with lo<hi'
+        - label: 'lower bound (first index where nums[i] >= target)'
+          code: 'let lb = nums.partition_point(|&x| x < target);'
+    - title: Iteration & loops
+      ops:
+        - label: 'standard inclusive binary search loop'
+          code: |
+            while lo <= hi {
+                let mid = lo + (hi - lo) / 2;
+                match nums[mid].cmp(&target) {
+                    std::cmp::Ordering::Equal   => return Some(mid),
+                    std::cmp::Ordering::Less    => lo = mid + 1,
+                    std::cmp::Ordering::Greater => {
+                        if mid == 0 { break; }
+                        hi = mid - 1;
+                    }
+                }
+            }
+        - label: 'answer-space: find smallest feasible value'
+          code: |
+            while lo < hi {
+                let mid = lo + (hi - lo) / 2;
+                if feasible(mid) { hi = mid; } else { lo = mid + 1; }
+            }
+        - label: 'half-open left-boundary loop'
+          code: |
+            while lo < hi {
+                let mid = lo + (hi - lo) / 2;
+                if nums[mid] < target { lo = mid + 1; } else { hi = mid; }
+            }
+    - title: Special operations (binary search)
+      ops:
+        - label: 'partition_point — idiomatic lower bound'
+          code: 'let pos = v.partition_point(|&x| x < target);  // first index where x >= target'
+        - label: 'rotated sorted array: find ordered half'
+          code: |
+            if nums[lo] <= nums[mid] {
+                // left half [lo..mid] is sorted
+            } else {
+                // right half [mid..hi] is sorted
+            }
+        - label: 'search flattened 2-D matrix'
+          code: |
+            let mid = lo + (hi - lo) / 2;
+            let val = matrix[mid / cols][mid % cols];
+        - label: 'return not-found sentinel'
+          code: 'return None;  // or usize::MAX; lo > hi means absent'
+  example: |
+    Worked example — find the index of target in a sorted slice, or None:
+
+      Keep an inclusive range [lo..hi]. Each step inspect the midpoint and discard
+      the half that cannot hold the target. After at most log2(n) steps, lo > hi
+      and the target is confirmed absent.
+
+        fn search(nums: &[i32], target: i32) -> Option<usize> {
+            if nums.is_empty() { return None; }
+            let (mut lo, mut hi) = (0usize, nums.len() - 1);
+            while lo <= hi {
+                let mid = lo + (hi - lo) / 2;
+                match nums[mid].cmp(&target) {
+                    std::cmp::Ordering::Equal   => return Some(mid),
+                    std::cmp::Ordering::Less    => lo = mid + 1,
+                    std::cmp::Ordering::Greater => {
+                        if mid == 0 { break; }
+                        hi = mid - 1;
+                    }
+                }
+            }
+            None
+        }
+
+    Takeaway: use partition_point for standard lower/upper bounds; write the loop
+    manually when you need answer-space search or rotated-array logic.

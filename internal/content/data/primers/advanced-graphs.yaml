@@ -1,0 +1,135 @@
+- category: Advanced Graphs
+  lang: python
+  title: Advanced Graphs — Python refresher
+  summary: |
+    Weighted / shortest-path / connectivity problems beyond plain BFS/DFS. Pick by
+    the question: shortest path with non-negative weights → Dijkstra (heap); with
+    ≤k hops or negative edges → Bellman-Ford (relax edges k+1 times); cheapest set
+    of edges connecting everything → MST (Prim with a heap, or Kruskal + union-find);
+    ordering with dependencies → topological sort.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'adjacency list (weighted directed)'
+          code: |
+            from collections import defaultdict
+            adj = defaultdict(list)
+            adj[u].append((v, w))
+        - label: 'distance array initialized to infinity'
+          code: |
+            dist = {node: float("inf") for node in nodes}
+            dist[src] = 0
+        - label: 'min-heap for Dijkstra'
+          code: |
+            import heapq
+            h = [(0, src)]
+        - label: 'union-find arrays (Kruskal)'
+          code: |
+            parent = list(range(n))
+            rank = [0] * n
+        - label: 'in-degree array (topological sort)'
+          code: 'in_deg = [0] * n'
+    - title: Basic operations
+      ops:
+        - label: 'add directed weighted edge'
+          code: 'adj[u].append((v, w))'
+        - label: 'relax an edge (Dijkstra / Bellman-Ford)'
+          code: 'if dist[u] + w < dist[v]: dist[v] = dist[u] + w'
+        - label: 'push updated distance to heap'
+          code: 'heapq.heappush(h, (dist[v], v))'
+        - label: 'skip stale heap entry'
+          code: 'if d > dist[u]: continue'
+        - label: 'decrement in-degree (topological sort BFS)'
+          code: |
+            in_deg[v] -= 1
+            if in_deg[v] == 0:
+                q.append(v)
+    - title: Iteration & loops
+      ops:
+        - label: 'Dijkstra main loop'
+          code: |
+            while h:
+                d, u = heapq.heappop(h)
+                if d > dist[u]: continue
+                for v, w in adj[u]:
+                    if d + w < dist[v]:
+                        dist[v] = d + w
+                        heapq.heappush(h, (dist[v], v))
+        - label: 'Bellman-Ford (relax all edges n-1 times)'
+          code: |
+            dist = [float("inf")] * n
+            dist[src] = 0
+            for _ in range(n - 1):
+                for u, v, w in edges:
+                    if dist[u] + w < dist[v]:
+                        dist[v] = dist[u] + w
+        - label: 'Kahn topological sort (BFS)'
+          code: |
+            from collections import deque
+            q = deque(u for u in range(n) if in_deg[u] == 0)
+            order = []
+            while q:
+                u = q.popleft()
+                order.append(u)
+                for v in adj[u]:
+                    in_deg[v] -= 1
+                    if in_deg[v] == 0: q.append(v)
+        - label: 'Prim MST loop'
+          code: |
+            seen = set()
+            h = [(0, 0)]
+            cost = 0
+            while h:
+                w, u = heapq.heappop(h)
+                if u in seen: continue
+                seen.add(u)
+                cost += w
+                for v, wt in adj[u]:
+                    if v not in seen: heapq.heappush(h, (wt, v))
+    - title: Special operations (advanced graphs)
+      ops:
+        - label: 'union-find: find with path compression'
+          code: |
+            def find(x):
+                if parent[x] != x: parent[x] = find(parent[x])
+                return parent[x]
+        - label: 'union-find: union by rank'
+          code: |
+            def union(x, y):
+                px, py = find(x), find(y)
+                if px == py: return False
+                if rank[px] < rank[py]: px, py = py, px
+                parent[py] = px
+                if rank[px] == rank[py]: rank[px] += 1
+                return True
+        - label: 'Bellman-Ford with k hops (copy dist array each round)'
+          code: |
+            for _ in range(k):
+                tmp = dist[:]
+                for u, v, w in edges:
+                    tmp[v] = min(tmp[v], dist[u] + w)
+                dist = tmp
+        - label: 'detect negative cycle (extra Bellman-Ford round)'
+          code: |
+            for u, v, w in edges:
+                if dist[u] + w < dist[v]: return True  # negative cycle
+  example: |
+    Worked example — Network Delay Time (time for a signal from k to reach all n
+    nodes over directed weighted edges):
+      This is single-source shortest path with non-negative weights → Dijkstra.
+      Push (0, k); repeatedly pop the closest unsettled node and relax its edges.
+      The answer is the MAX of all final distances (the last node to hear it), or
+      -1 if any node is unreachable.
+
+        dist = {k: 0}
+        h = [(0, k)]
+        while h:
+            d, u = heappop(h)
+            if d > dist.get(u, inf): continue
+            for v, w in adj[u]:
+                if d + w < dist.get(v, inf):
+                    dist[v] = d + w
+                    heappush(h, (dist[v], v))
+
+    Takeaway: choose the algorithm from the edge properties (weights? negatives?
+    hop limit? connectivity?), then it's a standard template.

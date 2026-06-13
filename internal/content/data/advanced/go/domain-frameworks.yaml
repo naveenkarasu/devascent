@@ -1,0 +1,71 @@
+lang: go
+group: Domain Frameworks
+title: "Domain Frameworks — HTTP, gRPC & beyond"
+tag: P
+summary: |
+  Go's net/http package is production-grade on its own for most microservices. Routers
+  and frameworks layer on top to add path parameters, middleware chaining, and ergonomic
+  request/response helpers.
+
+  net/http (stdlib)
+    Adequate for the majority of services. In Go 1.22+, http.ServeMux supports method
+    and path-parameter routing directly:
+
+      mux := http.NewServeMux()
+      mux.HandleFunc("GET /users/{id}", getUserHandler)
+      mux.HandleFunc("POST /users", createUserHandler)
+      http.ListenAndServe(":8080", mux)
+
+    Middleware is a func(http.Handler) http.Handler that wraps the next handler:
+
+      func requestID(next http.Handler) http.Handler {
+          return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+              id := uuid.New().String()
+              ctx := context.WithValue(r.Context(), keyRequestID, id)
+              next.ServeHTTP(w, r.WithContext(ctx))
+          })
+      }
+
+  Gin (gin-gonic/gin)
+    High-performance HTTP framework. Groups routes, binding from JSON/form/query,
+    validation, and a middleware engine. The most widely starred Go HTTP framework.
+
+      r := gin.Default()  // Logger + Recovery middleware included
+      r.GET("/users/:id", func(c *gin.Context) {
+          id := c.Param("id")
+          c.JSON(http.StatusOK, gin.H{"id": id})
+      })
+      r.Run(":8080")
+
+  Echo (labstack/echo)
+    Similar ergonomics to Gin. Slightly smaller API surface. Built-in binder,
+    validator interface, and middleware stack.
+
+  Chi (go-chi/chi)
+    Lightweight, stdlib-idiomatic router. Fully compatible with net/http — every
+    handler is http.Handler, every middleware is func(http.Handler) http.Handler.
+    Good choice when you want routing ergonomics without a framework.
+
+  gRPC (google.golang.org/grpc)
+    The Go gRPC implementation is first-class. Workflow: define services and messages
+    in .proto files; run protoc + protoc-gen-go + protoc-gen-go-grpc to generate
+    typed client/server stubs; implement the server interface. Widely used for internal
+    microservice communication. Supports streaming (unary, server-stream, client-stream,
+    bidirectional). Interceptors are gRPC's equivalent of HTTP middleware.
+
+  Project-scale exercise sketch (for Stage 2 projects)
+    Build a small REST API with:
+    - At least two endpoints (e.g., GET /items/{id}, POST /items).
+    - Request validation (check required fields, return 400 with a structured error).
+    - Structured logging via log/slog.
+    - context propagation: pass context.WithTimeout down through the handler into any
+      downstream call (DB query, external HTTP).
+    - A request-ID middleware that injects a UUID into the request context and logs it.
+    - A _test.go file using net/http/httptest.NewRecorder to test handlers without a
+      real server.
+    This pattern exercises the full production stack without requiring a heavy framework.
+
+  Sources:
+  - https://go.dev/doc/tutorial/web-service-gin — Official Gin REST tutorial
+  - https://pkg.go.dev/net/http — net/http package docs
+  - https://grpc.io/docs/languages/go/ — gRPC Go quickstart

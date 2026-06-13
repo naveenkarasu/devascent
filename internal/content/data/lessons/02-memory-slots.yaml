@@ -1,0 +1,41 @@
+id: memory-slots
+order: 2
+title: Memory Slots
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A variable is a named box that stores a value:  name = value.
+      Inputs to a function (parameters) arrive as ready-made variables.
+
+          def triple(x):
+              result = x * 3
+              return result
+
+      triple(4) gives 12.  Math uses + - * / .
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: You're given a number score. Store double the score, then hand it back.
+    task:
+      prompt: Return double the given score.
+      func_name: double_score
+      starter: |
+        def double_score(score):
+            pass  # hint:  total = score * 2  then  return total
+      tests:
+        - {name: 'double_score(5)', input: [5], expected: 10}
+        - {name: 'double_score(0)', input: [0], expected: 0}
+        - {name: 'double_score(21)', input: [21], expected: 42}
+  - kind: you_do
+    title: You do — solo
+    body: Now on your own.
+    task:
+      prompt: Given price and quantity, return the total cost (price times quantity).
+      func_name: total_cost
+      starter: |
+        def total_cost(price, quantity):
+            pass  # <- delete this line and write your code
+      tests:
+        - {name: 'total_cost(3, 4)', input: [3, 4], expected: 12}
+        - {name: 'total_cost(10, 0)', input: [10, 0], expected: 0}
+        - {name: 'total_cost(7, 2)', input: [7, 2], expected: 14}

@@ -1,0 +1,132 @@
+- category: 'Heap / Priority Queue'
+  lang: javascript
+  title: 'Heap / Priority Queue — JavaScript refresher'
+  summary: |
+    A heap (priority queue) gives O(log n) insert and O(log n) extract-min/max, with
+    O(1) peek at the top element. Classic use cases: k largest/smallest elements, merge
+    k sorted lists, Dijkstra's shortest path, median of a data stream.
+
+    IMPORTANT: JavaScript has NO built-in heap or priority queue. You must either:
+      1. Implement a MinHeap class with a backing array (standard interview approach).
+      2. Use a sorted array and keep it sorted on each insert (fine for small n or when
+         inserts are rare). Binary search + splice gives O(n) insert but O(1) peek.
+      3. Use a third-party library (e.g. @datastructures-js/priority-queue) in real code.
+
+    The array-based binary heap stores the tree in a flat array: children of index i
+    are at 2i+1 and 2i+2; parent of i is Math.floor((i-1)/2).
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'min-heap class skeleton (backing array)'
+          code: |
+            class MinHeap {
+                constructor() { this.heap = []; }
+                size() { return this.heap.length; }
+                peek() { return this.heap[0]; }
+                push(val) {
+                    this.heap.push(val);
+                    this._bubbleUp(this.heap.length - 1);
+                }
+                pop() {
+                    const top = this.heap[0];
+                    const last = this.heap.pop();
+                    if (this.heap.length > 0) {
+                        this.heap[0] = last;
+                        this._sinkDown(0);
+                    }
+                    return top;
+                }
+                _bubbleUp(i) {
+                    while (i > 0) {
+                        const p = Math.floor((i - 1) / 2);
+                        if (this.heap[p] <= this.heap[i]) break;
+                        [this.heap[p], this.heap[i]] = [this.heap[i], this.heap[p]];
+                        i = p;
+                    }
+                }
+                _sinkDown(i) {
+                    const n = this.heap.length;
+                    while (true) {
+                        let smallest = i, l = 2*i+1, r = 2*i+2;
+                        if (l < n && this.heap[l] < this.heap[smallest]) smallest = l;
+                        if (r < n && this.heap[r] < this.heap[smallest]) smallest = r;
+                        if (smallest === i) break;
+                        [this.heap[i], this.heap[smallest]] = [this.heap[smallest], this.heap[i]];
+                        i = smallest;
+                    }
+                }
+            }
+        - label: 'sorted-array fallback (insert keeps array sorted)'
+          code: |
+            const pq = [];
+            function pqPush(x) {
+              pq.push(x);
+              pq.sort((a, b) => a - b);
+            }
+            function pqPop() { return pq.shift(); }
+    - title: Basic operations
+      ops:
+        - label: 'push onto the heap'
+          code: 'heap.push(val);'
+        - label: 'pop minimum element'
+          code: 'const min = heap.pop();   // after _sinkDown on a MinHeap instance'
+        - label: 'peek at minimum without removing'
+          code: 'const min = heap.peek();   // heap.heap[0] on the class above'
+        - label: 'check if empty'
+          code: |
+            if (heap.size() === 0) {
+              /* empty */
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'drain the heap in sorted order'
+          code: |
+            while (heap.size() > 0) {
+              const x = heap.pop();
+              /* x in ascending order */
+            }
+        - label: 'build heap from array (push each element)'
+          code: 'for (const x of arr) heap.push(x);'
+        - label: 'k smallest: push all, pop k times'
+          code: |
+            const h = new MinHeap();
+            for (const x of arr) h.push(x);
+            for (let i = 0; i < k; i++) result.push(h.pop());
+    - title: Special operations (heap / priority queue)
+      ops:
+        - label: 'k largest elements (max-heap via negation trick)'
+          code: |
+            const h = new MinHeap();
+            for (const x of arr) {
+                h.push(x);
+                if (h.size() > k) h.pop();   // keep only k largest
+            }
+            return h.heap;   // contains the k largest
+        - label: 'merge k sorted arrays using min-heap'
+          code: |
+            const h = new MinHeap();   // store [value, arrayIndex, elementIndex]
+            // push the first element of each array, then pop-and-advance
+        - label: 'custom comparator (max-heap): negate values for a min-heap'
+          code: |
+            h.push(-value);
+            const maxVal = -h.pop();   // negate on the way out
+        - label: 'running median: balance a max-heap (lower half) and min-heap (upper half)'
+          code: '// maintain: maxHeap.size() === minHeap.size() or maxHeap.size() === minHeap.size() + 1'
+  example: |
+    Worked example — find the k-th largest element in an array:
+
+      Keep a min-heap of size k. Iterate over all elements: push each one, then if the
+      heap exceeds size k, pop the minimum. After the full scan, the heap's minimum is
+      the k-th largest element overall (it beat at least k-1 others to stay in).
+
+        function findKthLargest(nums, k) {
+            const heap = new MinHeap();
+            for (const x of nums) {
+                heap.push(x);
+                if (heap.size() > k) heap.pop();
+            }
+            return heap.peek();
+        }
+
+    Takeaway: JavaScript has no built-in priority queue — memorize the MinHeap class
+    skeleton or use the negation trick (push -value) to simulate a max-heap with a min-heap.

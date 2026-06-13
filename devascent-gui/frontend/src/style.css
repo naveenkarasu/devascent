@@ -1,0 +1,125 @@
+@import './themes.css';
+
+*{box-sizing:border-box;}
+html,body{margin:0;height:100%;}
+body{
+  background:var(--canvas); color:var(--textPrimary); font-family:var(--font-ui);
+  font-size:14px; line-height:20px; -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+#app{height:100vh; display:flex; flex-direction:column;}
+/* smooth recolor on theme switch (disabled under reduced motion) */
+body, .titlebar, .prompt, .status, .seg, .card, .term, .btn, .chip, .info, .brandmark { transition:background-color .18s ease, color .18s ease, border-color .18s ease; }
+@media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+
+/* title bar */
+.titlebar{height:32px; flex:0 0 32px; display:flex; align-items:center; gap:8px;
+  background:var(--base); border-bottom:1px solid var(--borderSubtle);
+  padding:0 0 0 12px; user-select:none; --wails-draggable:drag;}
+.titlebar .mark{width:16px;height:16px;border-radius:4px;
+  background:linear-gradient(135deg,var(--blue),var(--magenta));}
+.titlebar .app{font-size:12px;color:var(--textSecondary);}
+.titlebar .caps{margin-left:auto;display:flex;--wails-draggable:no-drag;}
+.titlebar .caps div{width:46px;height:32px;display:grid;place-items:center;color:var(--textMuted);font-size:12px;cursor:default;}
+.titlebar .caps div:hover{background:var(--panel);color:var(--textPrimary);}
+.titlebar .caps .close:hover{background:var(--red);color:#fff;}
+
+/* powerline prompt */
+.prompt{height:48px;flex:0 0 48px;display:flex;align-items:center;
+  background:var(--base);border-bottom:1px solid var(--borderSubtle);padding:0 12px;}
+.seg{height:28px;display:flex;align-items:center;gap:8px;padding:0 12px;font-size:12px;
+  color:var(--textSecondary);background:var(--panel);border:1px solid var(--borderSubtle);border-right:none;}
+.seg:first-child{border-radius:6px 0 0 6px;}
+.seg.cap{border-right:1px solid var(--borderSubtle);border-radius:0 6px 6px 0;}
+.seg.lead{background:var(--panelStrong);color:var(--textPrimary);font-weight:600;}
+.seg .dot{width:8px;height:8px;border-radius:50%;}
+.seg .ico{font-family:var(--font-mono);opacity:.9;}
+.prompt .spacer{flex:1;}
+.seg.right{background:transparent;border:none;color:var(--textMuted);}
+.seg.ok{color:var(--green);}
+
+/* theme switcher (the spike's hero feature) */
+.themesw{display:flex;align-items:center;gap:6px;}
+.themesw .tlabel{font-size:11px;color:var(--textMuted);margin-right:2px;}
+.themesw button{display:flex;align-items:center;gap:7px;height:28px;padding:0 10px;border-radius:999px;
+  background:var(--panel);border:1px solid var(--borderSubtle);color:var(--textSecondary);
+  font-family:var(--font-ui);font-size:12px;cursor:pointer;}
+.themesw button:hover{background:var(--panelStrong);}
+.themesw button.on{border-color:var(--blue);color:var(--textPrimary);box-shadow:0 0 0 1px var(--blue) inset;}
+.themesw .sw{width:12px;height:12px;border-radius:3px;border:1px solid rgba(255,255,255,.18);}
+
+/* status bar */
+.status{height:24px;flex:0 0 24px;display:flex;align-items:center;gap:16px;
+  background:var(--base);border-top:1px solid var(--borderSubtle);padding:0 12px;
+  font-size:12px;color:var(--textMuted);}
+.status .s-accent{color:var(--blue);}
+.status .right{margin-left:auto;display:flex;gap:16px;}
+
+/* buttons / chips */
+.btn{height:52px;border-radius:8px;border:1px solid var(--borderStrong);background:var(--panel);
+  color:var(--textPrimary);font-family:var(--font-ui);font-size:15px;font-weight:600;padding:0 16px;
+  cursor:pointer;display:flex;align-items:center;gap:10px;justify-content:flex-start;width:100%;text-align:left;}
+.btn:hover{background:var(--panelStrong);}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#08111c;}
+.btn.primary:hover{filter:brightness(1.08);}
+.chip{display:inline-flex;align-items:center;gap:8px;height:26px;padding:0 10px;border-radius:999px;
+  background:var(--panel);border:1px solid var(--borderSubtle);font-size:12px;color:var(--textSecondary);}
+.muted{color:var(--textMuted);} .mono{font-family:var(--font-mono);}
+.kbd{font-family:var(--font-mono);font-size:11px;border:1px solid var(--borderStrong);border-radius:4px;padding:1px 6px;color:var(--textSecondary);background:var(--panel);}
+.caret{display:inline-block;width:2px;height:16px;background:var(--blue);vertical-align:middle;animation:blink 1.06s step-end infinite;}
+@keyframes blink{50%{opacity:0;}}
+
+/* language icons (inline SVG brand marks — see langicons.ts). Marks fill their
+   box (no padding) and are sized ~1.82em (+30%) so they read as real logos
+   beside the language name. */
+.langico{width:1.82em;height:1.82em;display:inline-block;vertical-align:-0.46em;}
+.langico-fb{color:var(--textMuted);}
+/* the header language segment is the most prominent — give it a touch more */
+.seg.cap .langico{width:2.08em;height:2.08em;vertical-align:-0.56em;}
+
+/* hard-locked nav entries (progression gating — dimming + tooltip only) */
+.nav button:disabled{opacity:.4;cursor:not-allowed;}
+.nav button:disabled:hover{background:transparent;}
+
+/* boot splash — full-window overlay, dismissed by main.ts after first render */
+.splash{position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;
+  background:radial-gradient(60% 50% at 50% 42%, rgba(97,175,239,.10), transparent 70%), var(--canvas);
+  transition:opacity .3s ease;}
+.splash.out{opacity:0;pointer-events:none;}
+/* pop the logo in so the loading moment reads, and glow it off the dark bg */
+.splash-logo{max-width:300px;width:48vw;height:auto;user-select:none;-webkit-user-drag:none;
+  filter:drop-shadow(0 6px 34px rgba(97,175,239,.40));animation:splash-pop .55s ease both;}
+.splash-name{font-size:40px;line-height:52px;font-weight:600;color:var(--textPrimary);
+  letter-spacing:.5px;animation:splash-pop .55s ease .08s both;}
+@keyframes splash-pop{from{opacity:0;transform:scale(.92) translateY(6px);}to{opacity:1;transform:none;}}
+.splash-bar{width:220px;height:3px;border-radius:999px;background:var(--panel);overflow:hidden;}
+.splash-shimmer{width:40%;height:100%;border-radius:999px;
+  background:linear-gradient(90deg,var(--blue),var(--magenta));
+  animation:splash-sweep 1.15s ease-in-out infinite alternate;}
+@keyframes splash-sweep{from{transform:translateX(-100%);}to{transform:translateX(250%);}}
+
+/* start screen */
+.main{flex:1;min-height:0;}
+.startbody{display:flex;gap:48px;padding:48px 64px;height:100%;}
+.info{flex:0 0 44%;display:flex;flex-direction:column;text-align:left;}
+.brandrow{display:flex;align-items:center;gap:18px;}
+/* the channel/game logo — glow lifts the glossy-dark monogram off the dark bg */
+.brandlogo{height:64px;width:auto;user-select:none;-webkit-user-drag:none;
+  filter:drop-shadow(0 3px 16px rgba(97,175,239,.35));}
+.appname{font-size:40px;line-height:52px;font-weight:600;}
+/* small brand mark in the titlebar */
+.brandlogo-sm{height:18px;width:auto;vertical-align:-4px;margin-right:2px;
+  user-select:none;-webkit-user-drag:none;filter:drop-shadow(0 0 5px rgba(97,175,239,.5));}
+.subtitle{font-size:18px;line-height:26px;color:var(--textSecondary);margin-top:18px;max-width:46ch;}
+.narrative{margin-top:22px;color:var(--textSecondary);max-width:52ch;}
+.narrative b{color:var(--textPrimary);}
+.savechips{margin-top:auto;display:flex;flex-wrap:wrap;gap:10px;}
+.ver{margin-top:22px;font-size:12px;}
+.card{flex:1;background:var(--base);border:1px solid var(--borderSubtle);border-radius:16px;padding:24px;display:flex;flex-direction:column;text-align:left;}
+.cardhead{display:flex;align-items:center;justify-content:space-between;}
+.term{margin-top:16px;background:var(--canvas);border:1px solid var(--borderSubtle);border-radius:10px;
+  padding:16px;font-family:var(--font-mono);font-size:13px;line-height:22px;color:var(--textSecondary);flex:1;min-height:0;overflow:hidden;}
+.term .g{color:var(--green);} .term .b{color:var(--blue);} .term .y{color:var(--yellow);} .term .mut{color:var(--textMuted);}
+.actions{margin-top:18px;display:flex;flex-direction:column;gap:12px;}
+.helper{margin-top:12px;font-size:12px;}

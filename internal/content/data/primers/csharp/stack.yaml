@@ -1,0 +1,133 @@
+- category: 'Stack'
+  lang: csharp
+  title: 'Stack — C# refresher'
+  summary: |
+    A stack is a Last-In First-Out (LIFO) structure. Push items on top; pop from the
+    top. The canonical stack patterns are: matching brackets/parentheses, tracking the
+    "previous state" you need to undo, and the monotonic stack (maintaining an
+    increasing or decreasing sequence to find next-greater or next-smaller elements).
+
+    C# notes:
+      - Stack<T> from System.Collections.Generic is the standard choice.
+      - Push(item), Pop() (removes & returns top), Peek() (returns top without removing).
+      - Count checks how many elements remain; Count == 0 means empty.
+      - For a monotonic stack pop in a loop while the invariant is violated.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'create a stack'
+          code: 'var stack = new Stack<int>();'
+        - label: 'stack of characters (bracket matching)'
+          code: 'var stack = new Stack<char>();'
+        - label: 'stack pre-loaded from a collection'
+          code: 'var stack = new Stack<int>(new[] {1, 2, 3});'
+    - title: Basic operations
+      ops:
+        - label: 'push (add to top)'
+          code: 'stack.Push(x);'
+        - label: 'pop (remove and return top)'
+          code: 'int top = stack.Pop();'
+        - label: 'peek (read top without removing)'
+          code: 'int top = stack.Peek();'
+        - label: 'check if empty'
+          code: 'bool empty = stack.Count == 0;'
+        - label: 'safe pop with TryPop'
+          code: |
+            if (stack.TryPop(out var val))
+            {
+                /* use val */
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'process all items (LIFO order)'
+          code: |
+            while (stack.Count > 0)
+            {
+                int v = stack.Pop();
+            }
+        - label: 'foreach (top to bottom, non-destructive)'
+          code: |
+            foreach (int v in stack)
+            {
+                // iterates top to bottom
+            }
+        - label: 'monotonic stack: pop while top >= current'
+          code: |
+            while (stack.Count > 0 && stack.Peek() >= nums[i])
+            {
+                stack.Pop();
+            }
+            stack.Push(nums[i]);
+    - title: Special operations (stack patterns)
+      ops:
+        - label: 'valid brackets / balanced parentheses'
+          code: |
+            var stack = new Stack<char>();
+            foreach (char c in s)
+            {
+                if (c == '(' || c == '[' || c == '{') stack.Push(c);
+                else
+                {
+                    if (stack.Count == 0) return false;
+                    char top = stack.Pop();
+                    if (c == ')' && top != '(') return false;
+                    if (c == ']' && top != '[') return false;
+                    if (c == '}' && top != '{') return false;
+                }
+            }
+            return stack.Count == 0;
+        - label: 'next greater element (monotonic decreasing stack)'
+          code: |
+            int[] result = new int[nums.Length];
+            Array.Fill(result, -1);
+            var stack = new Stack<int>(); // stores indices
+            for (int i = 0; i < nums.Length; i++)
+            {
+                while (stack.Count > 0 && nums[stack.Peek()] < nums[i])
+                {
+                    result[stack.Pop()] = nums[i];
+                }
+                stack.Push(i);
+            }
+        - label: 'evaluate postfix / reverse-polish notation'
+          code: |
+            var stack = new Stack<int>();
+            foreach (string token in tokens)
+            {
+                if (int.TryParse(token, out int num))
+                {
+                    stack.Push(num);
+                }
+                else
+                {
+                    int b = stack.Pop(), a = stack.Pop();
+                    stack.Push(token == "+" ? a+b : token == "-" ? a-b :
+                               token == "*" ? a*b : a/b);
+                }
+            }
+            return stack.Pop();
+  example: |
+    Worked example — determine if a string of brackets is valid:
+
+      Scan left to right. When you see an opener push it. When you see a closer,
+      the stack top must be the matching opener — pop it. Any mismatch or a non-empty
+      stack at the end means invalid. Each character is processed once: O(n).
+
+        bool IsValid(string s) {
+            var stack = new Stack<char>();
+            foreach (char c in s) {
+                if (c == '(' || c == '[' || c == '{') {
+                    stack.Push(c);
+                } else {
+                    if (stack.Count == 0) return false;
+                    char top = stack.Pop();
+                    if (c == ')' && top != '(') return false;
+                    if (c == ']' && top != '[') return false;
+                    if (c == '}' && top != '{') return false;
+                }
+            }
+            return stack.Count == 0;
+        }
+
+    Takeaway: the stack "remembers" unclosed openers in the order they arrived. The
+    LIFO property ensures the most recent opener is always checked first.

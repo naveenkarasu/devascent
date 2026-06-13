@@ -1,0 +1,115 @@
+- category: 'Backtracking'
+  lang: cpp
+  title: Backtracking — C++ refresher
+  summary: |
+    Backtracking is depth-first search over a decision tree. At each step you
+    make a choice, recurse, then UNDO the choice (backtrack) before trying the
+    next option. It avoids re-exploring invalid paths via pruning.
+
+    Common uses: permutations, combinations, subsets, N-queens, word search on a
+    grid, Sudoku solver.
+
+    C++ notes:
+      - Pass the current state by reference and restore it after the recursive call.
+      - For grids, mark visited cells (e.g. set to '#') and unmark on return.
+      - Pruning early (before recursing) keeps the call stack shallow.
+      - Results are typically collected in a vector<vector<int>>& passed down, or
+        returned via a class member.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'result collector'
+          code: 'vector<vector<int>> res;'
+        - label: 'current path (built up and torn down during DFS)'
+          code: 'vector<int> path;'
+        - label: 'visited grid marker'
+          code: 'vector<vector<bool>> visited(rows, vector<bool>(cols, false));'
+    - title: Basic operations
+      ops:
+        - label: 'add current path to results (copy, not reference)'
+          code: 'res.push_back(path);'
+        - label: 'choose: add element to path'
+          code: 'path.push_back(x);'
+        - label: 'unchoose: remove element (backtrack)'
+          code: 'path.pop_back();'
+        - label: 'mark / unmark grid cell'
+          code: |
+            visited[r][c] = true;
+            /* recurse */
+            visited[r][c] = false;
+    - title: Iteration & loops
+      ops:
+        - label: 'generate all subsets'
+          code: |
+            void subsets(vector<int>& nums, int start, vector<int>& path,
+                         vector<vector<int>>& res) {
+                res.push_back(path);
+                for (int i = start; i < (int)nums.size(); i++) {
+                    path.push_back(nums[i]);
+                    subsets(nums, i + 1, path, res);
+                    path.pop_back();
+                }
+            }
+        - label: 'generate all permutations'
+          code: |
+            void permute(vector<int>& nums, vector<bool>& used,
+                         vector<int>& path, vector<vector<int>>& res) {
+                if ((int)path.size() == (int)nums.size()) {
+                    res.push_back(path);
+                    return;
+                }
+                for (int i = 0; i < (int)nums.size(); i++) {
+                    if (used[i]) continue;
+                    used[i] = true;
+                    path.push_back(nums[i]);
+                    permute(nums, used, path, res);
+                    path.pop_back();
+                    used[i] = false;
+                }
+            }
+        - label: 'skip duplicates after sorting'
+          code: 'if (i > start && nums[i] == nums[i-1]) continue;'
+    - title: Special operations (backtracking)
+      ops:
+        - label: 'word search on a grid (4-directional DFS)'
+          code: |
+            bool dfs(vector<vector<char>>& board, const string& word,
+                     int r, int c, int idx) {
+                if (idx == (int)word.size()) return true;
+                if (r < 0 || r >= (int)board.size() || c < 0 || c >= (int)board[0].size()) return false;
+                if (board[r][c] != word[idx]) return false;
+                char tmp = board[r][c];
+                board[r][c] = '#';
+                bool found = dfs(board,word,r+1,c,idx+1) || dfs(board,word,r-1,c,idx+1)
+                          || dfs(board,word,r,c+1,idx+1) || dfs(board,word,r,c-1,idx+1);
+                board[r][c] = tmp;
+                return found;
+            }
+        - label: 'combination sum: allow reuse (pass same index)'
+          code: 'backtrack(candidates, target - candidates[i], i, path, res);'
+        - label: 'pruning: skip when remaining target is negative'
+          code: 'if (remaining < 0) return;'
+  example: |
+    Worked example — generate all subsets of a distinct integer array:
+
+      At each index we decide: include nums[i] in the current path or skip it.
+      We record the path at every node of the decision tree (including the empty
+      set). Start each recursive call from start+1 to avoid reusing elements.
+
+        vector<vector<int>> subsets(vector<int>& nums) {
+            vector<vector<int>> res;
+            vector<int> path;
+            function<void(int)> bt = [&](int start) {
+                res.push_back(path);
+                for (int i = start; i < (int)nums.size(); i++) {
+                    path.push_back(nums[i]);
+                    bt(i + 1);
+                    path.pop_back();
+                }
+            };
+            bt(0);
+            return res;
+        }
+
+    Takeaway: the template is always choose / recurse / unchoose. Use a lambda
+    capturing by reference for clean, self-contained backtracking in C++.

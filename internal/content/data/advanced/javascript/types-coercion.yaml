@@ -1,0 +1,165 @@
+lang: javascript
+group: Types & Coercion
+title: "Types & Coercion — `==`, truthy/falsy, NaN"
+tag: E
+summary: |
+  JavaScript is dynamically typed: variables have no declared type; values do. The type
+  system has 7 primitives (`undefined`, `null`, `boolean`, `number`, `string`, `symbol`,
+  `bigint`) plus the `object` type (which includes arrays, functions, and plain objects).
+  `typeof` is reliable for primitives but not for `null` (`typeof null === "object"` is a
+  legacy bug — check `value === null` instead).
+
+  `==` (abstract/loose equality) applies a multi-step coercion algorithm before
+  comparing. Key rules:
+    - `null == undefined` → `true` (special case; nothing else loosely equals `null`)
+    - Boolean → coerces to number first (`true` → 1, `false` → 0)
+    - String vs number → string coerces to number
+    - Object vs primitive → object converts via `.valueOf()` / `.toString()`
+
+  `===` (strict equality) performs no coercion — type mismatch immediately returns
+  `false`. Two exceptions: `NaN !== NaN` (both strict and loose), and `+0 === -0` is
+  `true` (use `Object.is(+0, -0)` → `false` to distinguish them).
+
+  Truthy/falsy: the eight falsy values are `false`, `0`, `-0`, `0n`, `""`, `null`,
+  `undefined`, `NaN`. Everything else — including `"0"`, `[]`, `{}` — is truthy.
+
+  Primitives are immutable and compared by value. Object types are compared by reference.
+
+  Gotchas: `typeof null === "object"` — legacy bug, always use `=== null`. `Number.isNaN`
+  does not coerce its argument; global `isNaN` does. `+0 === -0` is `true` — use
+  `Object.is` if you need to distinguish them. Floating-point: `0.1 + 0.2 !== 0.3`
+  (covered under Gotchas topic).
+exercises:
+  - prompt: |
+      Predict `true` or `false` for each expression, then explain the coercion path.
+      Focus especially on the surprising ones.
+    kind: predict-output
+    broken_code: |
+      console.log(0 == false);
+      console.log("" == false);
+      console.log(null == 0);
+      console.log(null == undefined);
+      console.log(null == false);
+      console.log([] == false);
+      console.log("0" == false);
+    fixed_code: |
+      // Annotated answers:
+      console.log(0 == false);       // true  — false → 0, then 0 == 0
+      console.log("" == false);      // true  — false → 0, "" → 0, then 0 == 0
+      console.log(null == 0);        // false — null only loosely-equals undefined
+      console.log(null == undefined); // true  — spec special case
+      console.log(null == false);    // false — null only loosely-equals undefined
+      console.log([] == false);      // true  — false → 0, [] → "" → 0, then 0 == 0
+      console.log("0" == false);     // true  — false → 0, "0" → 0, then 0 == 0
+    bug: |
+      The most surprising result is `null == 0` → `false`. The spec gives `null` a special
+      rule: it only loosely-equals `undefined`, nothing else (not `0`, not `false`, not
+      `""`). The `[] == false` chain is the longest: `false` coerces to `0`, `[]` calls
+      `.toString()` → `""`, then `""` coerces to `0`, giving `0 == 0` → `true`.
+    check: stdout
+    signal: "true\ntrue\nfalse\ntrue\nfalse\ntrue\ntrue"
+
+  - prompt: |
+      This guard is meant to use a default when `value` is absent. But it silently rejects
+      valid inputs. Identify the bug and fix it with nullish coalescing (`??`).
+    kind: fix-it
+    broken_code: |
+      function formatScore(value) {
+        const score = value || "N/A";
+        console.log(`Score: ${score}`);
+      }
+
+      formatScore(42);
+      formatScore(0);   // should print "Score: 0" but prints "Score: N/A"
+      formatScore("");  // should print 'Score: ""' but prints "Score: N/A"
+      formatScore(null);
+    fixed_code: |
+      function formatScore(value) {
+        const score = value ?? "N/A";
+        console.log(`Score: ${score}`);
+      }
+
+      formatScore(42);
+      formatScore(0);
+      formatScore("");
+      formatScore(null);
+    bug: |
+      `||` short-circuits on any falsy value — including `0` and `""`, which are
+      legitimate scores. `??` (nullish coalescing) only short-circuits when the left side
+      is `null` or `undefined`, leaving `0` and `""` untouched.
+    check: stdout
+    signal: "Score: 42\nScore: 0\nScore: \nScore: N/A"
+
+  - prompt: |
+      This validation never catches a failed `parseInt`. Explain why and fix it with
+      `Number.isNaN`. Then explain why using the global `isNaN` is wrong here.
+    kind: fix-it
+    broken_code: |
+      function validate(input) {
+        const n = parseInt(input, 10);
+        if (n === NaN) {
+          console.log("invalid");
+        } else {
+          console.log(`valid: ${n}`);
+        }
+      }
+
+      validate("42");
+      validate("abc");
+    fixed_code: |
+      function validate(input) {
+        const n = parseInt(input, 10);
+        if (Number.isNaN(n)) {
+          console.log("invalid");
+        } else {
+          console.log(`valid: ${n}`);
+        }
+      }
+
+      validate("42");
+      validate("abc");
+    bug: |
+      `NaN` is the only value not equal to itself — `NaN === NaN` is always `false`, so
+      `n === NaN` never fires. Use `Number.isNaN(n)` which returns `true` only if `n` is
+      actually the `NaN` value. Avoid the global `isNaN(x)` — it coerces its argument
+      first, so `isNaN("abc")` returns `true` even though `"abc"` is a string, not `NaN`.
+      `Number.isNaN("abc")` correctly returns `false`.
+    check: stdout
+    signal: "valid: 42\ninvalid"
+
+  - prompt: |
+      Predict the output of each equality check. Why do the array and object comparisons
+      return `false` even when their contents look identical?
+    kind: predict-output
+    broken_code: |
+      const a = [1, 2, 3];
+      const b = [1, 2, 3];
+      const obj1 = { x: 1 };
+      const obj2 = { x: 1 };
+      const c = a;
+
+      console.log(a === b);
+      console.log(obj1 === obj2);
+      console.log(a === c);
+      console.log(JSON.stringify(a) === JSON.stringify(b));
+    fixed_code: |
+      // Annotated:
+      const a = [1, 2, 3];
+      const b = [1, 2, 3];
+      const obj1 = { x: 1 };
+      const obj2 = { x: 1 };
+      const c = a;
+
+      console.log(a === b);                             // false — different references
+      console.log(obj1 === obj2);                       // false — different references
+      console.log(a === c);                             // true  — same reference
+      console.log(JSON.stringify(a) === JSON.stringify(b)); // true — structural via strings
+    bug: |
+      Objects (including arrays) are compared by reference identity, not structure. `a`
+      and `b` are two separate array objects in memory, so `a === b` is `false` even
+      though their contents are identical. `c = a` copies the reference, so `a === c` is
+      `true`. For structural equality, `JSON.stringify` works for simple data but fails on
+      `undefined`, functions, symbols, and circular references. A recursive deep-equal
+      function is the robust alternative.
+    check: stdout
+    signal: "false\nfalse\ntrue\ntrue"

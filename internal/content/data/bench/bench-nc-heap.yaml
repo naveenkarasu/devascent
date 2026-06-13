@@ -1,0 +1,158 @@
+# Canonical NeetCode 150 — Heap / Priority Queue (original prompts, own solutions).
+# Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
+- id: nc-last-stone-weight
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
+  title: Last Stone Weight
+  difficulty: easy
+  pattern: heap
+  category: Heap / Priority Queue
+  lists: [neetcode150]
+  func_name: last_stone_weight
+  prompt: |
+    Last Stone Weight
+
+    You are given a list of stones, each with a positive integer weight.
+    Each turn, pick the two heaviest stones and smash them together:
+      - If they are equal, both are destroyed.
+      - If x != y (x <= y), stone x is destroyed and stone y gets weight y - x.
+    Repeat until at most one stone remains.
+    Return the weight of the last remaining stone, or 0 if none remain.
+
+    Examples:
+      last_stone_weight([2,7,4,1,8,1]) -> 1
+      last_stone_weight([1]) -> 1
+  starter: |
+    def last_stone_weight(stones):
+        pass  # write your solution; delete this line
+  solution: |
+    import heapq
+
+    def last_stone_weight(stones):
+        heap = [-s for s in stones]
+        heapq.heapify(heap)
+        while len(heap) > 1:
+            y = -heapq.heappop(heap)
+            x = -heapq.heappop(heap)
+            if x != y:
+                heapq.heappush(heap, -(y - x))
+        return -heap[0] if heap else 0
+  tests:
+    - {name: case 1, input: [[2,7,4,1,8,1]], expected: 1}
+    - {name: case 2, input: [[1]], expected: 1}
+    - {name: case 3, input: [[2,2]], expected: 0}
+
+- id: nc-kth-largest-element
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
+  title: Kth Largest Element in an Array
+  difficulty: medium
+  pattern: heap
+  category: Heap / Priority Queue
+  lists: [neetcode150]
+  func_name: find_kth_largest
+  prompt: |
+    Kth Largest Element in an Array
+
+    Given an integer array and an integer k, return the k-th largest element
+    (1-indexed, so k=1 is the maximum). You may not sort the entire array.
+
+    Examples:
+      find_kth_largest([3,2,1,5,6,4], 2) -> 5
+      find_kth_largest([3,2,3,1,2,4,5,5,6], 4) -> 4
+  starter: |
+    def find_kth_largest(nums, k):
+        pass  # write your solution; delete this line
+  solution: |
+    import heapq
+
+    def find_kth_largest(nums, k):
+        heap = []
+        for n in nums:
+            heapq.heappush(heap, n)
+            if len(heap) > k:
+                heapq.heappop(heap)
+        return heap[0]
+  tests:
+    - {name: case 1, input: [[3,2,1,5,6,4], 2], expected: 5}
+    - {name: case 2, input: [[3,2,3,1,2,4,5,5,6], 4], expected: 4}
+    - {name: case 3, input: [[1], 1], expected: 1}
+
+- id: nc-task-scheduler
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Task Scheduler
+  difficulty: medium
+  pattern: heap
+  category: Heap / Priority Queue
+  lists: [neetcode150]
+  func_name: least_interval
+  prompt: |
+    Task Scheduler
+
+    Given a list of tasks (uppercase letters) and a non-negative integer n
+    representing the cooldown between two executions of the same task, return
+    the minimum number of CPU intervals needed to finish all tasks.
+    During a cooldown period you may execute a different task or stay idle.
+
+    Examples:
+      least_interval(["A","A","A","B","B","B"], 2) -> 8
+      least_interval(["A","A","A","B","B","B"], 0) -> 6
+  starter: |
+    def least_interval(tasks, n):
+        pass  # write your solution; delete this line
+  solution: |
+    from collections import Counter
+
+    def least_interval(tasks, n):
+        counts = Counter(tasks)
+        max_count = max(counts.values())
+        num_max = sum(1 for v in counts.values() if v == max_count)
+        return max(len(tasks), (max_count - 1) * (n + 1) + num_max)
+  tests:
+    - {name: case 1, input: [["A","A","A","B","B","B"], 2], expected: 8}
+    - {name: case 2, input: [["A","A","A","B","B","B"], 0], expected: 6}
+    - {name: case 3, input: [["A","A","A","A","A","A","B","C","D","E","F","G"], 2], expected: 16}
+
+- id: nc-k-closest-points
+  time_complexity: "O(n log n)"
+  space_complexity: "O(n)"
+  title: K Closest Points to Origin
+  difficulty: medium
+  pattern: heap
+  category: Heap / Priority Queue
+  lists: [neetcode150]
+  func_name: k_closest
+  prompt: |
+    K Closest Points to Origin
+
+    Given a list of points on a 2-D plane and an integer k, return the k closest
+    points to the origin (0, 0). Use distance squared (x^2 + y^2) — do NOT use
+    square roots or floats.
+
+    Return the result sorted ascending by (distance_squared, x, y) so the output
+    is fully deterministic.
+
+    Examples:
+      k_closest([[1,3],[-2,2]], 1) -> [[-2,2]]
+      k_closest([[3,3],[5,-1],[-2,4]], 2) -> [[3,3],[-2,4]]
+  starter: |
+    def k_closest(points, k):
+        pass  # write your solution; delete this line
+  solution: |
+    import heapq
+
+    def k_closest(points, k):
+        heap = []
+        for x, y in points:
+            dist2 = x * x + y * y
+            heapq.heappush(heap, (dist2, x, y))
+        result = []
+        for _ in range(k):
+            dist2, x, y = heapq.heappop(heap)
+            result.append([x, y])
+        return result
+  tests:
+    - {name: case 1, input: [[[1,3],[-2,2]], 1], expected: [[-2,2]]}
+    - {name: case 2, input: [[[3,3],[5,-1],[-2,4]], 2], expected: [[3,3],[-2,4]]}
+    - {name: case 3, input: [[[0,1],[1,0]], 2], expected: [[0,1],[1,0]]}

@@ -1,0 +1,165 @@
+# Canonical NeetCode 150 — Math & Bit Manipulation (original prompts, own solutions).
+# Credit: problem list/edge-cases referenced from NeetCode-150 repos (used w/ permission).
+- id: nc-single-number
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Single Number
+  difficulty: easy
+  pattern: bit
+  category: Math & Bit
+  lists: [neetcode150]
+  func_name: single_number
+  prompt: |
+    Single Number
+
+    Given a non-empty array of integers where every element appears exactly twice
+    except for one, return that single element. Your solution must run in O(n) time
+    using O(1) extra space.
+
+    Examples:
+      single_number([2,2,1]) -> 1
+      single_number([4,1,2,1,2]) -> 4
+  starter: |
+    def single_number(nums):
+        pass  # write your solution; delete this line
+  solution: |
+    def single_number(nums):
+        result = 0
+        for n in nums:
+            result ^= n
+        return result
+  tests:
+    - {name: case 1, input: [[2,2,1]], expected: 1}
+    - {name: case 2, input: [[4,1,2,1,2]], expected: 4}
+    - {name: case 3, input: [[1]], expected: 1}
+
+- id: nc-number-of-1-bits
+  time_complexity: "O(log n)"
+  space_complexity: "O(1)"
+  title: Number of 1 Bits
+  difficulty: easy
+  pattern: bit
+  category: Math & Bit
+  lists: [neetcode150, blind75]
+  func_name: hamming_weight
+  prompt: |
+    Number of 1 Bits
+
+    Given a non-negative integer n, return the number of set bits (1s) in its
+    binary representation (also known as the Hamming weight).
+
+    Examples:
+      hamming_weight(11) -> 3
+      hamming_weight(128) -> 1
+  starter: |
+    def hamming_weight(n):
+        pass  # write your solution; delete this line
+  solution: |
+    def hamming_weight(n):
+        count = 0
+        while n:
+            count += n & 1
+            n >>= 1
+        return count
+  tests:
+    - {name: case 1, input: [11], expected: 3}
+    - {name: case 2, input: [128], expected: 1}
+    - {name: case 3, input: [0], expected: 0}
+
+- id: nc-counting-bits
+  time_complexity: "O(n)"
+  space_complexity: "O(n)"
+  title: Counting Bits
+  difficulty: easy
+  pattern: bit
+  category: Math & Bit
+  lists: [neetcode150, blind75]
+  func_name: counting_bits
+  prompt: |
+    Counting Bits
+
+    Given a non-negative integer n, return a list of length n+1 where result[i]
+    is the number of set bits in i, for every i from 0 to n inclusive.
+
+    Examples:
+      counting_bits(5) -> [0,1,1,2,1,2]
+      counting_bits(2) -> [0,1,1]
+  starter: |
+    def counting_bits(n):
+        pass  # write your solution; delete this line
+  solution: |
+    def counting_bits(n):
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i >> 1] + (i & 1)
+        return dp
+  tests:
+    - {name: case 1, input: [5], expected: [0,1,1,2,1,2]}
+    - {name: case 2, input: [2], expected: [0,1,1]}
+    - {name: case 3, input: [0], expected: [0]}
+
+- id: nc-missing-number
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Missing Number
+  difficulty: easy
+  pattern: bit
+  category: Math & Bit
+  lists: [neetcode150, blind75]
+  func_name: missing_number
+  prompt: |
+    Missing Number
+
+    Given an array of n distinct integers drawn from the range 0 to n, return
+    the one number in that range that is missing from the array.
+
+    Examples:
+      missing_number([3,0,1]) -> 2
+      missing_number([0,1]) -> 2
+  starter: |
+    def missing_number(nums):
+        pass  # write your solution; delete this line
+  solution: |
+    def missing_number(nums):
+        n = len(nums)
+        expected = n * (n + 1) // 2
+        return expected - sum(nums)
+  tests:
+    - {name: case 1, input: [[3,0,1]], expected: 2}
+    - {name: case 2, input: [[0,1]], expected: 2}
+    - {name: case 3, input: [[9,6,4,2,3,5,7,0,1]], expected: 8}
+
+- id: nc-reverse-integer
+  time_complexity: "O(log n)"
+  space_complexity: "O(log n)"
+  title: Reverse Integer
+  difficulty: medium
+  pattern: bit
+  category: Math & Bit
+  lists: [neetcode150]
+  func_name: reverse_integer
+  prompt: |
+    Reverse Integer
+
+    Given a signed 32-bit integer x, return x with its digits reversed. If the
+    reversed value overflows the range [-2^31, 2^31 - 1], return 0 instead.
+
+    Examples:
+      reverse_integer(123) -> 321
+      reverse_integer(-123) -> -321
+  starter: |
+    def reverse_integer(x):
+        pass  # write your solution; delete this line
+  solution: |
+    def reverse_integer(x):
+        INT_MIN, INT_MAX = -(2 ** 31), 2 ** 31 - 1
+        sign = -1 if x < 0 else 1
+        digits = str(abs(x))[::-1]
+        result = sign * int(digits)
+        if result < INT_MIN or result > INT_MAX:
+            return 0
+        return result
+  tests:
+    - {name: case 1, input: [123], expected: 321}
+    - {name: case 2, input: [-123], expected: -321}
+    - {name: case 3, input: [120], expected: 21}

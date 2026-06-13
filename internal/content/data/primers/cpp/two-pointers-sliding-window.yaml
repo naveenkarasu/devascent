@@ -1,0 +1,130 @@
+- category: 'Two Pointers & Sliding Window'
+  lang: cpp
+  title: Two Pointers & Sliding Window — C++ refresher
+  summary: |
+    Two pointers and sliding window are O(n) techniques for array/string problems
+    that would otherwise be O(n^2) with nested loops.
+
+    Two pointers: place one pointer at each end (or one per array) and move them
+    inward based on a condition. Classic uses: sorted pair sum, palindrome check,
+    merging two sorted arrays.
+
+    Sliding window: maintain a window [left, right] that expands right and shrinks
+    left to satisfy a constraint. Classic uses: longest substring without repeats,
+    minimum window substring, max subarray of size k.
+
+    C++ notes:
+      - Use int indices, not iterators, for easy arithmetic.
+      - unordered_map<char,int> or int[128] for character frequency inside a window.
+      - Cast v.size() to int before subtraction to avoid unsigned underflow.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'two-pointer setup on one array'
+          code: 'int lo = 0, hi = (int)v.size() - 1;'
+        - label: 'two-pointer setup on two arrays'
+          code: 'int i = 0, j = 0;'
+        - label: 'sliding window pointers'
+          code: 'int left = 0, right = 0;'
+        - label: 'character frequency map for window'
+          code: 'unordered_map<char, int> window;'
+    - title: Basic operations
+      ops:
+        - label: 'add to window (expand right)'
+          code: 'window[s[right]]++;'
+        - label: 'advance right pointer'
+          code: 'right++;'
+        - label: 'shrink left pointer'
+          code: |
+            window[s[left]]--;
+            if (window[s[left]] == 0) window.erase(s[left]);
+            left++;
+        - label: 'window size'
+          code: 'int size = right - left;'
+        - label: 'move left pointer inward'
+          code: 'lo++;'
+        - label: 'move right pointer inward'
+          code: 'hi--;'
+    - title: Iteration & loops
+      ops:
+        - label: 'two-pointer while loop (pair sum in sorted array)'
+          code: |
+            while (lo < hi) {
+                int sum = v[lo] + v[hi];
+                if (sum == target) {
+                    /* found */
+                    break;
+                }
+                else if (sum < target) lo++;
+                else hi--;
+            }
+        - label: 'fixed-size sliding window (window of size k)'
+          code: |
+            for (int i = 0; i < (int)v.size(); i++) {
+                // add v[i] to window
+                if (i >= k) { /* remove v[i-k] from window */ }
+                if (i >= k - 1) { /* record answer */ }
+            }
+        - label: 'variable-size window (longest valid substring)'
+          code: |
+            int left = 0;
+            for (int right = 0; right < (int)s.size(); right++) {
+                window[s[right]]++;
+                while (/* window invalid */) {
+                    window[s[left]]--;
+                    left++;
+                }
+                ans = max(ans, right - left + 1);
+            }
+    - title: Special operations (two pointers & sliding window)
+      ops:
+        - label: 'three-sum: fix one, two-pointer the rest (sorted)'
+          code: |
+            sort(v.begin(), v.end());
+            for (int i = 0; i < (int)v.size() - 2; i++) {
+                int lo = i + 1, hi = (int)v.size() - 1;
+                while (lo < hi) {
+                    /* standard two-pointer */
+                    lo++;
+                    hi--;
+                }
+            }
+        - label: 'container with most water: track max area'
+          code: 'ans = max(ans, min(h[lo], h[hi]) * (hi - lo));'
+        - label: 'longest substring without repeating characters'
+          code: |
+            unordered_set<char> seen;
+            int left = 0, ans = 0;
+            for (int right = 0; right < (int)s.size(); right++) {
+                while (seen.count(s[right])) {
+                    seen.erase(s[left]);
+                    left++;
+                }
+                seen.insert(s[right]);
+                ans = max(ans, right - left + 1);
+            }
+        - label: 'minimum window substring: check if window covers need'
+          code: 'if (formed == required) { /* update answer, shrink left */ }'
+  example: |
+    Worked example — longest substring without repeating characters:
+
+      Maintain a set of characters currently in the window [left, right].
+      Expand right freely; when s[right] is already in the set, shrink from
+      the left until it is removed. Track the maximum window width seen.
+
+        int lengthOfLongestSubstring(const string& s) {
+            unordered_set<char> seen;
+            int left = 0, ans = 0;
+            for (int right = 0; right < (int)s.size(); right++) {
+                while (seen.count(s[right])) {
+                    seen.erase(s[left]);
+                    left++;
+                }
+                seen.insert(s[right]);
+                ans = max(ans, right - left + 1);
+            }
+            return ans;
+        }
+
+    Takeaway: the sliding window shrinks only as much as needed — each character
+    enters and leaves the window at most once, giving O(n) total work.

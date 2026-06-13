@@ -1,0 +1,150 @@
+- category: 'Linked List'
+  lang: csharp
+  title: 'Linked List — C# refresher'
+  summary: |
+    A linked list is a chain of nodes where each node holds a value and a pointer to
+    the next node. Unlike arrays there is no O(1) index access — traversal is O(n).
+    Insertions and deletions are O(1) once you have a pointer to the right node.
+
+    Classic techniques: dummy head node (simplifies edge cases at the front), fast/slow
+    pointer (detect cycles, find middle), reverse in-place, and merge two sorted lists.
+
+    C# notes:
+      - Define your own ListNode: class ListNode { public int val; public ListNode next; }
+      - C# also has LinkedList<T> in System.Collections.Generic, but interview problems
+        expect the raw node approach above.
+      - Always check node != null before accessing node.next or node.val.
+      - A dummy head (new ListNode(0)) removes the need for special-case null checks.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'linked list node class'
+          code: |
+            class ListNode
+            {
+                public int val;
+                public ListNode next;
+                public ListNode(int v) { val = v; }
+            }
+        - label: 'dummy head (avoids null checks at the front)'
+          code: |
+            var dummy = new ListNode(0);
+            dummy.next = head;
+        - label: 'fast and slow pointer setup'
+          code: 'ListNode slow = head, fast = head;'
+    - title: Basic operations
+      ops:
+        - label: 'traverse the list'
+          code: |
+            ListNode cur = head;
+            while (cur != null)
+            {
+                cur = cur.next;
+            }
+        - label: 'insert after a node'
+          code: |
+            newNode.next = prev.next;
+            prev.next = newNode;
+        - label: 'delete the node after prev'
+          code: 'prev.next = prev.next.next;'
+        - label: 'advance slow pointer'
+          code: 'slow = slow.next;'
+        - label: 'advance fast pointer'
+          code: 'fast = fast.next.next;'
+    - title: Iteration & loops
+      ops:
+        - label: 'reverse a linked list in-place'
+          code: |
+            ListNode prev = null, cur = head;
+            while (cur != null)
+            {
+                ListNode next = cur.next;
+                cur.next = prev;
+                prev = cur;
+                cur = next;
+            }
+            return prev;  // new head
+        - label: 'find middle (slow/fast — lands on left-middle for even length)'
+          code: |
+            ListNode slow = head, fast = head;
+            while (fast != null && fast.next != null)
+            {
+                slow = slow.next;
+                fast = fast.next.next;
+            }
+            return slow;
+        - label: 'detect cycle (Floyd)'
+          code: |
+            ListNode slow = head, fast = head;
+            while (fast != null && fast.next != null)
+            {
+                slow = slow.next;
+                fast = fast.next.next;
+                if (slow == fast) return true;
+            }
+            return false;
+    - title: Special operations (linked list)
+      ops:
+        - label: 'merge two sorted lists'
+          code: |
+            var dummy = new ListNode(0);
+            var cur = dummy;
+            while (l1 != null && l2 != null)
+            {
+                if (l1.val <= l2.val)
+                {
+                    cur.next = l1;
+                    l1 = l1.next;
+                }
+                else
+                {
+                    cur.next = l2;
+                    l2 = l2.next;
+                }
+                cur = cur.next;
+            }
+            cur.next = l1 ?? l2;
+            return dummy.next;
+        - label: 'remove n-th node from end (two-pointer gap)'
+          code: |
+            var dummy = new ListNode(0);
+            dummy.next = head;
+            ListNode fast = dummy, slow = dummy;
+            for (int i = 0; i <= n; i++) fast = fast.next;
+            while (fast != null)
+            {
+                slow = slow.next;
+                fast = fast.next;
+            }
+            slow.next = slow.next.next;
+            return dummy.next;
+        - label: 'find cycle start (reset one pointer to head after meeting)'
+          code: |
+            // after slow == fast:
+            ListNode ptr = head;
+            while (ptr != slow)
+            {
+                ptr = ptr.next;
+                slow = slow.next;
+            }
+            return ptr;  // cycle start node
+  example: |
+    Worked example — reverse a singly linked list in-place:
+
+      Walk forward with three pointers: prev (what came before), cur (current node),
+      next (saved reference to cur.next before we overwrite it). Flip cur.next to
+      point backwards, then advance all three. When cur is null, prev is the new head.
+
+        ListNode ReverseList(ListNode head) {
+            ListNode prev = null, cur = head;
+            while (cur != null) {
+                ListNode next = cur.next;  // save
+                cur.next = prev;           // flip
+                prev = cur;                // advance
+                cur = next;
+            }
+            return prev;
+        }
+
+    Takeaway: the dummy head and the prev/cur pattern together handle every edge case
+    (empty list, single node, even/odd length) without special-casing.

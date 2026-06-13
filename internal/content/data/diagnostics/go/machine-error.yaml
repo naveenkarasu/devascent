@@ -1,0 +1,104 @@
+# Slot: machine-error (Go variants) — read a small broken Go program and spot the
+# bug. Unlike Python, Go catches many beginner mistakes at COMPILE time; these
+# items teach that distinction (compile error vs runtime panic).
+- id: go_err_index
+  slot: machine-error
+  lang: go
+  order: 3
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    This Go program crashes when you run it:
+
+        nums := []int{10, 20, 30}
+        fmt.Println(nums[3])
+
+    It panics: index out of range [3] with length 3. What's wrong?
+  choices:
+    - text: "Index 3 is past the end — a 3-element slice has valid indexes 0, 1, 2."
+      correct: true
+      feedback: "Right. len(nums) is 3, so the last valid index is 2; nums[3] panics at runtime."
+    - text: "You can't print an int slice element with fmt.Println."
+      correct: false
+      feedback: "Not it — fmt.Println prints ints fine. The crash is the out-of-range index 3."
+    - text: "The slice literal needs a trailing comma after 30."
+      correct: false
+      feedback: "Not it — the literal is valid. Reading nums[3], which doesn't exist, is the bug."
+
+- id: go_err_undef
+  slot: machine-error
+  lang: go
+  order: 3
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    This Go program won't compile:
+
+        total := 0
+        total = total + amout
+
+    The compiler says: undefined: amout. What's wrong?
+  choices:
+    - text: "'amout' was never declared — it's a typo (probably meant 'amount')."
+      correct: true
+      feedback: "Right. Go resolves every name at compile time; an undeclared identifier is a build error, not a runtime surprise."
+    - text: "You can't add two variables in Go."
+      correct: false
+      feedback: "Not it — adding ints is fine. The undeclared name 'amout' is what fails the build."
+    - text: "total must be declared with 'var' before using ':='."
+      correct: false
+      feedback: "Not it — ':=' declares total just fine. The missing declaration of 'amout' is the bug."
+
+- id: go_err_unused
+  slot: machine-error
+  lang: go
+  order: 3
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    This Go program won't compile:
+
+        func main() {
+            count := 5
+            fmt.Println("starting")
+        }
+
+    The compiler says: count declared and not used. Why?
+  choices:
+    - text: "Go rejects any local variable that's declared but never read."
+      correct: true
+      feedback: "Right. Unlike Python, Go treats an unused local variable as a compile error — use it or remove it."
+    - text: "You can't declare a variable above a Println call."
+      correct: false
+      feedback: "Not it — order is fine. The problem is that 'count' is set but never used."
+    - text: "count needs an explicit type like 'var count int = 5'."
+      correct: false
+      feedback: "Not it — ':=' infers int correctly. The issue is that nothing ever reads 'count'."
+
+- id: go_err_type
+  slot: machine-error
+  lang: go
+  order: 3
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    This Go program won't compile:
+
+        var age int = "30"
+        fmt.Println(age + 1)
+
+    The compiler says: cannot use "30" (untyped string constant) as int value. Why?
+  choices:
+    - text: "\"30\" is a string, but age is declared int — Go won't mix the types."
+      correct: true
+      feedback: "Right. Go is statically typed; you'd convert with strconv.Atoi(\"30\") to get an int. The mismatch is caught at compile time."
+    - text: "You can't add 1 to a variable in Go."
+      correct: false
+      feedback: "Not it — age + 1 is valid for an int. The problem is assigning a string to an int."
+    - text: "Println can't take age + 1 as an argument."
+      correct: false
+      feedback: "Not it — Println takes the int fine. The string-to-int assignment is what fails."

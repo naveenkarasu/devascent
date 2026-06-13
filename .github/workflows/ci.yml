@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * *" # nightly safety net for the native gate
+  workflow_dispatch: {} # allow manual runs
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Fast gate: gofmt / vet / build / -short tests ──────────────────────────
+  # Runs the quick bucket only (the slow per-language native round-trips skip
+  # themselves under -short). Fast feedback on every push and PR.
+  fast:
+    name: fast (gofmt, vet, build, -short)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # -short still grades Python through the system interpreter.
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+
+      - name: gofmt
+        # testdata/ holds the bench-corpus player solutions — bare function
+        # snippets with no package clause (the harness wraps them). The go tool
+        # ignores testdata dirs; gofmt walks everything, so exclude explicitly.
+        run: |
+          unformatted=$(gofmt -l $(git ls-files '*.go' ':!:**/testdata/**'))
+          if [ -n "$unformatted" ]; then
+            echo "These files need gofmt:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test (short)
+        run: go test ./... -short
+
+  # ── Native gate: full suite across ALL graded languages ────────────────────
+  # Installs every toolchain DevAscent grades in (Go, Python, Node/JS+TS, Java,
+  # .NET/C#, Rust) and runs the FULL suite (no -short) so the per-language native
+  # round-trips actually compile and run real code. Slow (compiles 7 languages),
+  # so it has a longer timeout. Runs on push/PR, nightly, and manually.
+  native-gate:
+    name: native gate (all languages, full suite)
+    runs-on: ubuntu-latest
+    timeout-minutes: 150 # full suite + the 6x267 native solution-corpus gate
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+
+      - name: Set up Node (JavaScript + TypeScript)
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Install TypeScript compiler (tsc)
+        run: npm install -g typescript
+
+      - name: Set up Java (JDK)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up .NET (C#)
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # Prove every toolchain the grader needs is actually on PATH. If any line
+      # fails here, the native gate would silently skip that language — so make
+      # the absence loud and up front.
+      - name: Verify toolchains present
+        run: |
+          set -e
+          echo "Go:";         go version
+          echo "Python:";     python --version
+          echo "Node:";       node --version
+          echo "TypeScript:"; tsc --version
+          echo "Java:";       java -version
+          echo "javac:";      javac -version
+          echo ".NET:";       dotnet --version
+          echo "Rust:";       rustc --version
+          echo "g++:";        g++ --version | head -1
+
+      - name: Build
+        run: go build ./...
+
+      # The full suite — every per-language native round-trip runs for real.
+      - name: Test (full, all languages)
+        run: go test ./... -timeout 120m
+
+      # Surface the per-language scorecard in the logs (t.Log only prints with
+      # -v) so a green run visibly confirms each language was graded, not skipped.
+      - name: Language scorecard (verbose)
+        run: go test ./internal/content/ -run NativeRoundTrip -v -timeout 45m -count=1

@@ -1,0 +1,137 @@
+- category: "Tries"
+  lang: python
+  title: "Tries — Python refresher"
+  summary: |
+    A trie (prefix tree) stores strings by their characters, sharing common
+    prefixes. Each node has children (one per possible next character) and an
+    is_end flag. Insertion and search are O(L) where L is the word length.
+    Reach for tries on "autocomplete", "word search in a grid", "prefix
+    matching", or "count words with a given prefix".
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'TrieNode with dict children'
+          code: |
+            class TrieNode:
+                def __init__(self):
+                    self.children = {}
+                    self.is_end = False
+        - label: 'TrieNode with array children (fixed 26-letter alphabet)'
+          code: |
+            class TrieNode:
+                def __init__(self):
+                    self.children = [None] * 26
+                    self.is_end = False
+        - label: 'Trie root'
+          code: 'root = TrieNode()'
+        - label: 'index for lowercase letter'
+          code: 'idx = ord(c) - ord(''a'')'
+    - title: Basic operations
+      ops:
+        - label: 'walk to a child (dict style)'
+          code: 'node = node.children[c]'
+        - label: 'create child if absent'
+          code: 'node.children.setdefault(c, TrieNode())'
+        - label: 'mark end of word'
+          code: 'node.is_end = True'
+        - label: 'check child exists'
+          code: 'if c not in node.children: return False'
+        - label: 'size of word count at node (extended trie)'
+          code: 'node.count += 1'
+    - title: Most-used built-in methods
+      ops:
+        - label: 'insert a word'
+          code: |
+            node = root
+            for c in word:
+                node = node.children.setdefault(c, TrieNode())
+            node.is_end = True
+        - label: 'search exact word'
+          code: |
+            node = root
+            for c in word:
+                if c not in node.children: return False
+                node = node.children[c]
+            return node.is_end
+        - label: 'prefix / startsWith check'
+          code: |
+            node = root
+            for c in prefix:
+                if c not in node.children: return False
+                node = node.children[c]
+            return True
+    - title: Iteration & loops
+      ops:
+        - label: 'iterate over all words in trie (DFS)'
+          code: |
+            def dfs(node, prefix, results):
+                if node.is_end: results.append(prefix)
+                for c, child in node.children.items():
+                    dfs(child, prefix + c, results)
+        - label: 'autocomplete: collect all completions of a prefix'
+          code: |
+            node = root
+            for c in prefix:
+                if c not in node.children: return []
+                node = node.children[c]
+            results = []
+            dfs(node, prefix, results)
+        - label: 'count total words in trie (DFS accumulator)'
+          code: |
+            def count(node):
+                total = 1 if node.is_end else 0
+                for child in node.children.values():
+                    total += count(child)
+                return total
+    - title: Special operations (tries)
+      ops:
+        - label: 'word search in grid (trie-backed DFS)'
+          code: |
+            def dfs(node, r, c, path):
+                if node.is_end: found.add(path)
+                seen.add((r, c))
+                for dr, dc in dirs:
+                    nr, nc = r+dr, c+dc
+                    ch = board[nr][nc] if in_bounds(nr, nc) else ""
+                    if (nr, nc) not in seen and ch in node.children:
+                        dfs(node.children[ch], nr, nc, path + ch)
+                seen.remove((r, c))
+        - label: 'delete a word (mark is_end = False)'
+          code: |
+            node = root
+            for c in word:
+                if c not in node.children: return
+                node = node.children[c]
+            node.is_end = False
+        - label: 'count words with given prefix'
+          code: |
+            node = root
+            for c in prefix:
+                if c not in node.children: return 0
+                node = node.children[c]
+            return node.count  # requires count field incremented on insert
+  example: |
+    Worked example — Implement Trie (insert / search / startsWith):
+      Use a dict of TrieNode children. Insert walks (or creates) nodes char by
+      char. Search walks and checks is_end. startsWith walks and just confirms
+      every char exists.
+
+        class Trie:
+            def __init__(self):
+                self.root = TrieNode()
+            def insert(self, word):
+                node = self.root
+                for c in word:
+                    if c not in node.children:
+                        node.children[c] = TrieNode()
+                    node = node.children[c]
+                node.is_end = True
+            def search(self, word):
+                node = self.root
+                for c in word:
+                    if c not in node.children: return False
+                    node = node.children[c]
+                return node.is_end
+
+    Takeaway: tries trade memory (one node per char) for O(L) lookups — far
+    faster than scanning a list of strings for prefix queries.

@@ -1,0 +1,66 @@
+id: dicts
+lang: go
+order: 7
+title: Labeled Storage
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A map stores values under named keys:  map[string]int{"coffee": 3, "tea": 2}.
+      Look up a value by key with  menu["tea"].  Reading a missing key returns the
+      zero value (0 for int), so  d[key]++  safely starts a fresh count at 0 then
+      adds 1.  len(d)  is how many keys it holds. A map[string]bool works as a SET
+      — store seen items, then count the distinct ones.
+
+          counts := map[string]int{}
+          counts["a"]++           // {"a": 1}
+          counts["a"]++           // {"a": 2}
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: 'Count the DISTINCT items. Put each into a set (a map), then the answer is how many keys it has.'
+    task:
+      prompt: Return how many distinct items are in the slice ([] → 0).
+      func_name: unique_count
+      starter: |
+        func unique_count(items []string) int {
+            // hint: seen := map[string]bool{}; for _, it := range items { seen[it] = true }; return len(seen)
+        }
+      solution: |
+        func unique_count(items []string) int {
+            seen := map[string]bool{}
+            for _, it := range items {
+                seen[it] = true
+            }
+            return len(seen)
+        }
+      tests:
+        - {name: 'unique_count([a,b,a])', input: [["a", "b", "a"]], expected: 2}
+        - {name: 'unique_count([x])', input: [["x"]], expected: 1}
+        - {name: 'unique_count([])', input: [[]], expected: 0}
+  - kind: you_do
+    title: You do — solo
+    body: 'Tally each character with a map, and return the highest count (the most frequent character''s count). "" → 0.'
+    task:
+      prompt: Return the count of the most frequent character in word ("" → 0).
+      func_name: top_count
+      starter: |
+        func top_count(word string) int {
+            // <- counts := map[string]int{}; for each char: counts[c]++ and track the max
+        }
+      solution: |
+        func top_count(word string) int {
+            counts := map[string]int{}
+            best := 0
+            for _, c := range word {
+                k := string(c)
+                counts[k]++
+                if counts[k] > best {
+                    best = counts[k]
+                }
+            }
+            return best
+        }
+      tests:
+        - {name: 'top_count(aab)', input: ["aab"], expected: 2}
+        - {name: 'top_count(abc)', input: ["abc"], expected: 1}
+        - {name: 'top_count(empty)', input: [""], expected: 0}

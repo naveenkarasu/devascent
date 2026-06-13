@@ -1,0 +1,131 @@
+- category: 'Arrays & Hashing'
+  lang: go
+  title: 'Arrays & Hashing — Go refresher'
+  summary: |
+    Arrays and hash maps are the workhorses of most interview problems. In Go the
+    everyday sequence type is a slice ([]T), not a fixed-length array. Slices are
+    backed by arrays but grow dynamically with append. The built-in map type gives
+    you O(1) average insert and lookup.
+
+    Key Go facts for this pattern:
+      - Declare a slice with var s []int or a literal []int{1,2,3}.
+      - make([]int, n) gives you a zero-filled slice of length n.
+      - make(map[string]int) allocates a ready-to-use map.
+      - Go has no built-in Set — use map[T]bool (or map[T]struct{}) instead.
+      - Iterating a map gives keys in random order; sort keys explicitly if you need order.
+      - len(s) and len(m) work on both slices and maps.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'empty slice (nil)'
+          code: 'var s []int'
+        - label: 'slice with length n, zeroed'
+          code: 's := make([]int, n)'
+        - label: 'slice literal'
+          code: 's := []int{1, 2, 3}'
+        - label: 'empty map'
+          code: 'm := make(map[string]int)'
+        - label: 'map literal'
+          code: 'm := map[string]int{"a": 1, "b": 2}'
+        - label: 'set (map[T]bool)'
+          code: 'seen := make(map[string]bool)'
+    - title: Basic operations
+      ops:
+        - label: 'append to slice'
+          code: 's = append(s, 42)'
+        - label: 'read by index'
+          code: 'v := s[i]'
+        - label: 'write by index'
+          code: 's[i] = 99'
+        - label: 'slice a sub-range [lo, hi)'
+          code: 'sub := s[lo:hi]'
+        - label: 'insert into map'
+          code: 'm["key"] = 7'
+        - label: 'read with zero default if absent'
+          code: 'v := m["key"]'
+        - label: 'check existence'
+          code: |
+            v, ok := m["key"]
+            // ok is false if absent
+        - label: 'delete from map'
+          code: 'delete(m, "key")'
+    - title: Most-used built-in functions
+      ops:
+        - label: 'length of slice'
+          code: 'n := len(s)'
+        - label: 'length of map'
+          code: 'n := len(m)'
+        - label: 'capacity of slice'
+          code: 'c := cap(s)'
+        - label: 'copy slice (deep)'
+          code: |
+            dst := make([]int, len(src))
+            copy(dst, src)
+        - label: 'sort ints in place'
+          code: 'sort.Ints(s)'
+        - label: 'sort with custom comparator'
+          code: 'sort.Slice(s, func(i, j int) bool { return s[i] < s[j] })'
+    - title: Iteration & loops
+      ops:
+        - label: 'range over slice (index + value)'
+          code: |
+            for i, v := range s {
+                _ = i
+                _ = v
+            }
+        - label: 'range over slice (index only)'
+          code: 'for i := range s { ... }'
+        - label: 'range over map'
+          code: |
+            for k, v := range m {
+                _ = k
+                _ = v
+            }
+        - label: 'classic index loop'
+          code: 'for i := 0; i < len(s); i++ { ... }'
+    - title: Special operations (Arrays & Hashing)
+      ops:
+        - label: 'frequency count'
+          code: |
+            freq := make(map[int]int)
+            for _, v := range s {
+                freq[v]++
+            }
+        - label: 'two-sum: find pair that sums to target'
+          code: |
+            seen := make(map[int]int)
+            for i, v := range s {
+                if j, ok := seen[target-v]; ok {
+                    return []int{j, i}
+                }
+                seen[v] = i
+            }
+        - label: 'deduplicate into a set then collect keys'
+          code: |
+            set := make(map[int]bool)
+            for _, v := range s {
+                set[v] = true
+            }
+        - label: 'group strings by sorted key (anagram groups)'
+          code: 'groups := make(map[string][]string)'
+  example: |
+    Worked example — two-sum: return indices of two numbers that add to target.
+
+      Build a hash map as you scan. For each number v at index i, check whether
+      (target - v) was already seen. If yes, you have your pair. If no, record v
+      so future elements can find it. One pass, O(n) time, O(n) space.
+
+        func twoSum(nums []int, target int) []int {
+            seen := make(map[int]int) // value -> index
+            for i, v := range nums {
+                if j, ok := seen[target-v]; ok {
+                    return []int{j, i}
+                }
+                seen[v] = i
+            }
+            return nil
+        }
+
+    Takeaway: a map[int]int trading space for time is the classic hash-map move.
+    Go maps return the zero value (0, false) safely — always use the two-value
+    form (v, ok) when you need to distinguish "absent" from "stored zero".

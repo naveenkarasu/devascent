@@ -1,0 +1,28 @@
+lang: python
+group: Positioning & Domains
+title: "Python Positioning — where Python wins and why"
+tag: C
+summary: |
+  Python is the dominant language for data science, machine learning, and AI —
+  NumPy, pandas, PyTorch, TensorFlow, and scikit-learn are all Python-first.
+  It is also the go-to language for scripting and automation, web backends
+  (Django, Flask, FastAPI), and education.
+
+  Python's value proposition is expressiveness and ecosystem breadth over raw
+  runtime speed. The language prioritises readability ("beautiful is better than
+  ugly") and developer velocity over micro-optimisation.
+
+  CPython is the reference implementation; the Global Interpreter Lock (GIL) is a
+  defining constraint for CPU-bound parallelism (see the GIL topic). Python's
+  "batteries-included" standard library and the vast PyPI package index mean most
+  practical tasks have first-class library support with zero custom infrastructure.
+
+  Key domains at a glance:
+  - Data science / ML / AI: NumPy, pandas, PyTorch, scikit-learn, Jupyter
+  - Web backends: Django (full-featured), Flask (micro), FastAPI (async + Pydantic)
+  - Scripting and automation: shell replacement, CI glue, infrastructure tooling
+  - Education: readable syntax, interactive REPL, broad library coverage
+
+  Understanding where Python shines (I/O-bound servers, data pipelines, ML research)
+  versus where it struggles (CPU-intensive loops, latency-critical hot paths) informs
+  every architectural decision a Python developer makes.

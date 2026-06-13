@@ -1,0 +1,269 @@
+lang: java
+group: OOP
+title: "OOP — interfaces, abstract classes, polymorphism & access control"
+tag: E
+summary: |
+  Java's object model is class-based and single-inheritance for classes (a class can
+  extend exactly one other class), but a class can implement unlimited interfaces.
+  The four pillars — encapsulation, abstraction, inheritance, polymorphism — are
+  enforced by access modifiers (private, package-private, protected, public), abstract
+  classes, and interfaces.
+
+  Java 8+ interfaces can carry default and static methods, blurring the classical
+  abstract-class / interface boundary. Key design decision:
+  - abstract class: can hold instance state and concrete methods; a class can extend
+    only one. Use when sharing state or protected helper logic among related types.
+  - interface: a pure contract (plus default/static methods); a class can implement
+    many. Prefer interfaces as types wherever possible (Effective Java principle).
+
+  Method dispatch is virtual by default — all non-static, non-private, non-final
+  methods are overridable and resolved at runtime by the actual object type.
+
+  Gotchas:
+  - Forgetting @Override means a typo silently creates a new overload instead of
+    overriding the intended method. Always annotate.
+  - static methods on interfaces are NOT inherited by implementing classes or
+    sub-interfaces — they must be called on the interface type directly.
+  - protected in Java is wider than most expect: it is visible to all classes in the
+    same package AND to subclasses in other packages.
+  - Default method diamond conflict: if two interfaces declare the same default method
+    signature, an implementing class must override and resolve the conflict explicitly
+    using InterfaceA.super.methodName().
+exercises:
+  - prompt: |
+      Refactor the class hierarchy below. Currently Animal is an abstract class with
+      a name field and a speak() method. Extract a Speakable interface with speak(),
+      keep a AbstractAnimal base for shared name state, then add a Robot type that
+      implements Speakable but does NOT extend AbstractAnimal (robots have no name).
+      Verify that a List<Speakable> can hold all three types and call speak() without
+      any cast.
+    kind: implement
+    broken_code: |
+      import java.util.*;
+
+      abstract class Animal {
+          protected String name;
+          Animal(String name) { this.name = name; }
+          abstract String speak();
+      }
+
+      class Dog extends Animal {
+          Dog(String name) { super(name); }
+          @Override public String speak() { return name + " says Woof"; }
+      }
+
+      class Cat extends Animal {
+          Cat(String name) { super(name); }
+          @Override public String speak() { return name + " says Meow"; }
+      }
+
+      public class Main {
+          public static void main(String[] args) {
+              // TODO: a Robot has no name and cannot extend Animal — extract a
+              // Speakable interface so a List<Speakable> can hold Dog, Cat, and Robot.
+              List<Animal> things = List.of(new Dog("Rex"), new Cat("Whiskers"));
+              things.forEach(s -> System.out.println(s.speak()));
+          }
+      }
+    fixed_code: |
+      import java.util.*;
+
+      interface Speakable {
+          String speak();
+      }
+
+      abstract class AbstractAnimal implements Speakable {
+          protected final String name;
+          AbstractAnimal(String name) { this.name = name; }
+      }
+
+      class Dog extends AbstractAnimal {
+          Dog(String name) { super(name); }
+          @Override public String speak() { return name + " says Woof"; }
+      }
+
+      class Cat extends AbstractAnimal {
+          Cat(String name) { super(name); }
+          @Override public String speak() { return name + " says Meow"; }
+      }
+
+      class Robot implements Speakable {
+          @Override public String speak() { return "Beep boop"; }
+      }
+
+      public class Main {
+          public static void main(String[] args) {
+              List<Speakable> things = List.of(new Dog("Rex"), new Cat("Whiskers"), new Robot());
+              things.forEach(s -> System.out.println(s.speak()));
+          }
+      }
+    bug: |
+      The original design conflates "has shared name state" with "is a Speakable type".
+      Robot cannot extend Animal because it has no name — proving the original abstract
+      class was too wide. Extracting the interface lets unrelated types participate in
+      the Speakable contract without inheriting unnecessary state.
+    check: stdout
+    signal: "Rex says Woof\nWhiskers says Meow\nBeep boop"
+
+  - prompt: |
+      The code below casts a Shape reference to Circle before calling area(). Fix it
+      so the overridden area() is called through the Shape reference (runtime
+      polymorphism, no cast). Then add a Square class and verify no instanceof check
+      is needed anywhere.
+    kind: fix-it
+    broken_code: |
+      class Shape {
+          double area() { return 0; }
+      }
+
+      class Circle extends Shape {
+          double radius;
+          Circle(double r) { this.radius = r; }
+          @Override double area() { return Math.PI * radius * radius; }
+      }
+
+      public class Main {
+          public static void printArea(Shape s) {
+              // unnecessary cast defeats polymorphism
+              System.out.println(((Circle) s).area());
+          }
+      }
+    fixed_code: |
+      class Shape {
+          double area() { return 0; }
+      }
+
+      class Circle extends Shape {
+          double radius;
+          Circle(double r) { this.radius = r; }
+          @Override double area() { return Math.PI * radius * radius; }
+      }
+
+      class Square extends Shape {
+          double side;
+          Square(double s) { this.side = s; }
+          @Override double area() { return side * side; }
+      }
+
+      public class Main {
+          public static void printArea(Shape s) {
+              System.out.println(s.area());   // virtual dispatch — no cast needed
+          }
+
+          public static void main(String[] args) {
+              printArea(new Circle(3));
+              printArea(new Square(4));
+          }
+      }
+    bug: |
+      The cast (Circle) s hard-codes the concrete type, making printArea useless for
+      any other Shape subclass and throwing ClassCastException at runtime if the shape
+      is not a Circle. Virtual dispatch means s.area() already calls the right
+      overridden method — remove the cast entirely.
+    check: stdout
+    signal: "28.274333882308138\n16.0"
+
+  - prompt: |
+      The BankAccount class below leaks its internal state through a public field.
+      Encapsulate it: make balance private, add a getBalance() getter, a deposit()
+      method (rejects negative amounts), and a withdraw() method (rejects overdraft).
+      A provided unit test must still compile and pass.
+    kind: fix-it
+    broken_code: |
+      public class Main {
+          static class BankAccount {
+              public double balance;   // mutable public field — encapsulation broken
+
+              BankAccount(double initial) {
+                  this.balance = initial;
+              }
+          }
+
+          public static void main(String[] args) {
+              BankAccount account = new BankAccount(100);
+              // TODO: make balance private; route mutations through deposit()/withdraw().
+              account.balance += 50;   // direct mutation bypasses all invariants
+              System.out.println(account.balance);
+          }
+      }
+    fixed_code: |
+      public class Main {
+          static class BankAccount {
+              private double balance;
+
+              BankAccount(double initial) {
+                  if (initial < 0) throw new IllegalArgumentException("Initial balance cannot be negative");
+                  this.balance = initial;
+              }
+
+              public double getBalance() { return balance; }
+
+              public void deposit(double amount) {
+                  if (amount <= 0) throw new IllegalArgumentException("Deposit must be positive");
+                  balance += amount;
+              }
+
+              public void withdraw(double amount) {
+                  if (amount <= 0) throw new IllegalArgumentException("Withdrawal must be positive");
+                  if (amount > balance) throw new IllegalStateException("Insufficient funds");
+                  balance -= amount;
+              }
+          }
+
+          public static void main(String[] args) {
+              BankAccount account = new BankAccount(100);
+              account.deposit(50);
+              System.out.println(account.getBalance());
+          }
+      }
+    bug: |
+      A public mutable field means any caller can set balance to any value, including
+      negative, bypassing all invariants. Making the field private forces all mutations
+      through deposit/withdraw, where validation can be enforced. Note: if balance were
+      a mutable object (e.g., a List), returning it directly from the getter would
+      still break encapsulation — defensive copying would be required there too.
+    check: stdout
+    signal: "150.0"
+
+  - prompt: |
+      Two interfaces both declare default String describe(). The class below fails to
+      compile because Java cannot choose between them. Resolve the conflict by
+      overriding describe() in the implementing class and delegating to Printable's
+      version using the qualified super syntax.
+    kind: fix-it
+    broken_code: |
+      interface Printable {
+          default String describe() { return "Printable"; }
+      }
+
+      interface Serializable {
+          default String describe() { return "Serializable"; }
+      }
+
+      // Compile error: inherits unrelated defaults for describe()
+      class Document implements Printable, Serializable {
+      }
+    fixed_code: |
+      interface Printable {
+          default String describe() { return "Printable"; }
+      }
+
+      interface Serializable {
+          default String describe() { return "Serializable"; }
+      }
+
+      class Document implements Printable, Serializable {
+          @Override
+          public String describe() {
+              // Must explicitly choose — bare super.describe() is a compile error
+              return Printable.super.describe();
+          }
+      }
+    bug: |
+      When two interfaces provide a default implementation for the same method
+      signature, the compiler cannot resolve the ambiguity and reports an error. The
+      implementing class must override the method. To delegate to a specific interface's
+      default, use the qualified form InterfaceName.super.method() — plain super alone
+      is insufficient and will not compile.
+    check: compile-error
+    signal: "inherits unrelated defaults"

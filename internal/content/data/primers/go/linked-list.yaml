@@ -1,0 +1,148 @@
+- category: 'Linked List'
+  lang: go
+  title: 'Linked List — Go refresher'
+  summary: |
+    A linked list is a chain of nodes, each holding a value and a pointer to
+    the next node. Go has no built-in linked list for interviews; define the
+    node struct yourself. container/list exists but is rarely used in coding
+    interviews.
+
+    Key patterns:
+      - Dummy/sentinel head node eliminates edge cases at the head.
+      - Fast/slow pointers: slow moves one step, fast moves two — finds the
+        middle or detects a cycle in O(n) with O(1) space.
+      - Reverse in-place by rewiring three pointers: prev, curr, next.
+
+    Go notes:
+      - type ListNode struct { Val int; Next *ListNode }
+      - A nil pointer is a natural list terminator — always check != nil.
+      - Swapping values vs swapping pointers: pointer rewiring is canonical.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'list node type'
+          code: |
+            type ListNode struct {
+                Val  int
+                Next *ListNode
+            }
+        - label: 'create a node'
+          code: 'node := &ListNode{Val: 5}'
+        - label: 'dummy head (avoids nil-head special cases)'
+          code: |
+            dummy := &ListNode{}
+            dummy.Next = head
+        - label: 'two pointers (fast/slow)'
+          code: 'slow, fast := head, head'
+    - title: Basic operations
+      ops:
+        - label: 'advance one step'
+          code: 'curr = curr.Next'
+        - label: 'advance two steps'
+          code: 'fast = fast.Next.Next'
+        - label: 'insert node after curr'
+          code: |
+            node.Next = curr.Next
+            curr.Next = node
+        - label: 'delete node after curr'
+          code: 'curr.Next = curr.Next.Next'
+        - label: 'check end of list'
+          code: 'if curr == nil || curr.Next == nil { ... }'
+    - title: Iteration & loops
+      ops:
+        - label: 'iterate the whole list'
+          code: 'for curr := head; curr != nil; curr = curr.Next { _ = curr.Val }'
+        - label: 'fast/slow pointer to find middle'
+          code: |
+            slow, fast := head, head
+            for fast != nil && fast.Next != nil {
+                slow = slow.Next
+                fast = fast.Next.Next
+            }
+            // slow is middle
+        - label: 'cycle detection (Floyd)'
+          code: |
+            slow, fast := head, head
+            for fast != nil && fast.Next != nil {
+                slow = slow.Next
+                fast = fast.Next.Next
+                if slow == fast {
+                    return true
+                }
+            }
+            return false
+    - title: Special operations (linked list)
+      ops:
+        - label: 'reverse in-place'
+          code: |
+            var prev *ListNode
+            curr := head
+            for curr != nil {
+                next := curr.Next
+                curr.Next = prev
+                prev = curr
+                curr = next
+            }
+            return prev
+        - label: 'merge two sorted lists'
+          code: |
+            dummy := &ListNode{}
+            tail := dummy
+            for l1 != nil && l2 != nil {
+                if l1.Val <= l2.Val {
+                    tail.Next = l1
+                    l1 = l1.Next
+                } else {
+                    tail.Next = l2
+                    l2 = l2.Next
+                }
+                tail = tail.Next
+            }
+            if l1 != nil {
+                tail.Next = l1
+            } else {
+                tail.Next = l2
+            }
+            return dummy.Next
+        - label: 'find start of cycle (Floyd phase 2)'
+          code: |
+            slow = head
+            for slow != fast {
+                slow = slow.Next
+                fast = fast.Next
+            }
+            return slow
+        - label: 'remove n-th from end (two-pass or one-pass with gap)'
+          code: |
+            fast := dummy
+            for i := 0; i <= n; i++ {
+                fast = fast.Next
+            }
+            slow := dummy
+            for fast != nil {
+                slow = slow.Next
+                fast = fast.Next
+            }
+            slow.Next = slow.Next.Next
+  example: |
+    Worked example — reverse a singly linked list in place.
+
+      Keep three pointers: prev (initially nil), curr (starts at head), next.
+      Each step: save next, point curr back to prev, advance both prev and curr.
+      When curr is nil the list is fully reversed and prev is the new head.
+
+        func reverseList(head *ListNode) *ListNode {
+            var prev *ListNode
+            curr := head
+            for curr != nil {
+                next := curr.Next  // save before overwrite
+                curr.Next = prev   // reverse the link
+                prev = curr        // advance prev
+                curr = next        // advance curr
+            }
+            return prev
+        }
+
+    Takeaway: three pointers — prev, curr, next — is the canonical in-place
+    reverse. A dummy head node eliminates nil-check boilerplate at the head of
+    most linked-list problems.

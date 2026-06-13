@@ -1,0 +1,75 @@
+id: read-the-crash
+lang: java
+order: 9
+title: Read the Crash
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      Errors are clues, not failures. At runtime Java throws an exception and
+      prints the type and a line. Common ones: ArrayIndexOutOfBoundsException
+      (an array position that doesn't exist) and ArithmeticException: / by zero.
+      Read the FIRST line of the stack trace. (Many other mistakes — undeclared
+      names, type mismatches — Java catches earlier, at compile time, before it
+      ever runs.)
+
+          long[] s = new long[]{};
+          long x = s[0];  // ArrayIndexOutOfBoundsException: Index 0 out of bounds for length 0
+
+      The fix: check the length before you index.
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: 'Returning items[0] throws on an empty array. Java has no "None", so signal "empty" with -1 instead.'
+    task:
+      prompt: Return the first item, or -1 if the array is empty.
+      func_name: safe_first
+      starter: |
+        class Solution {
+            public long safe_first(long[] items) {
+                // buggy: return items[0];  -- throws when empty
+                // hint: guard first — if (items.length == 0) { return -1; }
+            }
+        }
+      solution: |
+        class Solution {
+            public long safe_first(long[] items) {
+                if (items.length == 0) {
+                    return -1;
+                }
+                return items[0];
+            }
+        }
+      tests:
+        - {name: 'safe_first([5,6])', input: [[5, 6]], expected: 5}
+        - {name: 'safe_first([])', input: [[]], expected: -1}
+        - {name: 'safe_first([7])', input: [[7]], expected: 7}
+  - kind: you_do
+    title: You do — solo
+    body: Dividing by length throws (ArithmeticException) on an empty array. Make empty → 0, otherwise the true average.
+    task:
+      prompt: Return the average of the array; empty array → 0.
+      func_name: average
+      starter: |
+        class Solution {
+            public double average(long[] numbers) {
+                // <- guard the empty case, else  (double) sum / numbers.length
+            }
+        }
+      solution: |
+        class Solution {
+            public double average(long[] numbers) {
+                if (numbers.length == 0) {
+                    return 0;
+                }
+                long s = 0;
+                for (long n : numbers) {
+                    s += n;
+                }
+                return (double) s / numbers.length;
+            }
+        }
+      tests:
+        - {name: 'average([1,2])', input: [[1, 2]], expected: 1.5}
+        - {name: 'average([2,4])', input: [[2, 4]], expected: 3.0}
+        - {name: 'average([])', input: [[]], expected: 0.0}
+        - {name: 'average([10])', input: [[10]], expected: 10.0}

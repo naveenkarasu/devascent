@@ -1,0 +1,76 @@
+id: dicts
+lang: java
+order: 7
+title: Labeled Storage
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A map stores values under named keys. In Java, fully-qualify the type —
+      no imports needed:  java.util.HashMap<String,Long> counts = new java.util.HashMap<>();
+      Read a value with  counts.get(k)  and write with  counts.put(k, v).
+      Use  counts.getOrDefault(k, 0L) + 1  to safely tally (missing key → 0).
+      A java.util.HashSet<String> works as a SET — add items, then call size().
+
+          java.util.HashMap<String,Long> counts = new java.util.HashMap<>();
+          counts.put("a", counts.getOrDefault("a", 0L) + 1);  // {"a": 1}
+          counts.put("a", counts.getOrDefault("a", 0L) + 1);  // {"a": 2}
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: 'Count the DISTINCT items. Put each into a set (a HashSet), then the answer is how many entries it holds.'
+    task:
+      prompt: Return how many distinct items are in the array ([] → 0).
+      func_name: unique_count
+      starter: |
+        class Solution {
+            public long unique_count(String[] items) {
+                // hint: java.util.HashSet<String> seen = new java.util.HashSet<>();
+                //       for (String it : items) { seen.add(it); } return seen.size();
+            }
+        }
+      solution: |
+        class Solution {
+            public long unique_count(String[] items) {
+                java.util.HashSet<String> seen = new java.util.HashSet<>();
+                for (String it : items) {
+                    seen.add(it);
+                }
+                return seen.size();
+            }
+        }
+      tests:
+        - {name: 'unique_count([a,b,a])', input: [["a", "b", "a"]], expected: 2}
+        - {name: 'unique_count([x])', input: [["x"]], expected: 1}
+        - {name: 'unique_count([])', input: [[]], expected: 0}
+  - kind: you_do
+    title: You do — solo
+    body: 'Tally each character with a map, and return the highest count (the most frequent character''s count). "" → 0.'
+    task:
+      prompt: Return the count of the most frequent character in word ("" → 0).
+      func_name: top_count
+      starter: |
+        class Solution {
+            public long top_count(String word) {
+                // <- java.util.HashMap<String,Long> counts; for each char: update count and track best
+            }
+        }
+      solution: |
+        class Solution {
+            public long top_count(String word) {
+                java.util.HashMap<String,Long> counts = new java.util.HashMap<>();
+                long best = 0;
+                for (char c : word.toCharArray()) {
+                    String k = String.valueOf(c);
+                    long v = counts.getOrDefault(k, 0L) + 1;
+                    counts.put(k, v);
+                    if (v > best) {
+                        best = v;
+                    }
+                }
+                return best;
+            }
+        }
+      tests:
+        - {name: 'top_count(aab)', input: ["aab"], expected: 2}
+        - {name: 'top_count(abc)', input: ["abc"], expected: 1}
+        - {name: 'top_count(empty)', input: [""], expected: 0}

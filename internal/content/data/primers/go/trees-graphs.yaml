@@ -1,0 +1,161 @@
+- category: 'Trees & Graphs'
+  lang: go
+  title: 'Trees & Graphs — Go refresher'
+  summary: |
+    Trees are connected acyclic graphs. Binary trees have at most two children per
+    node. Graphs can be directed or undirected, and may contain cycles. Both are
+    typically traversed with DFS (stack / recursion) or BFS (queue).
+
+    Go notes:
+      - Define tree nodes as structs: type TreeNode struct { Val int; Left, Right *TreeNode }.
+      - Graph adjacency list: map[int][]int or [][]int.
+      - BFS queue: use a slice, append to back, slice from front. For performance use
+        a ring buffer or deque, but a slice is fine in interviews.
+      - DFS on a graph: track visited with a map[int]bool or []bool to avoid cycles.
+      - Go has no built-in queue or deque — slice with re-slicing is idiomatic.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'binary tree node'
+          code: |
+            type TreeNode struct {
+                Val   int
+                Left  *TreeNode
+                Right *TreeNode
+            }
+        - label: 'graph as adjacency list (map)'
+          code: 'graph := make(map[int][]int)'
+        - label: 'graph as adjacency list (slice)'
+          code: 'graph := make([][]int, n)'
+        - label: 'BFS queue'
+          code: 'queue := []*TreeNode{root}'
+        - label: 'visited set'
+          code: 'visited := make(map[int]bool)'
+    - title: Basic operations
+      ops:
+        - label: 'add edge (undirected)'
+          code: |
+            graph[u] = append(graph[u], v)
+            graph[v] = append(graph[v], u)
+        - label: 'enqueue'
+          code: 'queue = append(queue, node)'
+        - label: 'dequeue'
+          code: |
+            node := queue[0]
+            queue = queue[1:]
+        - label: 'mark visited'
+          code: 'visited[node] = true'
+        - label: 'check visited'
+          code: 'if visited[node] { continue }'
+    - title: Iteration & loops
+      ops:
+        - label: 'DFS on binary tree (recursive)'
+          code: |
+            func dfs(node *TreeNode) {
+                if node == nil {
+                    return
+                }
+                dfs(node.Left)
+                dfs(node.Right)
+            }
+        - label: 'BFS level-order traversal'
+          code: |
+            for len(queue) > 0 {
+                sz := len(queue)
+                for i := 0; i < sz; i++ {
+                    node := queue[0]
+                    queue = queue[1:]
+                    if node.Left != nil {
+                        queue = append(queue, node.Left)
+                    }
+                    if node.Right != nil {
+                        queue = append(queue, node.Right)
+                    }
+                }
+            }
+        - label: 'DFS on graph (iterative with stack)'
+          code: |
+            stack := []int{src}
+            for len(stack) > 0 {
+                v := stack[len(stack)-1]
+                stack = stack[:len(stack)-1]
+                if visited[v] {
+                    continue
+                }
+                visited[v] = true
+                for _, nb := range graph[v] {
+                    stack = append(stack, nb)
+                }
+            }
+        - label: 'BFS on graph'
+          code: |
+            queue := []int{src}
+            visited[src] = true
+            for len(queue) > 0 {
+                v := queue[0]
+                queue = queue[1:]
+                for _, nb := range graph[v] {
+                    if !visited[nb] {
+                        visited[nb] = true
+                        queue = append(queue, nb)
+                    }
+                }
+            }
+    - title: Special operations (Trees & Graphs)
+      ops:
+        - label: 'tree height (recursive)'
+          code: |
+            func height(n *TreeNode) int {
+                if n == nil {
+                    return 0
+                }
+                return 1 + max(height(n.Left), height(n.Right))
+            }
+        - label: 'inorder traversal (left, root, right)'
+          code: |
+            func inorder(n *TreeNode, res *[]int) {
+                if n == nil {
+                    return
+                }
+                inorder(n.Left, res)
+                *res = append(*res, n.Val)
+                inorder(n.Right, res)
+            }
+        - label: 'detect cycle in undirected graph (DFS)'
+          code: |
+            func hasCycle(v, parent int) bool {
+                visited[v] = true
+                for _, nb := range graph[v] {
+                    if !visited[nb] {
+                        if hasCycle(nb, v) {
+                            return true
+                        }
+                    } else if nb != parent {
+                        return true
+                    }
+                }
+                return false
+            }
+        - label: 'topological sort (Kahn BFS)'
+          code: 'inDeg := make([]int, n);  for u, vs := range graph { for _, v := range vs { inDeg[v]++ } };  queue seed: all inDeg[v]==0 nodes'
+  example: |
+    Worked example — maximum depth of a binary tree.
+
+      Recursively compute the height: the depth of a nil node is 0. The depth
+      of any other node is 1 + max(depth of left, depth of right). The call
+      stack mirrors the tree — O(n) time and O(h) space where h is the height.
+
+        func maxDepth(root *TreeNode) int {
+            if root == nil {
+                return 0
+            }
+            left := maxDepth(root.Left)
+            right := maxDepth(root.Right)
+            if left > right {
+                return 1 + left
+            }
+            return 1 + right
+        }
+
+    Takeaway: almost every binary tree problem follows the same recursive shape —
+    handle nil, recurse left, recurse right, combine. Draw the call tree to see why.

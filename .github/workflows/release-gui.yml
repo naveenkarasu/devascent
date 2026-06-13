@@ -1,0 +1,153 @@
+# Release GUI — the Wails desktop app.
+#
+# The GUI can't ride the TUI's GoReleaser pipeline: Wails needs CGO and the
+# native webview per OS (WebView2 on Windows, WebKitGTK on Linux, Cocoa on
+# macOS), so it builds on a per-OS matrix instead of cross-compiling.
+#
+# Fires on the SAME `v*` tag as the TUI release: GoReleaser (release.yml)
+# creates the GitHub Release with the TUI binaries; this workflow builds the
+# desktop app per OS and uploads its archives onto that same release (with a
+# wait-for-release retry to ride out the race between the two workflows).
+# `workflow_dispatch` runs a dry build that only publishes CI artifacts.
+name: Release GUI
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write # upload assets onto the GitHub Release
+
+jobs:
+  build:
+    name: build (${{ matrix.platform }})
+    strategy:
+      fail-fast: false # one OS failing must not kill the others
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows/amd64
+            slug: windows_amd64
+          - os: macos-latest
+            platform: darwin/universal
+            slug: darwin_universal
+          # ubuntu-22.04 ships webkit2gtk-4.0 (broadest glibc/webkit compat);
+          # 24.04 only has 4.1 and would need -tags webkit2_41.
+          - os: ubuntu-22.04
+            platform: linux/amd64
+            slug: linux_amd64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod # root module's toolchain builds both modules
+          cache: true
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Install WebKitGTK (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+      - name: Install Wails CLI
+        # pinned to go.mod's wails version; retried — module-proxy downloads can
+        # reset mid-stream on runners (seen on macOS: "stream error: INTERNAL_ERROR")
+        shell: bash
+        run: |
+          ok=""
+          for i in 1 2 3; do
+            if go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0; then ok=1; break; fi
+            echo "go install failed (attempt $i) — retrying in 15s…"; sleep 15
+          done
+          [ -n "$ok" ]
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=dev-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+            echo "tag=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build (wails)
+        shell: bash
+        working-directory: devascent-gui
+        # Windows also produces the NSIS installer (makensis ships on the
+        # windows-latest image) — users get both the portable exe and a real
+        # installer with Start-menu entry + uninstaller.
+        run: |
+          EXTRA=""
+          if [[ "${{ runner.os }}" == "Windows" ]]; then EXTRA="-nsis"; fi
+          wails build -platform "${{ matrix.platform }}" $EXTRA -ldflags "-X main.version=v${{ steps.ver.outputs.version }}"
+
+      - name: Package
+        id: pkg
+        shell: bash
+        run: |
+          NAME="devascent-gui_${{ steps.ver.outputs.version }}_${{ matrix.slug }}"
+          mkdir -p dist
+          case "${{ runner.os }}" in
+            Windows)
+              cp LICENSE devascent-gui/build/bin/
+              (cd devascent-gui/build/bin && 7z a "../../../dist/${NAME}.zip" devascent-gui.exe LICENSE > /dev/null)
+              cp devascent-gui/build/bin/devascent-gui-amd64-installer.exe "dist/${NAME}_installer.exe"
+              echo "file=dist/${NAME}.zip" >> "$GITHUB_OUTPUT"
+              ;;
+            macOS)
+              # ditto preserves the .app bundle structure + attributes
+              ditto -c -k --keepParent devascent-gui/build/bin/devascent-gui.app "dist/${NAME}.zip"
+              echo "file=dist/${NAME}.zip" >> "$GITHUB_OUTPUT"
+              ;;
+            Linux)
+              cp LICENSE devascent-gui/build/bin/
+              tar -C devascent-gui/build/bin -czf "dist/${NAME}.tar.gz" devascent-gui LICENSE
+              echo "file=dist/${NAME}.tar.gz" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Checksum
+        shell: bash
+        run: |
+          FILE="${{ steps.pkg.outputs.file }}"
+          cd "$(dirname "$FILE")"
+          BASE="$(basename "$FILE")"
+          if command -v sha256sum > /dev/null; then
+            sha256sum "$BASE" > "${BASE}.sha256"
+          else
+            shasum -a 256 "$BASE" > "${BASE}.sha256"
+          fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: devascent-gui_${{ matrix.slug }}
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Upload to the GitHub Release
+        if: steps.ver.outputs.tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.ver.outputs.tag }}"
+          # GoReleaser (the parallel workflow) creates the release — wait for it.
+          for i in $(seq 1 30); do
+            if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+              break
+            fi
+            echo "release $TAG not created yet — waiting ($i/30)…"
+            sleep 20
+          done
+          gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber

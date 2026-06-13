@@ -1,0 +1,187 @@
+lang: cpp
+group: Undefined Behaviour — UB & Footguns
+title: "Undefined Behaviour — UB & Footguns"
+tag: E
+summary: |
+  What UB is ([C] context): In the C++ standard, certain operations have "undefined
+  behavior" — the standard imposes no requirements on what the compiled program does.
+  This is not an error the runtime catches; it is a contract violation that the compiler
+  assumes never happens. Crucially, the compiler is free to optimize based on the
+  assumption that UB cannot occur, which means UB can silently corrupt data, delete
+  branches, or create security vulnerabilities — and only triggers visible failure
+  intermittently, or only under optimization. "UB means the compiler can do anything,
+  including make demons fly out of your nose."
+
+  Key categories:
+    - Dangling pointer/reference: using a pointer or reference after the object it
+      referred to has been destroyed.
+    - Buffer overflow/underflow: reading or writing outside the bounds of an array or
+      allocated block.
+    - Signed integer overflow: INT_MAX + 1 is UB (unlike unsigned wrap-around, which
+      is defined).
+    - Strict aliasing violation: accessing an object through a pointer of an
+      incompatible type.
+    - Uninitialized reads: reading a variable before writing to it.
+    - Use-after-free / double-free: accessing or freeing memory after it has been freed.
+
+  Detection tools: AddressSanitizer (-fsanitize=address), UBSanitizer
+  (-fsanitize=undefined), ThreadSanitizer (-fsanitize=thread), Valgrind.
+
+  Gotchas:
+    - Compiling with -O0 can hide UB that only manifests under optimization — always
+      test with ASan+UBSan at multiple optimization levels.
+    - Strict aliasing: casting a float* to int* and dereferencing is UB (use memcpy or
+      std::bit_cast from C++20 instead).
+    - nullptr dereference is UB — not guaranteed to crash; a sufficiently clever
+      compiler can assume it never happens and remove the null check.
+    - Accessing std::vector out of bounds via operator[] is UB — use .at() in debug
+      builds; it throws instead.
+exercises:
+  - prompt: |
+      A function writes user input into a fixed-size char buf[64] using strcpy without
+      bounds checking. Write an input that overflows the buffer and run under ASan to
+      observe the report. Then fix using std::string (unbounded) or std::array with an
+      explicit size check.
+    kind: fix-it
+    broken_code: |
+      void store_input(const char* user_input) {
+          char buf[64];
+          std::strcpy(buf, user_input);   // no bounds check — overflow if input > 63 chars
+          std::printf("stored: %s\n", buf);
+      }
+
+      // Trigger: store_input(std::string(128, 'A').c_str());
+      // ASan report: stack-buffer-overflow on write
+    fixed_code: |
+      void store_input(const char* user_input) {
+          // Option A: std::string — no fixed size, no overflow
+          std::string buf(user_input);
+          std::printf("stored: %s\n", buf.c_str());
+      }
+
+      void store_input_bounded(const char* user_input) {
+          // Option B: fixed buffer with explicit bound
+          std::array<char, 64> buf{};
+          std::strncpy(buf.data(), user_input, buf.size() - 1);
+          buf.back() = '\0';   // ensure null termination
+          std::printf("stored: %s\n", buf.data());
+      }
+    bug: |
+      std::strcpy writes bytes until it hits the null terminator of the source, with no
+      regard for the destination size. Writing past buf[63] overflows into adjacent stack
+      memory — this is a classic stack buffer overflow. It can corrupt the return address
+      (exploited in stack-smashing attacks), crash far from the source, or silently
+      corrupt data. ASan reports the exact overflow site. The safe fix is std::string
+      (no size limit) or strncpy with explicit size and null termination.
+    check: none
+    signal: ""
+
+  - prompt: |
+      A Node* is deleted mid-loop and then its ->next pointer is dereferenced on the
+      next iteration. Run under ASan to catch the use-after-free. Fix by reading next
+      before deleting.
+    kind: fix-it
+    broken_code: |
+      struct Node {
+          int value;
+          Node* next;
+      };
+
+      void free_list(Node* head) {
+          while (head) {
+              delete head;          // frees the node
+              head = head->next;    // UB: reads freed memory to get next pointer
+          }
+      }
+    fixed_code: |
+      void free_list(Node* head) {
+          while (head) {
+              Node* next = head->next;   // save next BEFORE deleting
+              delete head;
+              head = next;
+          }
+      }
+    bug: |
+      After delete head, the memory at head is freed — the allocator may overwrite it
+      immediately. Reading head->next after the delete is a use-after-free: the pointer
+      value may have been clobbered, leading to a crash or, worse, silent traversal of
+      garbage. ASan detects the exact use-after-free site. The fix: read next before
+      calling delete, when head is still a valid pointer.
+    check: none
+    signal: ""
+
+  - prompt: |
+      A function computes int a = INT_MAX; int b = a + 1;. Under -O2 the compiler may
+      eliminate a subsequent bounds check (because signed overflow "cannot happen").
+      Compile with -fsanitize=undefined to catch the UB, then fix with unsigned
+      arithmetic or a checked-add.
+    kind: spot-the-bug
+    broken_code: |
+      bool will_overflow(int a, int b) {
+          // BUG: if a + b overflows, the result is UB — the check below is useless
+          // because the compiler can assume a + b > a (no overflow → always true)
+          int sum = a + b;
+          return sum < a;   // optimizer may delete this: sum < a is impossible if no UB
+      }
+
+      void demo() {
+          int x = INT_MAX;
+          int y = 1;
+          std::printf("overflows: %d\n", will_overflow(x, y));
+          // UBSan: runtime error: signed integer overflow: INT_MAX + 1
+      }
+    fixed_code: |
+      bool will_overflow(int a, int b) {
+          // Correct: check before the addition using unsigned arithmetic
+          return b > 0 && a > INT_MAX - b;
+      }
+
+      // Or use __builtin_add_overflow (GCC/Clang):
+      // bool will_overflow(int a, int b) {
+      //     int result;
+      //     return __builtin_add_overflow(a, b, &result);
+      // }
+    bug: |
+      Signed integer overflow is UB in C++ — unlike unsigned overflow, which wraps
+      modulo 2^N (defined behaviour). The compiler is allowed to assume signed overflow
+      never happens, so it can prove sum < a is always false (a + b > a when no
+      overflow) and delete the check entirely. The overflow is detected at runtime by
+      UBSan. The fix: check before the addition, or switch to unsigned arithmetic where
+      overflow is defined.
+    check: none
+    signal: ""
+
+  - prompt: |
+      A function returns const int& to a local variable. The caller stores the reference
+      and reads it. Use ASan/UBSan to observe the stack-use-after-scope report. Fix by
+      returning by value.
+    kind: spot-the-bug
+    broken_code: |
+      const int& compute() {
+          int local = 42;
+          return local;   // warning: reference to local variable returned
+      }
+
+      void caller() {
+          const int& ref = compute();
+          std::printf("%d\n", ref);   // UB: stack frame of compute() is gone
+      }
+    fixed_code: |
+      int compute() {
+          int local = 42;
+          return local;   // value copy — safe
+      }
+
+      void caller() {
+          int val = compute();
+          std::printf("%d\n", val);   // safe: val lives in caller's frame
+      }
+    bug: |
+      local is an automatic variable whose lifetime ends when compute() returns. The
+      returned reference points to freed stack memory; the stack frame may be overwritten
+      by the next function call. The behaviour is undefined — sometimes the value still
+      appears correct (the stack slot hasn't been reused), hiding the bug. ASan reports
+      stack-use-after-scope precisely. Returning by value is the correct fix; the compiler
+      applies NRVO to eliminate the copy where possible.
+    check: none
+    signal: ""

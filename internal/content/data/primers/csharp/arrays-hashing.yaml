@@ -1,0 +1,150 @@
+- category: 'Arrays & Hashing'
+  lang: csharp
+  title: 'Arrays & Hashing — C# refresher'
+  summary: |
+    Arrays and hash maps are the two most-reached-for tools in interview problems. A
+    plain array gives O(1) indexed access; a Dictionary<K,V> gives O(1) average-case
+    lookup, insert, and delete by key.
+
+    The classic hashing pattern: scan the input once, recording counts or positions in
+    a dictionary, then use those records to answer queries in O(1). This turns naive
+    O(n^2) solutions into O(n).
+
+    C# notes:
+      - int[] arr = new int[n]; initializes to zeros.
+      - Dictionary<K,V> is the workhorse; HashSet<T> for membership tests only.
+      - GetValueOrDefault(key, 0) avoids a KeyNotFoundException when incrementing counts.
+      - ContainsKey(k) before [] access; or TryGetValue(k, out var v) in one call.
+      - Array.Sort(arr) sorts in-place; LINQ OrderBy(...) returns a new sequence.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'fixed-size int array (zero-initialized)'
+          code: 'int[] arr = new int[n];'
+        - label: 'array with initializer'
+          code: 'int[] arr = {1, 2, 3};'
+        - label: 'dictionary (key -> value)'
+          code: 'var map = new Dictionary<string, int>();'
+        - label: 'hash set (unique values)'
+          code: 'var set = new HashSet<int>();'
+        - label: 'dynamic list (resizable array)'
+          code: 'var list = new List<int>();'
+    - title: Basic operations
+      ops:
+        - label: 'read by index'
+          code: 'int v = arr[i];'
+        - label: 'write by index'
+          code: 'arr[i] = 42;'
+        - label: 'array length'
+          code: 'int n = arr.Length;'
+        - label: 'dictionary insert / update'
+          code: 'map["key"] = 5;'
+        - label: 'safe count increment (avoids KeyNotFoundException)'
+          code: 'map["k"] = map.GetValueOrDefault("k", 0) + 1;'
+        - label: 'dictionary lookup with TryGetValue'
+          code: |
+            if (map.TryGetValue("k", out var val))
+            {
+                /* use val */
+            }
+        - label: 'set add'
+          code: 'set.Add(x);'
+        - label: 'set membership'
+          code: 'bool found = set.Contains(x);'
+    - title: Most-used built-in functions
+      ops:
+        - label: 'sort array in-place'
+          code: 'Array.Sort(arr);'
+        - label: 'sort descending'
+          code: |
+            Array.Sort(arr);
+            Array.Reverse(arr);
+        - label: 'fill array with a value'
+          code: 'Array.Fill(arr, 0);'
+        - label: 'binary search (array must be sorted)'
+          code: 'int idx = Array.BinarySearch(arr, target);'
+        - label: 'LINQ: max'
+          code: 'int mx = arr.Max();'
+        - label: 'LINQ: min'
+          code: 'int mn = arr.Min();'
+        - label: 'LINQ: sum'
+          code: 'int sm = arr.Sum();'
+    - title: Iteration & loops
+      ops:
+        - label: 'foreach over array'
+          code: |
+            foreach (int x in arr)
+            {
+                // ...
+            }
+        - label: 'indexed for loop'
+          code: |
+            for (int i = 0; i < arr.Length; i++)
+            {
+                // ...
+            }
+        - label: 'iterate dictionary key-value pairs'
+          code: |
+            foreach (var kvp in map)
+            {
+                Console.WriteLine(kvp.Key + " -> " + kvp.Value);
+            }
+        - label: 'iterate only keys'
+          code: |
+            foreach (var k in map.Keys)
+            {
+            }
+        - label: 'iterate only values'
+          code: |
+            foreach (var v in map.Values)
+            {
+            }
+    - title: Special operations (arrays & hashing)
+      ops:
+        - label: 'two-sum: index of complement'
+          code: |
+            var seen = new Dictionary<int, int>();
+            for (int i = 0; i < nums.Length; i++)
+            {
+                int need = target - nums[i];
+                if (seen.ContainsKey(need)) return new[] { seen[need], i };
+                seen[nums[i]] = i;
+            }
+        - label: 'frequency map from an array'
+          code: |
+            var freq = new Dictionary<int, int>();
+            foreach (int x in nums)
+                freq[x] = freq.GetValueOrDefault(x, 0) + 1;
+        - label: 'group items by a key (anagram buckets, etc.)'
+          code: |
+            var groups = new Dictionary<string, List<string>>();
+            foreach (string w in words)
+            {
+                char[] cs = w.ToCharArray();
+                Array.Sort(cs);
+                string key = new string(cs);
+                if (!groups.ContainsKey(key)) groups[key] = new List<string>();
+                groups[key].Add(w);
+            }
+        - label: 'prefix-sum array'
+          code: |
+            int[] prefix = new int[n + 1];
+            for (int i = 0; i < n; i++) prefix[i + 1] = prefix[i] + nums[i];
+  example: |
+    Worked example — find all pairs that sum to a target value:
+
+      Scan left to right. For each number, compute what its partner must be
+      (target - current). If that partner is already in a HashSet, we found a pair.
+      Otherwise record the current number and move on. One pass, O(n).
+
+        bool HasPairWithSum(int[] nums, int target) {
+            var seen = new HashSet<int>();
+            foreach (int x in nums) {
+                if (seen.Contains(target - x)) return true;
+                seen.Add(x);
+            }
+            return false;
+        }
+
+    Takeaway: HashSet.Contains is O(1). Trading a little memory for a hash set turns
+    an O(n^2) nested-loop search into a single O(n) scan.

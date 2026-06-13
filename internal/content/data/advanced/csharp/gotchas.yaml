@@ -1,0 +1,251 @@
+lang: csharp
+group: Gotchas
+title: "C# Gotchas — boxing, deadlocks, nullable surprises, and equality traps"
+tag: E
+summary: |
+  Five named cross-cutting gotchas that catch C# developers regardless of experience
+  level. Each exercise isolates one failure mode.
+
+  1. Value vs reference semantics — struct copy mutations are silently discarded.
+  2. Boxing cost — implicit value-type-to-object conversions allocate and add GC
+     pressure. Common sources: non-generic collections, passing structs through
+     interfaces without constraints, string interpolation with value-type arguments
+     (mitigated by Span-based overloads in .NET 6+/.NET 8).
+  3. Async deadlocks — blocking on a Task from a SynchronizationContext thread.
+  4. Nullable surprises — the ! operator silences the analyser but does not prevent
+     NullReferenceException at runtime; NRT annotations are compile-time only.
+  5. == overloading — string == compares value; object == compares reference; records
+     synthesise == for value equality; boxed int == (as object) compares reference
+     and is always false for separately boxed values.
+
+  Additional traps:
+  - foreach copies the struct element into a read-only iteration variable; a mutating
+    method call on that copy silently discards the mutation. Use ref foreach on spans
+    to mutate in place.
+  - string.Empty and "" are equal by ==; null == string.Empty is false. Use
+    string.IsNullOrEmpty() or pattern matching for robust null/empty checks.
+  - DateTime and other value types passed as object parameters box silently; use
+    interpolated strings ($"{dt}") which have Span-based overloads avoiding boxing.
+exercises:
+  - prompt: |
+      AppendAll appends 10 000 integers to an ArrayList (non-generic) then reads them
+      back. Show that every element is boxed (one heap allocation each). Rewrite using
+      List<int> and verify zero boxing. Explain the fix.
+    kind: fix-it
+    broken_code: |
+      using System.Collections;
+
+      static void AppendAll()
+      {
+          var list = new ArrayList();
+
+          // Each int is boxed to object — 10 000 heap allocations.
+          for (int i = 0; i < 10_000; i++)
+              list.Add(i);
+
+          int sum = 0;
+          foreach (object item in list)
+              sum += (int)item;   // unbox on every read too
+
+          Console.WriteLine($"Sum = {sum}");
+      }
+    fixed_code: |
+      static void AppendAll()
+      {
+          var list = new List<int>();
+
+          // No boxing — List<int> stores ints directly.
+          for (int i = 0; i < 10_000; i++)
+              list.Add(i);
+
+          int sum = 0;
+          foreach (int item in list)
+              sum += item;   // no unboxing — already an int
+
+          Console.WriteLine($"Sum = {sum}");
+      }
+
+      AppendAll();
+    bug: |
+      ArrayList is a pre-generic collection that stores everything as object. Every
+      int added is boxed (value copied to a new heap object); every int read is unboxed
+      (heap object copied back to stack). For 10 000 elements that is 10 000 heap
+      allocations and 10 000 GC-visible objects. The fix is always to use generic
+      collections (List<int>, Dictionary<K,V>, etc.) which store value types directly
+      without boxing.
+    check: stdout
+    signal: "Sum = 49995000"
+
+  - prompt: |
+      Reproduce the classic async deadlock: an async method awaits a Task; the caller
+      blocks with .Result in a SynchronizationContext. Demonstrate the hang and show
+      three correct fixes.
+    kind: spot-the-bug
+    broken_code: |
+      // Simulate a SynchronizationContext that posts continuations to a single thread
+      // (as WPF/WinForms/old ASP.NET do).
+      // In a real WPF app, calling .Result on the UI thread produces this deadlock.
+
+      static async Task<string> GetDataAsync()
+      {
+          // ConfigureAwait(true) (the default) captures the SynchronizationContext.
+          await Task.Delay(100);
+          return "data";
+      }
+
+      static void BlockingCaller()
+      {
+          // .Result blocks the current thread.
+          // The async continuation tries to resume on the same (blocked) thread.
+          // Neither can proceed — deadlock.
+          var result = GetDataAsync().Result;
+          Console.WriteLine(result);
+      }
+    fixed_code: |
+      // Fix A: ConfigureAwait(false) in the library — continuation runs on any thread.
+      static async Task<string> GetDataAsyncFixed()
+      {
+          await Task.Delay(100).ConfigureAwait(false);
+          return "data";
+      }
+
+      // Fix B: async all the way — never block; await in the caller too.
+      static async Task<string> BlockingCallerFixed()
+      {
+          return await GetDataAsync();
+      }
+
+      // Fix C: hop to thread pool to avoid the context (use only when A/B are not
+      // possible, e.g., legacy synchronous entry point).
+      static string LegacyCaller()
+      {
+          return Task.Run(() => GetDataAsync()).Result;
+      }
+
+      // Each of the three fixes yields the same result with no deadlock.
+      Console.WriteLine(await GetDataAsyncFixed());   // Fix A
+      Console.WriteLine(await BlockingCallerFixed()); // Fix B
+      Console.WriteLine(LegacyCaller());              // Fix C
+
+      static async Task<string> GetDataAsync()
+      {
+          await Task.Delay(100);
+          return "data";
+      }
+    bug: |
+      .Result / .Wait() block the current thread. If that thread holds a
+      SynchronizationContext (WPF, WinForms, old ASP.NET), async continuations are
+      posted back to the same context — but the thread is blocked waiting for the Task.
+      Neither side can proceed: deadlock. Fix A (ConfigureAwait(false)) is preferred
+      in library code. Fix B (async all the way) is the correct app-code approach.
+      Fix C (Task.Run) is a last resort for legacy entry points.
+    check: stdout
+    signal: "data\ndata\ndata"
+
+  - prompt: |
+      Predict the output of three equality comparisons and explain which equality
+      model each uses: string ==, record ==, and boxed int ==.
+    kind: spot-the-bug
+    broken_code: |
+      // (1) string: content or reference?
+      string s1 = "hello";
+      string s2 = new string("hello".ToCharArray());
+      Console.WriteLine(s1 == s2);                 // ???
+      Console.WriteLine(ReferenceEquals(s1, s2));  // ???
+
+      // (2) record: value or reference?
+      record Person(string Name, int Age);
+      var p1 = new Person("Alice", 30);
+      var p2 = new Person("Alice", 30);
+      Console.WriteLine(p1 == p2);                 // ???
+      Console.WriteLine(ReferenceEquals(p1, p2));  // ???
+
+      // (3) boxed int: value or reference?
+      object b1 = 42;
+      object b2 = 42;
+      Console.WriteLine(b1 == b2);                 // ???
+    fixed_code: |
+      // (1) string: content equality via overloaded ==; distinct heap objects.
+      string s1 = "hello";
+      string s2 = new string("hello".ToCharArray());
+      Console.WriteLine(s1 == s2);                // True
+      Console.WriteLine(ReferenceEquals(s1, s2)); // False
+
+      // (2) record: synthesised value equality; distinct heap objects.
+      var p1 = new Person("Alice", 30);
+      var p2 = new Person("Alice", 30);
+      Console.WriteLine(p1 == p2);                // True
+      Console.WriteLine(ReferenceEquals(p1, p2)); // False
+
+      // (3) boxed int: object == is reference equality — separate boxes differ.
+      object b1 = 42;
+      object b2 = 42;
+      Console.WriteLine(b1 == b2);                // False
+
+      record Person(string Name, int Age);
+    bug: |
+      string overloads == for content; record synthesises == for value equality;
+      boxed int == (as object) compares reference — surprising and always false for
+      separately boxed values. For boxed value equality, use b1.Equals(b2) or
+      EqualityComparer<object>.Default.Equals(b1, b2).
+    check: stdout
+    signal: "True\nFalse\nTrue\nFalse\nFalse"
+
+  - prompt: |
+      A method is annotated to return a non-nullable string but sometimes returns null
+      at runtime from a legacy (NRT-disabled) library. The caller silences the warning
+      with !. Show that a NullReferenceException still fires and refactor using a
+      proper null guard.
+    kind: fix-it
+    broken_code: |
+      #nullable enable
+
+      // Imagine LegacyLib is compiled without NRT — it can return null despite
+      // the annotation.
+      static class LegacyLib
+      {
+          public static string FindName(int id)
+              => id == 0 ? null! : $"User_{id}";   // null! bypasses NRT in source
+      }
+
+      static void PrintName(int id)
+      {
+          // ! suppresses CS8600 — but does NOT add a runtime null check.
+          string name = LegacyLib.FindName(id)!;
+
+          // NullReferenceException when id == 0 — the ! was a lie.
+          Console.WriteLine(name.ToUpper());
+      }
+
+      PrintName(1);    // OK
+      PrintName(0);    // NullReferenceException
+    fixed_code: |
+      #nullable enable
+
+      PrintName(1);    // USER_1
+      PrintName(0);    // (no name)
+
+      static void PrintName(int id)
+      {
+          // Treat the return as nullable — it really is.
+          string? name = LegacyLib.FindName(id);
+
+          if (name is not null)
+              Console.WriteLine(name.ToUpper());
+          else
+              Console.WriteLine("(no name)");
+      }
+
+      static class LegacyLib
+      {
+          public static string FindName(int id)
+              => id == 0 ? null! : $"User_{id}";
+      }
+    bug: |
+      NRT is a compile-time static-analysis feature only — no runtime enforcement
+      exists. ! (null-forgiving) tells the compiler "I know this is not null" but
+      adds no null check. Code from pre-NRT or NRT-disabled assemblies can return
+      null regardless of annotations. Always treat return values from such libraries
+      as nullable (string?) and guard with is not null, ?., or ?? before use.
+    check: stdout
+    signal: "USER_1\n(no name)"

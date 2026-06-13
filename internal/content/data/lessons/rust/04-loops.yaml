@@ -1,0 +1,61 @@
+id: loops
+lang: rust
+order: 4
+title: Repeat Until Done
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A loop repeats a block.  for i in 1..=n  runs once for each i from 1 up
+      to and including n (the = makes the range inclusive). The *accumulator*
+      pattern: start a variable at 0 (or ""), update it each pass with +=,
+      return it AFTER the loop. Variables that are modified must be declared
+      with let mut.
+
+          fn count_to(n: i64) -> i64 {
+              let mut c = 0;
+              for _i in 1..=n {
+                  c += 1;
+              }
+              c
+          }
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: Add up every whole number from 1 to n (inclusive).
+    task:
+      prompt: Return the sum of 1..n inclusive.
+      func_name: count_up
+      starter: |
+        fn count_up(n: i64) -> i64 {
+            // hint: let mut result = 0; for i in 1..=n { result += i; } result
+        }
+      solution: |
+        fn count_up(n: i64) -> i64 {
+            let mut result = 0;
+            for i in 1..=n {
+                result += i;
+            }
+            result
+        }
+      tests:
+        - {name: 'count_up(5)', input: [5], expected: 15}
+        - {name: 'count_up(1)', input: [1], expected: 1}
+        - {name: 'count_up(10)', input: [10], expected: 55}
+  - kind: you_do
+    title: You do — solo
+    body: 'Build a string this time. Tip: in Rust you can repeat a string with  ch.repeat(times as usize)  — no loop needed, but a loop works too.'
+    task:
+      prompt: Return ch repeated 'times' times. If times is 0, return "".
+      func_name: repeat_char
+      starter: |
+        fn repeat_char(ch: String, times: i64) -> String {
+            // <- ch.repeat(times as usize) gives the answer in one line
+        }
+      solution: |
+        fn repeat_char(ch: String, times: i64) -> String {
+            ch.repeat(times as usize)
+        }
+      tests:
+        - {name: 'repeat_char(a, 3)', input: ["a", 3], expected: "aaa"}
+        - {name: 'repeat_char(x, 0)', input: ["x", 0], expected: ""}
+        - {name: 'repeat_char(*, 5)', input: ["*", 5], expected: "*****"}

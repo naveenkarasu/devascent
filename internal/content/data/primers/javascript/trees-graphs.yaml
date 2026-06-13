@@ -1,0 +1,161 @@
+- category: 'Trees & Graphs'
+  lang: javascript
+  title: 'Trees & Graphs — JavaScript refresher'
+  summary: |
+    Trees are connected acyclic graphs; binary trees add the constraint of at most two
+    children. Graphs extend trees to arbitrary edges and may have cycles.
+
+    Core traversals: DFS (recursive or iterative with a stack) and BFS (queue with an
+    array and a shift pointer or actual dequeue). Tree problems often use recursion
+    naturally; graph problems need a visited set to avoid infinite loops.
+
+    JavaScript notes:
+      - TreeNode and GraphNode classes are usually defined in the problem stub.
+      - Build adjacency lists with a Map: key = node, value = array of neighbors.
+      - BFS uses an array as a queue; arr.shift() is O(n) — for large graphs consider
+        using an index pointer (let head = 0; queue[head++]) instead.
+      - Destructuring: const [node, dist] = queue[head++] is idiomatic.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'binary tree node class'
+          code: |
+            class TreeNode {
+              constructor(val, left=null, right=null) {
+                this.val = val;
+                this.left = left;
+                this.right = right;
+              }
+            }
+        - label: 'adjacency list graph (Map of arrays)'
+          code: |
+            const graph = new Map();
+            for (const [u, v] of edges) {
+              if (!graph.has(u)) graph.set(u, []);
+              graph.get(u).push(v);
+            }
+        - label: 'visited set for graph traversal'
+          code: 'const visited = new Set();'
+        - label: 'BFS queue with index pointer (avoids O(n) shift)'
+          code: |
+            const queue = [startNode];
+            let head = 0;
+    - title: Basic operations
+      ops:
+        - label: 'check leaf node'
+          code: |
+            if (node.left === null && node.right === null) {
+              /* leaf */
+            }
+        - label: 'get neighbors from adjacency list'
+          code: 'const neighbors = graph.get(node) ?? [];'
+        - label: 'dequeue from BFS queue (index-pointer style)'
+          code: 'const node = queue[head++];'
+        - label: 'mark visited and enqueue'
+          code: |
+            visited.add(neighbor);
+            queue.push(neighbor);
+    - title: Iteration & loops
+      ops:
+        - label: 'recursive DFS on binary tree (in-order)'
+          code: |
+            function inOrder(node) {
+                if (node === null) return;
+                inOrder(node.left);
+                result.push(node.val);
+                inOrder(node.right);
+            }
+        - label: 'iterative DFS with explicit stack'
+          code: |
+            const stack = [root];
+            while (stack.length > 0) {
+                const node = stack.pop();
+                if (node === null) continue;
+                result.push(node.val);
+                stack.push(node.right);
+                stack.push(node.left);   // left on top -> processed first
+            }
+        - label: 'BFS level-order traversal'
+          code: |
+            const queue = [root];
+            let head = 0;
+            while (head < queue.length) {
+                const levelSize = queue.length - head;
+                for (let i = 0; i < levelSize; i++) {
+                    const node = queue[head++];
+                    if (node.left) queue.push(node.left);
+                    if (node.right) queue.push(node.right);
+                }
+            }
+        - label: 'BFS on graph with visited set'
+          code: |
+            const queue = [start];
+            let head = 0;
+            visited.add(start);
+            while (head < queue.length) {
+                const node = queue[head++];
+                for (const nb of (graph.get(node) ?? [])) {
+                    if (!visited.has(nb)) {
+                        visited.add(nb);
+                        queue.push(nb);
+                    }
+                }
+            }
+    - title: Special operations (trees & graphs)
+      ops:
+        - label: 'max depth of binary tree (recursive)'
+          code: |
+            function maxDepth(node) {
+              if (node === null) return 0;
+              return 1 + Math.max(maxDepth(node.left), maxDepth(node.right));
+            }
+        - label: 'lowest common ancestor'
+          code: |
+            function lca(root, p, q) {
+                if (root === null || root === p || root === q) return root;
+                const left = lca(root.left, p, q);
+                const right = lca(root.right, p, q);
+                return left && right ? root : left ?? right;
+            }
+        - label: 'detect cycle in undirected graph (DFS with parent tracking)'
+          code: |
+            function hasCycle(node, parent, visited, graph) {
+                visited.add(node);
+                for (const nb of (graph.get(node) ?? [])) {
+                    if (!visited.has(nb)) {
+                        if (hasCycle(nb, node, visited, graph)) return true;
+                    } else if (nb !== parent) return true;
+                }
+                return false;
+            }
+        - label: 'topological sort (Kahn BFS, track in-degrees)'
+          code: |
+            const inDegree = new Array(n).fill(0);
+            for (const [u, v] of edges) inDegree[v]++;
+            const queue = [];
+            let head = 0;
+            for (let i = 0; i < n; i++) if (inDegree[i] === 0) queue.push(i);
+            const order = [];
+            while (head < queue.length) {
+                const u = queue[head++];
+                order.push(u);
+                for (const v of (graph.get(u) ?? [])) {
+                    if (--inDegree[v] === 0) queue.push(v);
+                }
+            }
+  example: |
+    Worked example — validate a binary search tree (each node must satisfy its bounds):
+
+      Pass down the valid range [min, max] as the tree recurses. The root is unconstrained
+      (Infinity). A left child inherits max = parent.val; a right child inherits
+      min = parent.val. Any violation immediately returns false.
+
+        function isValidBST(root, min = -Infinity, max = Infinity) {
+            if (root === null) return true;
+            if (root.val <= min || root.val >= max) return false;
+            return isValidBST(root.left, min, root.val) &&
+                   isValidBST(root.right, root.val, max);
+        }
+
+    Takeaway: many tree problems pass extra context (bounds, parent, depth) down the
+    recursion. For graphs, always maintain a visited set to prevent infinite loops.

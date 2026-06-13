@@ -1,0 +1,141 @@
+lang: python
+group: Context Managers
+title: "Context Managers — with, __enter__/__exit__, contextlib"
+tag: E
+summary: |
+  The `with` statement calls `__enter__` on entry and `__exit__` on exit —
+  even if an exception occurs. This guarantees cleanup and is the Python idiom
+  for managing resources: files, locks, DB connections, temporary directories,
+  timers, and more.
+
+  `__exit__(self, exc_type, exc_val, exc_tb)` receives exception info:
+    - Return `True` to SUPPRESS the exception (execution continues after `with`).
+    - Return `None` or `False` (or anything falsy) to RE-RAISE it.
+  The most common bug is accidentally returning `True` (suppressing all exceptions)
+  or forgetting that a bare `return` returns `None` (re-raises).
+
+  `contextlib.contextmanager` lets you write a context manager as a generator
+  function with a single `yield`:
+    - Code before `yield` = `__enter__`
+    - Code after `yield` = `__exit__`
+  Wrap the `yield` in `try/finally` to ensure cleanup on exception.
+
+  `contextlib.ExitStack` enables dynamic composition: open a variable number of
+  context managers whose count isn't known at compile time.
+
+  Common mistakes:
+  - In `@contextmanager`, code after `yield` does NOT run on exception unless
+    you wrap the `yield` in `try/finally`.
+  - `open()` without `with` is almost always a bug — the file may not be flushed
+    or closed on exception.
+  - `__exit__` returning `True` suppresses ALL exceptions, including unexpected
+    ones — be selective (check `exc_type`).
+exercises:
+  - prompt: |
+      The `suppress_and_log` context manager should catch any exception whose
+      type is in `exc_types`, print the message to stderr, and allow execution
+      to continue (suppress). It should NOT suppress exceptions of other types.
+
+      The broken version always returns `True` from `__exit__`, suppressing
+      ALL exceptions including unexpected ones. Fix it to return `True` only
+      when `exc_type` is one of the specified types.
+    kind: fix-it
+    broken_code: |
+      import sys
+
+      class suppress_and_log:
+          def __init__(self, *exc_types):
+              self.exc_types = exc_types
+
+          def __enter__(self):
+              return self
+
+          def __exit__(self, exc_type, exc_val, exc_tb):
+              if exc_type is not None:
+                  print(f"Suppressed: {exc_val}", file=sys.stderr)
+              return True   # Bug: suppresses EVERYTHING, even unexpected errors
+
+      with suppress_and_log(ValueError):
+          raise ValueError("bad input")
+      print("after ValueError block")
+
+      try:
+          with suppress_and_log(ValueError):
+              raise RuntimeError("unexpected")
+      except RuntimeError as e:
+          print(f"propagated: {e}")
+    fixed_code: |
+      import sys
+
+      class suppress_and_log:
+          def __init__(self, *exc_types):
+              self.exc_types = exc_types
+
+          def __enter__(self):
+              return self
+
+          def __exit__(self, exc_type, exc_val, exc_tb):
+              if exc_type is not None and issubclass(exc_type, self.exc_types):
+                  print(f"Suppressed: {exc_val}", file=sys.stderr)
+                  return True   # suppress only the specified types
+              return False      # re-raise everything else
+
+      # ValueError is suppressed; RuntimeError propagates
+      with suppress_and_log(ValueError):
+          raise ValueError("bad input")
+      print("after ValueError block")
+
+      try:
+          with suppress_and_log(ValueError):
+              raise RuntimeError("unexpected")
+      except RuntimeError as e:
+          print(f"propagated: {e}")
+    bug: |
+      Returning `True` unconditionally suppresses every exception, including
+      `KeyboardInterrupt`, `SystemExit`, and unexpected runtime errors — masking
+      real bugs silently. The fix checks `issubclass(exc_type, self.exc_types)`
+      before suppressing, and returns `False` for all other exception types so
+      they propagate normally.
+    check: stdout
+    signal: "after ValueError block\npropagated: unexpected"
+
+  - prompt: |
+      The `timer_cm` context manager (using `@contextlib.contextmanager`) is
+      supposed to populate `info["elapsed"]` after the block finishes — even if
+      an exception is raised inside.
+
+      The broken version places the elapsed-time calculation after the `yield`
+      without a `try/finally`, so an exception inside the `with` block causes
+      the cleanup code to be skipped and `info["elapsed"]` is never set.
+    kind: fix-it
+    broken_code: |
+      import contextlib
+      import time
+
+      @contextlib.contextmanager
+      def timer_cm():
+          info = {"elapsed": None}
+          start = time.perf_counter()
+          yield info
+          # Bug: skipped on exception — no try/finally
+          info["elapsed"] = time.perf_counter() - start
+    fixed_code: |
+      import contextlib
+      import time
+
+      @contextlib.contextmanager
+      def timer_cm():
+          info = {"elapsed": None}
+          start = time.perf_counter()
+          try:
+              yield info
+          finally:
+              info["elapsed"] = time.perf_counter() - start
+    bug: |
+      In a `@contextmanager` generator, code after a bare `yield` is only reached
+      if no exception propagates out of the `with` block. Wrapping the `yield` in
+      `try/finally` ensures the elapsed-time calculation runs whether the block
+      exits normally or with an exception — equivalent to `__exit__` always being
+      called.
+    check: none
+    signal: ""

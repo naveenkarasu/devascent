@@ -1,0 +1,129 @@
+- category: 'Two Pointers & Sliding Window'
+  lang: typescript
+  title: 'Two Pointers & Sliding Window — TypeScript refresher'
+  summary: |
+    Two pointers and sliding window are linear-time techniques for array/string
+    problems that would naively be O(n^2). Two pointers works on a SORTED array
+    (or palindrome check) by marching a left and right pointer toward each other.
+    Sliding window maintains a contiguous subarray/substring defined by `left`
+    and `right` indices, expanding right and shrinking left when a constraint is
+    violated.
+
+    TypeScript specifics:
+      - Declare pointer indices as `let left = 0, right = 0;` with inferred `number` type.
+      - Use `Map<string, number>` for character-count windows (better than
+        `Record<string, number>` when keys can be any value).
+      - `s.charCodeAt(i)` gives the numeric code; `s[i]` gives the character — both
+        are fine; prefer `s[i]` for readability.
+      - Sliding-window problems often keep a running `max` or `result` variable;
+        declare with an explicit `number` type to be clear.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'two-pointer bounds on an array'
+          code: 'let left = 0, right = nums.length - 1;'
+        - label: 'sliding-window pointers'
+          code: 'let left = 0, right = 0;'
+        - label: 'window character frequency map'
+          code: 'const window = new Map<string, number>();'
+        - label: 'running maximum result'
+          code: 'let maxLen = 0;'
+    - title: Basic operations
+      ops:
+        - label: 'expand window right'
+          code: 'right++;'
+        - label: 'shrink window left'
+          code: 'left++;'
+        - label: 'current window length'
+          code: 'const len = right - left + 1;'
+        - label: 'add character to window map'
+          code: 'window.set(s[right], (window.get(s[right]) ?? 0) + 1);'
+        - label: 'remove character from window map'
+          code: |
+            const cnt = window.get(s[left])! - 1;
+            if (cnt === 0) window.delete(s[left]);
+            else window.set(s[left], cnt);
+    - title: Iteration & loops
+      ops:
+        - label: 'two-pointer while loop (sorted array, target sum)'
+          code: |
+            while (left < right) {
+              const sum = nums[left] + nums[right];
+              if (sum === target) {
+                /* found */
+                break;
+              } else if (sum < target) left++;
+              else right--;
+            }
+        - label: 'sliding window — expand right, shrink left on violation'
+          code: |
+            for (let right = 0; right < s.length; right++) {
+              // add s[right] to window state
+              while (/* window invalid */) {
+                left++;
+              }
+              maxLen = Math.max(maxLen, right - left + 1);
+            }
+        - label: 'fixed-size window (size k)'
+          code: |
+            for (let i = 0; i < nums.length; i++) {
+              // add nums[i]; if i >= k remove nums[i - k]
+              if (i >= k - 1) {
+                /* record answer */
+              }
+            }
+    - title: Special operations (Two Pointers & Sliding Window)
+      ops:
+        - label: 'longest substring without repeating characters'
+          code: |
+            const seen = new Set<string>();
+            let left = 0, max = 0;
+            for (let right = 0; right < s.length; right++) {
+              while (seen.has(s[right])) {
+                seen.delete(s[left++]);
+              }
+              seen.add(s[right]);
+              max = Math.max(max, right - left + 1);
+            }
+        - label: 'check if a string is a palindrome (two pointers)'
+          code: |
+            let lo = 0, hi = s.length - 1;
+            while (lo < hi) {
+              if (s[lo] !== s[hi]) return false;
+              lo++;
+              hi--;
+            }
+            return true;
+        - label: 'three-sum (sort + outer loop + two-pointer inner)'
+          code: |
+            nums.sort((a, b) => a - b);
+            for (let i = 0; i < nums.length - 2; i++) {
+              let lo = i + 1, hi = nums.length - 1;
+              while (lo < hi) {
+                /* check sum */
+              }
+            }
+  example: |
+    Worked example — longest substring with at most k distinct characters.
+
+      Use a sliding window with a Map to count characters in the window. Expand right
+      by adding the new character. When the number of distinct keys exceeds k, shrink
+      left until it is valid again. Track the maximum window size seen.
+
+        function lengthOfLongestSubstringKDistinct(s: string, k: number): number {
+            const window = new Map<string, number>();
+            let left = 0, maxLen = 0;
+            for (let right = 0; right < s.length; right++) {
+                window.set(s[right], (window.get(s[right]) ?? 0) + 1);
+                while (window.size > k) {
+                    const cnt = window.get(s[left])! - 1;
+                    if (cnt === 0) window.delete(s[left]); else window.set(s[left], cnt);
+                    left++;
+                }
+                maxLen = Math.max(maxLen, right - left + 1);
+            }
+            return maxLen;
+        }
+
+    Takeaway: the window Map holds exactly the state you need. Shrinking left is
+    always a while-loop so multiple shrinks can happen in one step.

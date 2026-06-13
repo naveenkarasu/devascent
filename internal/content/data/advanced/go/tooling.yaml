@@ -1,0 +1,61 @@
+lang: go
+group: Tooling
+title: "Tooling — the Go toolchain"
+tag: C
+summary: |
+  Go ships production-grade tooling with the language itself. No separate install or
+  config is needed for formatting, testing, vetting, benchmarking, profiling, or race
+  detection.
+
+  Module management
+    go mod init <module-path> — initialises go.mod in a new project.
+    go mod tidy — adds missing imports and removes unused dependencies; regenerates
+      go.sum. Run this after any dependency change and commit both files.
+    go get <pkg>@<version> — adds or upgrades a dependency.
+    GOPATH mode is obsolete; all modern Go uses modules.
+
+  Formatting
+    gofmt — canonical formatter; no configuration, no arguments. Enforces the one true
+      Go style. Run gofmt -w . to format all files in-place.
+    goimports — superset of gofmt that also adds/removes import lines. Most editors run
+      this on save via gopls.
+
+  Static analysis
+    go vet — fast built-in analyser: detects printf format mismatches, unreachable code,
+      loop-variable capture (flagged since Go 1.22 toolchain), copying mutexes, and
+      other common bugs. Run as part of every CI pipeline.
+    golangci-lint — community meta-linter that wraps dozens of analysers (staticcheck,
+      errcheck, gosec, revive, etc.). Configured via .golangci.yml.
+
+  Testing and race detection
+    go test ./... — run all tests recursively.
+    go test -race ./... — run tests with the race detector instrumented. Always enable
+      in CI; it adds ~2–20x overhead but catches concurrent access bugs reliably.
+    go test -run TestName — run a specific test by name (regexp).
+    go test -v — verbose output (prints t.Log lines and subtests).
+    go test -bench=. -benchmem — run all benchmarks, report allocations per op.
+    go test -count=1 — disable test caching (useful when testing flaky concurrency).
+
+  Build and analysis
+    go build ./... — compile all packages; produces no binary for packages without main.
+    go build -gcflags="-m" — escape analysis: shows which values escape to the heap.
+      Use to diagnose unexpected allocations in hot paths.
+    go build -race — build a race-instrumented binary for manual testing.
+
+  Profiling
+    go tool pprof — interactive profiler for CPU (runtime/pprof.StartCPUProfile) and
+      heap (runtime/pprof.WriteHeapProfile) profiles. Also works with net/http/pprof
+      endpoints (/debug/pprof) for live server profiling.
+    go test -cpuprofile cpu.out -memprofile mem.out — capture profiles during tests.
+
+  Language server
+    gopls — official Go language server. Provides completion, go-to-definition,
+      refactoring, and real-time diagnostics in VS Code, Neovim, GoLand, etc.
+
+  All built-in tools respond to go help <command>. The race detector documentation is
+  at https://go.dev/doc/articles/race_detector. Module reference is at
+  https://go.dev/ref/mod.
+
+  Sources:
+  - https://go.dev/doc/cmd — Command documentation
+  - https://go.dev/doc/articles/race_detector — Race Detector

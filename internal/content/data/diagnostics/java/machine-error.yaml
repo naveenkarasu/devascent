@@ -1,0 +1,104 @@
+# Slot: machine-error (Java variants) — read a small broken Java program and spot
+# the bug. Java catches type errors at COMPILE time; others (null, bad index,
+# divide by zero) throw an exception at runtime.
+- id: java_err_index
+  slot: machine-error
+  lang: java
+  order: 3
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    This Java program crashes when you run it:
+
+        int[] nums = {10, 20, 30};
+        System.out.println(nums[3]);
+
+    It throws: ArrayIndexOutOfBoundsException: Index 3 out of bounds for length 3.
+    What's wrong?
+  choices:
+    - text: "Index 3 is past the end — a 3-element array has valid indexes 0, 1, 2."
+      correct: true
+      feedback: "Right. The array length is 3, so the last valid index is 2; nums[3] throws at runtime."
+    - text: "You can't print an int with System.out.println."
+      correct: false
+      feedback: "Not it — println prints ints fine. The out-of-range index 3 is the bug."
+    - text: "The array needs `new int[]` before the braces."
+      correct: false
+      feedback: "Not it — `int[] nums = {10, 20, 30}` is valid. Reading nums[3], which doesn't exist, throws."
+
+- id: java_err_type
+  slot: machine-error
+  lang: java
+  order: 3
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    This Java program won't compile:
+
+        int age = "30";
+        System.out.println(age + 1);
+
+    The compiler says: incompatible types: String cannot be converted to int. Why?
+  choices:
+    - text: "\"30\" is a String, but age is declared int — Java won't convert one to the other."
+      correct: true
+      feedback: "Right. Java is statically typed; you'd parse it with Integer.parseInt(\"30\"). The mismatch is caught at compile time."
+    - text: "You can't add 1 to a variable in Java."
+      correct: false
+      feedback: "Not it — age + 1 is fine for an int. Assigning a String to an int is the problem."
+    - text: "println can't take age + 1 as an argument."
+      correct: false
+      feedback: "Not it — println handles the int fine. The String-to-int assignment fails."
+
+- id: java_err_null
+  slot: machine-error
+  lang: java
+  order: 3
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    This Java program crashes when you run it:
+
+        String s = null;
+        System.out.println(s.length());
+
+    It throws: NullPointerException. Why?
+  choices:
+    - text: "s is null — there's no String to call .length() on."
+      correct: true
+      feedback: "Right. Calling a method on a null reference throws NullPointerException; assign s a real String first (or check for null)."
+    - text: "length() should be a field, written s.length."
+      correct: false
+      feedback: "Not it — on a String, length() is a method. The real problem is that s is null."
+    - text: "You can't print the result of length()."
+      correct: false
+      feedback: "Not it — printing an int is fine. Calling .length() on the null s is what throws."
+
+- id: java_err_equals
+  slot: machine-error
+  lang: java
+  order: 3
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    This Java program prints "different", even though both strings are "hi":
+
+        String a = "hi";
+        String b = new String("hi");
+        System.out.println(a == b ? "same" : "different");
+
+    Why?
+  choices:
+    - text: "== compares object identity, not text — use a.equals(b) to compare contents."
+      correct: true
+      feedback: "Right. For Strings, == asks 'same object?' (here, no — b is a fresh object). .equals() compares the characters."
+    - text: "You can't use a ternary (? :) with Strings."
+      correct: false
+      feedback: "Not it — the ternary is valid. The bug is using == instead of .equals() to compare text."
+    - text: "new String(\"hi\") creates an invalid string."
+      correct: false
+      feedback: "Not it — it's a valid String with the text \"hi\". The issue is == compares references, so it's false."

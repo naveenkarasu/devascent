@@ -1,0 +1,67 @@
+id: read-the-crash
+lang: typescript
+order: 9
+title: Read the Crash
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      Errors are clues, not failures. At runtime TypeScript (running as JS) throws
+      and prints a reason and a stack. Common ones: accessing index beyond array
+      length returns `undefined` silently — but then arithmetic on it gives `NaN`,
+      which poisons results. Division of a sum by zero gives `Infinity`. Read the
+      FIRST line of the error. Many other mistakes — wrong types, missing properties
+      — TypeScript catches earlier, at compile time, before it ever runs.
+
+          const s: number[] = []
+          const v = s[0]   // v is undefined — no crash, but wrong answer!
+
+      The fix: check the length before you index.
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: 'Returning items[0] gives undefined on an empty array. TypeScript has no "None" sentinel here, so signal "empty" with -1 instead.'
+    task:
+      prompt: Return the first item, or -1 if the array is empty.
+      func_name: safe_first
+      starter: |
+        function safe_first(items: number[]): number {
+            // buggy: return items[0]  -- returns undefined when empty
+            // hint: guard first — if (items.length === 0) { return -1 }
+        }
+      solution: |
+        function safe_first(items: number[]): number {
+            if (items.length === 0) {
+                return -1
+            }
+            return items[0]
+        }
+      tests:
+        - {name: 'safe_first([5,6])', input: [[5, 6]], expected: 5}
+        - {name: 'safe_first([])', input: [[]], expected: -1}
+        - {name: 'safe_first([7])', input: [[7]], expected: 7}
+  - kind: you_do
+    title: You do — solo
+    body: Dividing by length gives Infinity (or NaN) on an empty array. Make empty → 0, otherwise the true average.
+    task:
+      prompt: Return the average of the array; empty array → 0.
+      func_name: average
+      starter: |
+        function average(numbers: number[]): number {
+            // <- guard the empty case, else sum / numbers.length
+        }
+      solution: |
+        function average(numbers: number[]): number {
+            if (numbers.length === 0) {
+                return 0
+            }
+            let s = 0
+            for (const n of numbers) {
+                s += n
+            }
+            return s / numbers.length
+        }
+      tests:
+        - {name: 'average([1,2])', input: [[1, 2]], expected: 1.5}
+        - {name: 'average([2,4])', input: [[2, 4]], expected: 3.0}
+        - {name: 'average([])', input: [[]], expected: 0.0}
+        - {name: 'average([10])', input: [[10]], expected: 10.0}

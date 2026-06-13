@@ -1,0 +1,145 @@
+- category: 'Advanced Graphs'
+  lang: csharp
+  title: 'Advanced Graphs — C# refresher'
+  summary: |
+    Advanced graph algorithms extend basic DFS/BFS to weighted edges, optimal paths,
+    and spanning trees. The core algorithms to know for interviews are Dijkstra (shortest
+    path in a weighted graph), Bellman-Ford (handles negative weights), Union-Find
+    (disjoint set union for connectivity and cycle detection), and topological sort.
+
+    Dijkstra uses a min-heap to always extend the cheapest known path first. Union-Find
+    uses path compression and union-by-rank to answer "are these two nodes connected?"
+    in near O(1) amortized.
+
+    C# notes:
+      - Use PriorityQueue<(int node, int dist), int> for Dijkstra's min-heap.
+      - int[] dist = new int[n]; Array.Fill(dist, int.MaxValue); dist[src] = 0;
+      - Union-Find: int[] parent and int[] rank arrays; find with path compression.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'weighted adjacency list'
+          code: |
+            var adj = new Dictionary<int, List<(int to, int w)>>();
+            adj[u].Add((v, weight));
+        - label: 'Dijkstra distance array'
+          code: |
+            int[] dist = new int[n];
+            Array.Fill(dist, int.MaxValue);
+            dist[src] = 0;
+        - label: 'Union-Find parent array'
+          code: 'int[] parent = Enumerable.Range(0, n).ToArray();'
+        - label: 'Union-Find rank array'
+          code: 'int[] rank = new int[n];'
+    - title: Basic operations
+      ops:
+        - label: 'Union-Find: find with path compression'
+          code: |
+            int Find(int x)
+            {
+                if (parent[x] != x) parent[x] = Find(parent[x]);
+                return parent[x];
+            }
+        - label: 'Union-Find: union by rank'
+          code: |
+            bool Union(int x, int y)
+            {
+                int px = Find(x), py = Find(y);
+                if (px == py) return false;
+                if (rank[px] < rank[py]) (px, py) = (py, px);
+                parent[py] = px;
+                if (rank[px] == rank[py]) rank[px]++;
+                return true;
+            }
+        - label: 'relax an edge (Dijkstra / Bellman-Ford)'
+          code: 'if (dist[u] + w < dist[v]) dist[v] = dist[u] + w;'
+    - title: Iteration & loops
+      ops:
+        - label: 'Dijkstra shortest path'
+          code: |
+            var pq = new PriorityQueue<(int node, int d), int>();
+            pq.Enqueue((src, 0), 0);
+            while (pq.Count > 0)
+            {
+                var (u, d) = pq.Dequeue();
+                if (d > dist[u]) continue;   // stale entry
+                foreach (var (v, w) in adj[u])
+                {
+                    int nd = dist[u] + w;
+                    if (nd < dist[v])
+                    {
+                        dist[v] = nd;
+                        pq.Enqueue((v, nd), nd);
+                    }
+                }
+            }
+        - label: 'Bellman-Ford (n-1 relaxation passes)'
+          code: |
+            for (int pass = 0; pass < n - 1; pass++)
+                foreach (var (u, v, w) in edges)
+                    if (dist[u] != int.MaxValue && dist[u] + w < dist[v])
+                        dist[v] = dist[u] + w;
+    - title: Special operations (advanced graphs)
+      ops:
+        - label: 'Kruskal minimum spanning tree (sort edges + Union-Find)'
+          code: |
+            Array.Sort(edges, (a, b) => a.w - b.w);
+            int mstCost = 0;
+            foreach (var (u, v, w) in edges)
+                if (Union(u, v)) mstCost += w;
+        - label: 'detect cycle in undirected graph via Union-Find'
+          code: |
+            foreach (var (u, v) in edges)
+                if (!Union(u, v)) return true;  // already same component
+            return false;
+        - label: 'number of connected components'
+          code: 'int components = Enumerable.Range(0, n).Count(i => Find(i) == i);'
+        - label: 'check if graph is bipartite (2-colorable BFS)'
+          code: |
+            int[] color = new int[n];
+            Array.Fill(color, -1);
+            for (int start = 0; start < n; start++)
+            {
+                if (color[start] != -1) continue;
+                var queue = new Queue<int>();
+                queue.Enqueue(start);
+                color[start] = 0;
+                while (queue.Count > 0)
+                {
+                    int u = queue.Dequeue();
+                    foreach (int v in adj[u])
+                    {
+                        if (color[v] == -1)
+                        {
+                            color[v] = 1 - color[u];
+                            queue.Enqueue(v);
+                        }
+                        else if (color[v] == color[u]) return false;
+                    }
+                }
+            }
+            return true;
+  example: |
+    Worked example — Dijkstra shortest path from source to all nodes:
+
+      Maintain a distance array initialized to infinity, source = 0. Use a min-heap
+      keyed by distance. Always extend the cheapest unprocessed node. Skip stale
+      heap entries (where the stored distance is worse than what we already know).
+
+        int[] Dijkstra(int n, Dictionary<int, List<(int to, int w)>> adj, int src) {
+            int[] dist = new int[n]; Array.Fill(dist, int.MaxValue); dist[src] = 0;
+            var pq = new PriorityQueue<(int node, int d), int>();
+            pq.Enqueue((src, 0), 0);
+            while (pq.Count > 0) {
+                var (u, d) = pq.Dequeue();
+                if (d > dist[u]) continue;
+                foreach (var (v, w) in adj[u]) {
+                    int nd = dist[u] + w;
+                    if (nd < dist[v]) { dist[v] = nd; pq.Enqueue((v, nd), nd); }
+                }
+            }
+            return dist;
+        }
+
+    Takeaway: the "if (d > dist[u]) continue" guard is essential — the heap may hold
+    multiple outdated entries for the same node; skip them or you redo work needlessly.

@@ -1,0 +1,67 @@
+id: loops
+lang: typescript
+order: 4
+title: Repeat Until Done
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A loop repeats a block.  `for (let i = 1; i <= n; i++)`  runs once for each i
+      from 1 up to and including n (start; condition; step). The *accumulator*
+      pattern: start a variable at 0 (or ""), update it each pass, return it AFTER
+      the loop.
+
+          function count_to(n: number): number {
+              let c = 0
+              for (let i = 1; i <= n; i++) {
+                  c = c + 1
+              }
+              return c
+          }
+
+      TypeScript's `for` loop uses the classic C-style syntax. Use `let` (not
+      `const`) for the counter and the accumulator because they change each pass.
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: Add up every whole number from 1 to n (inclusive).
+    task:
+      prompt: Return the sum of 1..n inclusive.
+      func_name: count_up
+      starter: |
+        function count_up(n: number): number {
+            // hint: let result = 0; for (let i = 1; i <= n; i++) { result += i }  return result AFTER the loop
+        }
+      solution: |
+        function count_up(n: number): number {
+            let result = 0
+            for (let i = 1; i <= n; i++) {
+                result += i
+            }
+            return result
+        }
+      tests:
+        - {name: 'count_up(5)', input: [5], expected: 15}
+        - {name: 'count_up(1)', input: [1], expected: 1}
+        - {name: 'count_up(10)', input: [10], expected: 55}
+  - kind: you_do
+    title: You do — solo
+    body: 'Build a string this time. Tip: in TypeScript you grow a string with  out += ch  inside the loop.'
+    task:
+      prompt: Return ch repeated 'times' times. If times is 0, return "".
+      func_name: repeat_char
+      starter: |
+        function repeat_char(ch: string, times: number): string {
+            // <- start with let out = "" and append ch each pass
+        }
+      solution: |
+        function repeat_char(ch: string, times: number): string {
+            let out = ""
+            for (let i = 0; i < times; i++) {
+                out += ch
+            }
+            return out
+        }
+      tests:
+        - {name: 'repeat_char(a, 3)', input: ["a", 3], expected: "aaa"}
+        - {name: 'repeat_char(x, 0)', input: ["x", 0], expected: ""}
+        - {name: 'repeat_char(*, 5)', input: ["*", 5], expected: "*****"}

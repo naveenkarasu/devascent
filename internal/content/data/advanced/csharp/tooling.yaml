@@ -1,0 +1,32 @@
+lang: csharp
+group: Tooling
+title: "Tooling — dotnet CLI, NuGet, testing frameworks, and Roslyn analysers"
+tag: C
+summary: |
+  dotnet CLI. The unified command-line tool for all .NET operations: dotnet new,
+  dotnet build, dotnet run, dotnet test, dotnet publish, dotnet add package. No IDE
+  required. The global.json file pins the SDK version for a repo.
+
+  NuGet. The .NET package manager; packages are declared in the .csproj file via
+  <PackageReference>. dotnet add package and dotnet restore manage the lock file
+  (packages.lock.json).
+
+  Testing frameworks. xUnit (the modern default, used by the .NET runtime itself),
+  NUnit, and MSTest are the three main options. All integrate with dotnet test.
+  xUnit uses [Fact] / [Theory] attributes; NUnit uses [Test] / [TestCase].
+
+  Roslyn analysers and style. dotnet format applies EditorConfig rules. The built-in
+  C# analyser covers nullable reference types, thread-safety, and common errors.
+  StyleCopAnalyzers, SonarAnalyzer.CSharp, and Roslynator are popular third-party
+  extensions. <Nullable>enable</Nullable> in the .csproj is the project-level NRT
+  switch.
+
+  Build and publishing. dotnet publish -c Release -r linux-x64 --self-contained
+  produces a single-file executable. dotnet watch enables hot-reload during
+  development.
+
+  Key framing for the game. For the game, tooling knowledge is contextual: the player
+  needs to know enough to run tests (dotnet test), add a package (dotnet add package),
+  and understand the project file. The key file is the .csproj — it replaces the old
+  packages.config and AssemblyInfo.cs with a single, human-readable XML file that
+  declares target framework, NRT enablement, package references, and build properties.

@@ -1,0 +1,24 @@
+lang: typescript
+label: TypeScript
+notes: TypeScript needs Node.js first (for npm and to run the compiled output). Then install the TypeScript compiler (tsc) globally.
+os:
+  windows:
+    link: https://www.typescriptlang.org/download
+    steps:
+      - Install Node.js first (see the JavaScript guide).
+      - Open a terminal and run - "npm install -g typescript".
+      - Restart DevAscent.
+    verify: tsc --version
+  macos:
+    link: https://www.typescriptlang.org/download
+    steps:
+      - Install Node.js first (see the JavaScript guide).
+      - Run - "npm install -g typescript".
+      - Restart your terminal.
+    verify: tsc --version
+  linux:
+    link: https://www.typescriptlang.org/download
+    steps:
+      - Install Node.js first (see the JavaScript guide).
+      - Run - "npm install -g typescript" (you may need sudo, or configure a user npm prefix).
+    verify: tsc --version

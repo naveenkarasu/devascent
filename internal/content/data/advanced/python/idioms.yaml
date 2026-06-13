@@ -1,0 +1,167 @@
+lang: python
+group: Idioms
+title: "Python Idioms — comprehensions, unpacking, enumerate, EAFP"
+tag: E
+summary: |
+  Pythonic code leverages comprehensions, unpacking, and builtins to be concise
+  AND readable. These aren't just syntactic sugar:
+
+  - List/dict/set comprehensions build objects in a single expression and have
+    their own scope (since Python 3 — no loop-variable leak).
+  - Generator expressions are lazy: `(x for x in big_list)` never materialises the
+    whole sequence at once. Prefer them when you only iterate once.
+  - Starred assignment (`first, *middle, last = data`) handles variable-length
+    sequences in one line.
+  - `enumerate(iterable, start=0)` yields `(index, value)` pairs — eliminates
+    manual `range(len(...))` anti-patterns.
+  - `zip(a, b)` pairs elements from two sequences — no indexing needed.
+  - EAFP ("Easier to Ask Forgiveness than Permission") uses `try/except` rather
+    than defensive `if` checks. It is faster when the happy path is common and
+    is thread-safer (no TOCTOU race between the check and the access).
+  - `dict.get(key, default)` is the idiomatic EAFP shorthand for key access with
+    a fallback.
+
+  Common mistakes:
+  - `[x for x in range(1_000_000)]` materialises a million-element list; use a
+    generator expression for lazy consumption.
+  - `dict.get` is often cleaner than a try/except for simple dict lookups.
+  - Python 2 leaked the loop variable from list comprehensions; Python 3 does NOT.
+exercises:
+  - prompt: |
+      `words_above_3` should return a list of uppercased words whose length is
+      greater than 3, using a single list comprehension.
+
+      The broken version uses an imperative loop with `append`, which is valid
+      Python but misses the comprehension idiom entirely. Rewrite the function
+      body as a one-line list comprehension.
+    kind: fix-it
+    broken_code: |
+      def words_above_3(words):
+          result = []
+          for word in words:
+              if len(word) >= 3:   # Bug: ">= 3" includes 3-letter words
+                  result.append(word.upper())
+          return result
+    fixed_code: |
+      def words_above_3(words):
+          return [word.upper() for word in words if len(word) > 3]
+    bug: |
+      The condition `len(word) >= 3` is off-by-one — it includes words of exactly
+      3 characters, which should be excluded (the spec says "length greater than 3").
+      The fix uses `> 3` in a single list comprehension, which is both correct and
+      idiomatic.
+    check: tests
+    func_name: words_above_3
+    tests:
+      - name: "filters short words and uppercases long ones"
+        input: [["hi", "hello", "cat", "world", "ok"]]
+        expected: ["HELLO", "WORLD"]
+      - name: "empty list returns empty"
+        input: [[]]
+        expected: []
+      - name: "all short words returns empty"
+        input: [["a", "ab", "abc"]]
+        expected: []
+      - name: "all long words returns all uppercased"
+        input: [["four", "five", "long"]]
+        expected: ["FOUR", "FIVE", "LONG"]
+
+  - prompt: |
+      `zip_names_scores` should pair each name with its score using `zip`, returning
+      a list of (name, score) tuples.
+
+      The broken version reverses the pairing — it puts the score first and the name
+      second. Fix it so each tuple is `(name, score)`.
+    kind: fix-it
+    broken_code: |
+      def zip_names_scores(names, scores):
+          # Bug: score and name are swapped
+          return list(zip(scores, names))
+    fixed_code: |
+      def zip_names_scores(names, scores):
+          return list(zip(names, scores))
+    bug: |
+      `zip(scores, names)` pairs each score with the corresponding name, producing
+      `(score, name)` tuples — the order is reversed from the expected `(name, score)`.
+      The fix is `zip(names, scores)`, which puts names first.
+    check: tests
+    func_name: zip_names_scores
+    tests:
+      - name: "basic pairing"
+        input: [["Alice", "Bob", "Carol"], [95, 87, 92]]
+        expected: [["Alice", 95], ["Bob", 87], ["Carol", 92]]
+      - name: "single pair"
+        input: [["Dana"], [100]]
+        expected: [["Dana", 100]]
+      - name: "empty inputs"
+        input: [[], []]
+        expected: []
+
+  - prompt: |
+      `get_city` should retrieve a city from a nested dict, returning `default`
+      when any key is missing. Use chained `.get()` — no `if/in` checks.
+
+      The broken version uses `data["user"]["address"]["city"]` with direct key
+      access — it raises `KeyError` instead of returning `default` when any key
+      is absent. Fix it using chained `.get()`.
+    kind: fix-it
+    broken_code: |
+      def get_city(data, default="Unknown"):
+          # Bug: raises KeyError if any key is missing instead of returning default
+          try:
+              return data["user"]["address"]["city"]
+          except KeyError:
+              return "Unknown"    # Bug: ignores the caller-supplied `default`
+    fixed_code: |
+      def get_city(data, default="Unknown"):
+          return data.get("user", {}).get("address", {}).get("city", default)
+    bug: |
+      The broken version hard-codes `"Unknown"` in the `except` block instead of
+      returning the caller-supplied `default` parameter. So `get_city({}, "N/A")`
+      returns `"Unknown"` instead of `"N/A"`. The idiomatic fix chains `.get()`,
+      which correctly falls through to `default` at the last call regardless of
+      which key is missing.
+    check: tests
+    func_name: get_city
+    tests:
+      - name: "city present returns city"
+        input: [{"user": {"address": {"city": "London"}}}]
+        expected: "London"
+      - name: "missing city returns default"
+        input: [{"user": {"address": {}}}]
+        expected: "Unknown"
+      - name: "missing address returns default"
+        input: [{"user": {}}]
+        expected: "Unknown"
+      - name: "missing user returns default"
+        input: [{}]
+        expected: "Unknown"
+      - name: "custom default is used, not hard-coded Unknown"
+        input: [{"user": {}}, "N/A"]
+        expected: "N/A"
+
+  - prompt: |
+      `indexed_items` should return a list of `(index, item)` tuples using
+      `enumerate`, NOT manual index arithmetic.
+
+      The broken version uses `range(len(items))` to fabricate indices, which is
+      the classic antipattern `enumerate` was designed to replace. Rewrite the
+      function body as a one-liner using `enumerate`.
+    kind: fix-it
+    broken_code: |
+      def indexed_items(items):
+          result = []
+          for i in range(len(items)):
+              result.append((i, items[i]))
+          return result
+    fixed_code: |
+      def indexed_items(items):
+          return list(enumerate(items))
+    bug: |
+      `range(len(items))` with manual indexing is verbose and un-Pythonic.
+      `enumerate(iterable)` yields `(index, value)` pairs directly, eliminating
+      the index variable entirely. `list(enumerate(items))` is the idiomatic
+      one-liner. Both versions produce the same output — this is an idiom exercise,
+      not a logic bug.
+    check: none
+    signal: ""

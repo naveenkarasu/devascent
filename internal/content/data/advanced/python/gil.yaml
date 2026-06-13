@@ -1,0 +1,37 @@
+lang: python
+group: Concurrency
+title: "The GIL — CPython's Global Interpreter Lock"
+tag: C
+summary: |
+  The Global Interpreter Lock (GIL) is a mutex in CPython that allows only one
+  thread to execute Python bytecode at a time. It exists primarily to simplify
+  CPython's memory management: reference counting for garbage collection is not
+  thread-safe without it, and making every object operation thread-safe would
+  require fine-grained locking with high overhead.
+
+  Practical consequences:
+    - I/O-bound threads: unaffected. The GIL is RELEASED during I/O operations
+      (network, file, subprocess), so multiple threads can overlap I/O waits.
+      This is why `ThreadPoolExecutor` speeds up I/O-bound workloads.
+    - CPU-bound threads: no speedup. Pure Python threads take turns holding the
+      GIL — adding more threads may actually slow things down (contention + context
+      switch overhead).
+
+  Workarounds for CPU-bound parallelism:
+    - `multiprocessing`: separate processes, each with their own GIL.
+    - `concurrent.futures.ProcessPoolExecutor`: high-level process pool.
+    - C extensions (NumPy, etc.) that release the GIL internally.
+    - Free-threaded Python (see below).
+
+  Python 3.13 status: Experimental free-threaded mode (`python3.13t`,
+  `--disable-gil`). Not production-ready; ~10–15% single-threaded overhead.
+  Extension module compatibility ongoing.
+
+  Python 3.14 status (current stable, Oct 2025): Free-threading officially
+  supported via PEP 779. Single-threaded overhead reduced to ~5–10%. The
+  specialising adaptive interpreter (the speed-up engine from 3.11) is re-enabled
+  in free-threaded mode. Still NOT the default binary — you opt in. The
+  `concurrent.interpreters` module (PEP 734) offers an alternative approach: true
+  parallelism via isolated sub-interpreters without disabling the GIL globally.
+
+  No exercise — reading material only.

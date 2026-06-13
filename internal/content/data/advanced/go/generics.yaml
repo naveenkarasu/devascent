@@ -1,0 +1,277 @@
+lang: go
+group: Generics
+title: "Generics — type parameters & constraints"
+tag: E
+summary: |
+  Go 1.18 (February 2022) added type parameters — the first major language addition
+  since the initial open-source release. Type parameters use square brackets and are
+  constrained by interfaces used as type sets.
+
+    func Min[T constraints.Ordered](a, b T) T {
+        if a < b { return a }
+        return b
+    }
+
+    Min[int](3, 5)  // explicit instantiation
+    Min(3.14, 2.71) // inferred — common form
+
+  Constraints express what operations a type parameter supports. A constraint can be:
+  - A regular interface with method requirements.
+  - A union of specific types or underlying types: ~int | ~int64 | ~float64.
+  - A combination of both.
+
+  The tilde (~) means "any type whose underlying type is T", allowing user-defined
+  named types (type MyInt int) to satisfy the constraint:
+
+    type Number interface { ~int | ~int32 | ~int64 | ~float64 }
+
+  Generic types are also supported:
+
+    type Stack[T any] struct { items []T }
+    func (s *Stack[T]) Push(v T)          { s.items = append(s.items, v) }
+    func (s *Stack[T]) Pop() (T, bool) {
+        if len(s.items) == 0 {
+            var zero T
+            return zero, false
+        }
+        v := s.items[len(s.items)-1]
+        s.items = s.items[:len(s.items)-1]
+        return v, true
+    }
+
+  any is a predeclared alias for interface{}. comparable is the built-in constraint for
+  types that can be used as map keys (supports ==).
+
+  When to reach for generics: generic data structures (stack, queue, set, ordered map),
+  algorithm functions that work identically across types (Map, Filter, Reduce). Avoid
+  generics when a simple interface suffices — Go still favours the simplest abstraction.
+
+  Common gotchas:
+  - Interfaces that use union syntax (~T or |) cannot be used as regular interface types
+    at runtime — only as constraints. var x Number is a compile error.
+  - Type inference can fail when type parameters appear only in return types or the
+    function body, not in argument positions — supply explicit type arguments in that
+    case.
+  - comparable is not the same as "all types". Slices, maps, and functions are not
+    comparable; using them as generic map keys will not compile.
+  - Generic code uses GC-shape-based stencilling, not full monomorphisation; performance
+    may differ from hand-specialised code for hot paths.
+exercises:
+  - prompt: |
+      Implement a type-safe generic Stack[T any] with Push, Pop (returns T and bool),
+      and Len methods. The main function must work for both int and string stacks.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import "fmt"
+
+      // Stack is not generic — only works for int, loses type safety
+      type Stack struct {
+          items []interface{}
+      }
+
+      func (s *Stack) Push(v interface{}) {
+          s.items = append(s.items, v)
+      }
+
+      func (s *Stack) Pop() (interface{}, bool) {
+          if len(s.items) == 0 {
+              return nil, false
+          }
+          v := s.items[len(s.items)-1]
+          s.items = s.items[:len(s.items)-1]
+          return v, true
+      }
+
+      func (s *Stack) Len() int { return len(s.items) }
+
+      func main() {
+          var intStack Stack
+          intStack.Push(1)
+          intStack.Push(2)
+          v, _ := intStack.Pop()
+          fmt.Println(v.(int) + 10) // type assertion required — not type safe
+
+          var strStack Stack
+          strStack.Push("hello")
+          s, _ := strStack.Pop()
+          fmt.Println(s.(string) + " world")
+      }
+    fixed_code: |
+      package main
+
+      import "fmt"
+
+      type Stack[T any] struct {
+          items []T
+      }
+
+      func (s *Stack[T]) Push(v T) {
+          s.items = append(s.items, v)
+      }
+
+      func (s *Stack[T]) Pop() (T, bool) {
+          if len(s.items) == 0 {
+              var zero T
+              return zero, false
+          }
+          v := s.items[len(s.items)-1]
+          s.items = s.items[:len(s.items)-1]
+          return v, true
+      }
+
+      func (s *Stack[T]) Len() int { return len(s.items) }
+
+      func main() {
+          var intStack Stack[int]
+          intStack.Push(1)
+          intStack.Push(2)
+          v, _ := intStack.Pop()
+          fmt.Println(v + 10) // no assertion needed — v is already int
+
+          var strStack Stack[string]
+          strStack.Push("hello")
+          s, _ := strStack.Pop()
+          fmt.Println(s + " world")
+      }
+    bug: |
+      The interface{} (any) version stores all values as untyped pointers, requiring
+      type assertions at every call site and losing compile-time type safety. Stack[T
+      any] is parameterised by type T: Push and Pop use T directly, so the compiler
+      checks types at instantiation. Returning the zero value of T when the stack is
+      empty requires var zero T — Go has no generic "zero literal"; this is the
+      idiomatic pattern.
+    check: stdout
+    signal: "12\nhello world"
+
+  - prompt: |
+      Implement generic Filter and Map functions and chain them to keep only even numbers
+      from a []int and then double each of them.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import "fmt"
+
+      // Filter only works for []int — not generic
+      func FilterInt(slice []int, pred func(int) bool) []int {
+          var out []int
+          for _, v := range slice {
+              if pred(v) {
+                  out = append(out, v)
+              }
+          }
+          return out
+      }
+
+      // Map only works for []int -> []int — not generic
+      func MapInt(slice []int, f func(int) int) []int {
+          out := make([]int, len(slice))
+          for i, v := range slice {
+              out[i] = f(v)
+          }
+          return out
+      }
+
+      func main() {
+          nums := []int{1, 2, 3, 4, 5, 6}
+          evens := FilterInt(nums, func(n int) bool { return n%2 == 0 })
+          doubled := MapInt(evens, func(n int) int { return n * 2 })
+          fmt.Println(doubled)
+      }
+    fixed_code: |
+      package main
+
+      import "fmt"
+
+      func Filter[T any](slice []T, pred func(T) bool) []T {
+          var out []T
+          for _, v := range slice {
+              if pred(v) {
+                  out = append(out, v)
+              }
+          }
+          return out
+      }
+
+      func Map[T, U any](slice []T, f func(T) U) []U {
+          out := make([]U, len(slice))
+          for i, v := range slice {
+              out[i] = f(v)
+          }
+          return out
+      }
+
+      func main() {
+          nums := []int{1, 2, 3, 4, 5, 6}
+          evens := Filter(nums, func(n int) bool { return n%2 == 0 })
+          doubled := Map(evens, func(n int) int { return n * 2 })
+          fmt.Println(doubled) // [4 8 12]
+      }
+    bug: |
+      The type-specific versions force duplication for every element type. Filter[T any]
+      and Map[T, U any] are generic: Filter works on any slice type; Map's two type
+      parameters allow the input and output element types to differ (e.g., int -> string).
+      Go infers T and U from the arguments, so no explicit type arguments are needed at
+      the call sites. This is the standard functional-programming pattern in Go generics.
+    check: stdout
+    signal: "[4 8 12]"
+
+  - prompt: |
+      The Sum function below only accepts []int. Generalise it with a constraint using
+      underlying-type unions so it also accepts []int32, []int64, and any user-defined
+      type backed by those integer types.
+    kind: fix-it
+    broken_code: |
+      package main
+
+      import "fmt"
+
+      func Sum(nums []int) int {
+          var total int
+          for _, n := range nums {
+              total += n
+          }
+          return total
+      }
+
+      type Celsius int32
+
+      func main() {
+          fmt.Println(Sum([]int{1, 2, 3})) // ok
+
+          // Sum([]Celsius{10, 20, 30}) — does not compile: Celsius is not int
+      }
+    fixed_code: |
+      package main
+
+      import "fmt"
+
+      type Integer interface {
+          ~int | ~int32 | ~int64
+      }
+
+      func Sum[T Integer](nums []T) T {
+          var total T
+          for _, n := range nums {
+              total += n
+          }
+          return total
+      }
+
+      type Celsius int32
+
+      func main() {
+          fmt.Println(Sum([]int{1, 2, 3}))           // 6
+          fmt.Println(Sum([]int64{100, 200, 300}))    // 600
+          fmt.Println(Sum([]Celsius{10, 20, 30}))     // 60
+      }
+    bug: |
+      The original Sum is monomorphic: it accepts only []int. The Integer constraint
+      uses the ~ prefix to mean "any type whose underlying type is int, int32, or int64",
+      which includes user-defined named types like Celsius (underlying type int32).
+      Without ~ the constraint would require the exact predeclared types and reject
+      Celsius. The return type T ensures Sum([]Celsius{...}) returns Celsius, not int.
+    check: stdout
+    signal: "6\n600\n60"

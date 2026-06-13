@@ -1,0 +1,142 @@
+- category: 'Backtracking'
+  lang: javascript
+  title: 'Backtracking — JavaScript refresher'
+  summary: |
+    Backtracking is a systematic trial-and-error strategy: build a candidate solution
+    incrementally, and abandon ("backtrack") a partial candidate as soon as you know
+    it cannot lead to a valid solution. It explores a decision tree, pruning branches
+    early.
+
+    Classic problems: subsets, permutations, combinations, N-Queens, Sudoku solver,
+    word search in a grid.
+
+    JavaScript notes:
+      - Represent the current path as an array; push before recursing, pop after.
+      - For visited cells in a grid, mark in-place and unmark after the call.
+      - A Set works well for tracking used values in permutation problems.
+      - Avoid copying the path array on every result push — push a snapshot: result.push([...path]).
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'path accumulator (push before recurse, pop after)'
+          code: 'const path = [];'
+        - label: 'result collector'
+          code: 'const result = [];'
+        - label: 'used-values set for permutations'
+          code: 'const used = new Set();'
+    - title: Basic operations
+      ops:
+        - label: 'add to path and recurse'
+          code: |
+            path.push(x);
+            backtrack(/* next state */);
+            path.pop();
+        - label: 'record a complete solution (snapshot the path)'
+          code: 'result.push([...path]);'
+        - label: 'mark / unmark grid cell as visited'
+          code: |
+            const tmp = grid[r][c];
+            grid[r][c] = "#";
+            backtrack(r, c);
+            grid[r][c] = tmp;
+        - label: '4-directional grid moves'
+          code: |
+            const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+            for (const [dr, dc] of dirs) {
+              backtrack(r+dr, c+dc);
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'iterate choices at current decision level'
+          code: |
+            for (let i = start; i < nums.length; i++) {
+              path.push(nums[i]);
+              backtrack(i + 1);
+              path.pop();
+            }
+        - label: 'skip duplicates in sorted input'
+          code: 'if (i > start && nums[i] === nums[i - 1]) continue;'
+        - label: 'base case: path is complete'
+          code: |
+            if (path.length === target) {
+              result.push([...path]);
+              return;
+            }
+    - title: Special operations (backtracking)
+      ops:
+        - label: 'generate all subsets of nums'
+          code: |
+            function subsets(nums) {
+                const result = [], path = [];
+                function bt(start) {
+                    result.push([...path]);
+                    for (let i = start; i < nums.length; i++) {
+                        path.push(nums[i]);
+                        bt(i + 1);
+                        path.pop();
+                    }
+                }
+                bt(0);
+                return result;
+            }
+        - label: 'generate all permutations of nums'
+          code: |
+            function permute(nums) {
+                const result = [], path = [], used = new Set();
+                function bt() {
+                    if (path.length === nums.length) {
+                        result.push([...path]);
+                        return;
+                    }
+                    for (let i = 0; i < nums.length; i++) {
+                        if (used.has(i)) continue;
+                        used.add(i);
+                        path.push(nums[i]);
+                        bt();
+                        path.pop();
+                        used.delete(i);
+                    }
+                }
+                bt();
+                return result;
+            }
+        - label: 'word search in a grid (mark visited in-place)'
+          code: |
+            function dfs(r, c, k) {
+                if (k === word.length) return true;
+                if (r < 0 || r >= rows || c < 0 || c >= cols) return false;
+                if (grid[r][c] !== word[k]) return false;
+                const tmp = grid[r][c];
+                grid[r][c] = "#";
+                const found = dfs(r+1,c,k+1) || dfs(r-1,c,k+1) || dfs(r,c+1,k+1) || dfs(r,c-1,k+1);
+                grid[r][c] = tmp;
+                return found;
+            }
+  example: |
+    Worked example — generate all combinations of k numbers from 1..n:
+
+      At each step pick a number from the remaining range [start..n]. Push it onto the
+      path, recurse with start = i+1 (no reuse), then pop. When the path has k numbers,
+      record a snapshot. Pruning: if remaining choices cannot fill the path, skip early.
+
+        function combine(n, k) {
+            const result = [], path = [];
+            function bt(start) {
+                if (path.length === k) {
+                    result.push([...path]);
+                    return;
+                }
+                for (let i = start; i <= n; i++) {
+                    // pruning: not enough numbers left to complete the combination
+                    if (n - i + 1 < k - path.length) break;
+                    path.push(i);
+                    bt(i + 1);
+                    path.pop();
+                }
+            }
+            bt(1);
+            return result;
+        }
+
+    Takeaway: the backtracking template is push -> recurse -> pop. Always push a
+    snapshot ([...path]) when recording results, not a reference to the live array.

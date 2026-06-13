@@ -1,0 +1,123 @@
+- category: 'Two Pointers & Sliding Window'
+  lang: go
+  title: 'Two Pointers & Sliding Window — Go refresher'
+  summary: |
+    Two pointers use two indices that move through a sequence to avoid an O(n^2)
+    nested loop. The sliding window variant keeps a variable-length sub-range [lo, hi)
+    and expands or shrinks it according to a constraint.
+
+    When to reach for it:
+      - Sorted array pair/triplet problems → two pointers from both ends.
+      - "Longest/shortest subarray/substring with property X" → sliding window.
+
+    Go notes:
+      - Slices give you s[lo:hi] for free — use it to extract a window's content.
+      - Strings are byte sequences; use []rune(s) if Unicode codepoints matter.
+      - Go's for loop is the only loop construct — write while-style with for cond {}.
+      - A map[byte]int or map[rune]int is the idiomatic frequency counter for chars.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'two pointers at both ends'
+          code: 'lo, hi := 0, len(s)-1'
+        - label: 'sliding window pointers'
+          code: |
+            lo := 0
+            // hi is the for-loop variable
+        - label: 'window frequency map'
+          code: 'freq := make(map[byte]int)'
+        - label: 'track best (max/min length seen)'
+          code: 'best := 0'
+    - title: Basic operations
+      ops:
+        - label: 'advance left pointer'
+          code: 'lo++'
+        - label: 'advance right pointer'
+          code: 'hi--'
+        - label: 'current window length'
+          code: 'length := hi - lo + 1'
+        - label: 'shrink window from left'
+          code: |
+            freq[s[lo]]--
+            lo++
+        - label: 'expand window to right (add s[hi])'
+          code: |
+            freq[s[hi]]++
+            hi++
+    - title: Iteration & loops
+      ops:
+        - label: 'two-pointer inward scan'
+          code: |
+            for lo < hi {
+                ...
+                lo++
+                hi--
+            }
+        - label: 'sliding window outer loop'
+          code: 'for hi := 0; hi < len(s); hi++ { ... }'
+        - label: 'shrink while constraint violated'
+          code: |
+            for freq[s[hi]] > 1 {
+                freq[s[lo]]--
+                lo++
+            }
+        - label: 'update best inside outer loop'
+          code: 'if hi-lo+1 > best { best = hi - lo + 1 }'
+    - title: Special operations (Two Pointers & Sliding Window)
+      ops:
+        - label: 'is palindrome (two pointers)'
+          code: |
+            for lo < hi {
+                if s[lo] != s[hi] {
+                    return false
+                }
+                lo++
+                hi--
+            }
+            return true
+        - label: 'longest substring with at most k distinct chars'
+          code: |
+            for len(freq) > k {
+                freq[s[lo]]--
+                if freq[s[lo]] == 0 {
+                    delete(freq, s[lo])
+                }
+                lo++
+            }
+        - label: 'minimum window covering all targets'
+          code: 'have, need := 0, len(target);  // expand hi, shrink lo when have==need'
+        - label: 'remove duplicates in sorted slice (two-pointer write)'
+          code: |
+            w := 0
+            for i := range s {
+                if i == 0 || s[i] != s[i-1] {
+                    s[w] = s[i]
+                    w++
+                }
+            }
+            s = s[:w]
+  example: |
+    Worked example — longest substring without repeating characters.
+
+      Maintain a sliding window [lo, hi). When adding s[hi] would create a
+      duplicate, advance lo until the duplicate is gone. Track the max window
+      size seen. Each character enters and leaves the window at most once: O(n).
+
+        func lengthOfLongestSubstring(s string) int {
+            freq := make(map[byte]int)
+            best, lo := 0, 0
+            for hi := 0; hi < len(s); hi++ {
+                freq[s[hi]]++
+                for freq[s[hi]] > 1 {
+                    freq[s[lo]]--
+                    lo++
+                }
+                if hi-lo+1 > best {
+                    best = hi - lo + 1
+                }
+            }
+            return best
+        }
+
+    Takeaway: the inner for-loop only runs as many times total as the outer loop,
+    keeping the whole algorithm O(n). Shrink from the left, expand on the right.

@@ -1,0 +1,114 @@
+- category: 'Binary Search'
+  lang: typescript
+  title: 'Binary Search — TypeScript refresher'
+  summary: |
+    Binary search finds a target in a SORTED array in O(log n) by repeatedly halving
+    the search range. At each step, look at the midpoint: if it equals the target you
+    are done; if the target is smaller, discard the right half; if larger, discard
+    the left half.
+
+    The pattern generalises beyond exact lookup: whenever the answer space is monotonic
+    ("feasible for all values >= X, not feasible below X"), you can binary-search the
+    smallest X that works.
+
+    TypeScript notes:
+      - All numbers are 64-bit floats, so integer overflow is not an issue in practice.
+        Still use `lo + Math.floor((hi - lo) / 2)` as idiomatic midpoint.
+      - Use `Math.floor` when computing midpoints on floating-point ranges.
+      - There is no standard `Arrays.binarySearch` — write your own or use a library.
+      - Type your function signatures explicitly: `function search(a: number[], target: number): number`.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'inclusive index bounds'
+          code: 'let lo = 0, hi = a.length - 1;'
+        - label: 'answer-space search (value range)'
+          code: 'let lo = minPossible, hi = maxPossible;'
+        - label: 'midpoint (idiomatic TS)'
+          code: 'const mid = lo + Math.floor((hi - lo) / 2);'
+    - title: Basic operations
+      ops:
+        - label: 'loop condition (inclusive both ends)'
+          code: |
+            while (lo <= hi) {
+              /* ... */
+            }
+        - label: 'check middle element'
+          code: 'if (a[mid] === target) return mid;'
+        - label: 'discard left half (target is to the right)'
+          code: 'lo = mid + 1;'
+        - label: 'discard right half (target is to the left)'
+          code: 'hi = mid - 1;'
+        - label: 'not-found sentinel'
+          code: 'return -1;'
+    - title: Iteration & loops
+      ops:
+        - label: 'standard binary search loop'
+          code: |
+            while (lo <= hi) {
+              const mid = lo + Math.floor((hi - lo) / 2);
+              if (a[mid] === target) return mid;
+              else if (a[mid] < target) lo = mid + 1;
+              else hi = mid - 1;
+            }
+        - label: 'left boundary (first index >= target)'
+          code: |
+            while (lo < hi) {
+              const mid = lo + Math.floor((hi - lo) / 2);
+              if (a[mid] < target) lo = mid + 1; else hi = mid;
+            }
+        - label: 'answer-space: keep best valid, shrink toward it'
+          code: |
+            if (feasible(mid)) {
+              best = mid;
+              hi = mid - 1;
+            } else lo = mid + 1;
+    - title: Special operations (binary search)
+      ops:
+        - label: 'find first true in boolean predicate space'
+          code: |
+            let lo = 0, hi = n;
+            while (lo < hi) {
+              const mid = lo + Math.floor((hi - lo) / 2);
+              if (cond(mid)) hi = mid; else lo = mid + 1;
+            }
+            return lo;
+        - label: 'rotated sorted array: find which half is ordered'
+          code: |
+            if (a[lo] <= a[mid]) {
+              /* left half sorted */
+            } else {
+              /* right half sorted */
+            }
+        - label: 'search a 2-D matrix by flattening index'
+          code: |
+            const mid = lo + Math.floor((hi - lo) / 2);
+            const val = matrix[Math.floor(mid / cols)][mid % cols];
+        - label: 'binary search on floating-point range (use epsilon)'
+          code: |
+            let lo = 0, hi = 1e9;
+            for (let i = 0; i < 100; i++) {
+              const mid = (lo + hi) / 2;
+              if (feasible(mid)) hi = mid; else lo = mid;
+            }
+  example: |
+    Worked example — find the index of target in a sorted array, or -1 if absent.
+
+      Keep an inclusive range [lo..hi]. Each step examine the midpoint. Discard the
+      half that cannot contain the target. The range halves each iteration, so one
+      million elements need only ~20 comparisons.
+
+        function search(a: number[], target: number): number {
+            let lo = 0, hi = a.length - 1;
+            while (lo <= hi) {
+                const mid = lo + Math.floor((hi - lo) / 2);
+                if (a[mid] === target) return mid;
+                else if (a[mid] < target) lo = mid + 1;
+                else hi = mid - 1;
+            }
+            return -1;
+        }
+
+    Takeaway: the invariant is "if target exists, it is inside [lo..hi]." When the
+    range is empty (lo > hi), the target is absent. For boundary problems switch to
+    lo < hi and converge on the first valid index.

@@ -1,0 +1,115 @@
+- category: Heap / Priority Queue
+  lang: java
+  title: Heap / Priority Queue — Java refresher
+  summary: |
+    A heap (exposed in Java as PriorityQueue) always keeps the smallest (or largest)
+    element ready at the front. peek() is O(1); add() and poll() are O(log n). Use it
+    whenever you repeatedly need the current min/max of a changing set — "k largest",
+    "merge k sorted lists", "schedule the next-soonest task".
+
+    Java's PriorityQueue is a MIN-heap by default (smallest comes out first). For a
+    MAX-heap, pass a reversed comparator.
+
+    The classic "top K" trick: to keep the K LARGEST values, maintain a MIN-heap of
+    size K. Whenever it grows past K, poll() removes the smallest — so only the K
+    biggest survive. That is O(n log k), far better than sorting everything when k is
+    small.
+
+    Java notes:
+      - new PriorityQueue<>() is a min-heap.
+      - Reverse order: new PriorityQueue<>(Collections.reverseOrder()).
+      - Custom key: new PriorityQueue<>((a, b) -> a.cost - b.cost).
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'min-heap of integers (default)'
+          code: 'PriorityQueue<Integer> pq = new PriorityQueue<>();'
+        - label: 'max-heap of integers'
+          code: 'PriorityQueue<Integer> pq = new PriorityQueue<>(Collections.reverseOrder());'
+        - label: 'min-heap by second element of int array'
+          code: 'PriorityQueue<int[]> pq = new PriorityQueue<>((a, b) -> Integer.compare(a[1], b[1]));'
+        - label: 'heap from an existing collection'
+          code: 'PriorityQueue<Integer> pq = new PriorityQueue<>(list);'
+    - title: Basic operations
+      ops:
+        - label: 'add an element'
+          code: 'pq.offer(x);'
+        - label: 'peek at minimum (no removal)'
+          code: 'int top = pq.peek();'
+        - label: 'remove and return minimum'
+          code: 'int out = pq.poll();'
+        - label: 'size'
+          code: 'pq.size();'
+        - label: 'empty check'
+          code: 'pq.isEmpty();'
+    - title: Most-used built-in functions
+      ops:
+        - label: 'remove a specific element (O(n))'
+          code: 'pq.remove(element);'
+        - label: 'convert heap to sorted array'
+          code: |
+            Integer[] sorted = pq.toArray(new Integer[0]);
+            Arrays.sort(sorted);
+        - label: 'drain heap in sorted order'
+          code: |
+            while (!pq.isEmpty()) {
+                int v = pq.poll();
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'top-K: maintain size-k min-heap'
+          code: |
+            for (int v : nums) {
+                pq.offer(v);
+                if (pq.size() > k) pq.poll();
+            }
+        - label: 'merge k sorted lists (offer first nodes)'
+          code: 'for (ListNode h : lists) if (h != null) pq.offer(h);'
+        - label: 'Dijkstra-style: process in distance order'
+          code: |
+            while (!pq.isEmpty()) {
+                int[] cur = pq.poll();
+                if (visited[cur[0]]) continue;
+            }
+    - title: Ordering & comparison
+      ops:
+        - label: 'sort by frequency descending'
+          code: 'pq = new PriorityQueue<>((a, b) -> Integer.compare(freq.get(b), freq.get(a)));'
+        - label: 'sort pairs: primary by first, break ties by second'
+          code: 'new PriorityQueue<>((a, b) -> a[0] != b[0] ? a[0]-b[0] : a[1]-b[1]);'
+    - title: Special operations (heap / priority queue)
+      ops:
+        - label: 'kth largest: size-k min-heap root is the answer'
+          code: |
+            pq.offer(v);
+            if (pq.size() > k) pq.poll();
+            return pq.peek();
+        - label: 'median of stream: two heaps (max-heap left, min-heap right)'
+          code: |
+            PriorityQueue<Integer> lo = new PriorityQueue<>(Collections.reverseOrder());
+            PriorityQueue<Integer> hi = new PriorityQueue<>();
+        - label: 'rebalance two-heap median'
+          code: 'if (lo.size() > hi.size() + 1) hi.offer(lo.poll()); else if (hi.size() > lo.size()) lo.offer(hi.poll());'
+        - label: 'task scheduler: use max-heap for counts'
+          code: 'PriorityQueue<Integer> counts = new PriorityQueue<>(Collections.reverseOrder());'
+  example: |
+    Worked example — kth largest element in an array:
+
+      Keep a MIN-heap holding at most k elements. Push each number; if the heap grows
+      to k+1, poll the smallest. After processing everything, the heap holds the k
+      largest values and its smallest (the root) is exactly the kth largest.
+
+        int findKthLargest(int[] nums, int k) {
+            PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+            for (int num : nums) {
+                minHeap.offer(num);
+                if (minHeap.size() > k) {
+                    minHeap.poll();      // drop the smallest — keep the k biggest
+                }
+            }
+            return minHeap.peek();       // root = kth largest
+        }
+
+    Why size-k min-heap: the root is the SMALLEST of the k largest, which is the kth
+    largest overall. Takeaway: when you need "the next best" again and again, a heap
+    gives it in O(log n) instead of re-scanning or re-sorting.

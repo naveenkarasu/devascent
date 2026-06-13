@@ -1,0 +1,232 @@
+lang: cpp
+group: Move Semantics
+title: "Move Semantics — Value Categories, Rule of Five, noexcept"
+tag: E
+summary: |
+  Move semantics (C++11) allow resources to be transferred rather than copied when a
+  source object is about to be discarded. The mechanism hinges on value categories: an
+  lvalue has a persistent identity (a named variable); an rvalue is a temporary or
+  about-to-expire value. A move constructor/move-assignment operator takes an rvalue
+  reference (T&&) and steals the source's resources (e.g., the internal pointer of a
+  vector), leaving the source in a valid-but-empty state.
+
+  std::move is a cast — it unconditionally casts its argument to an rvalue reference,
+  signalling "you may steal from this." It does not move anything by itself; it enables
+  the move overload to be selected.
+
+  The Rule of Zero/Three/Five governs special member function generation:
+    - Rule of Zero: if a class manages no raw resources, declare none of the five
+      special members — let the compiler generate them. Prefer this by composing
+      unique_ptr/shared_ptr/vector.
+    - Rule of Three (pre-C++11): if you define any of destructor, copy constructor,
+      copy-assignment, define all three.
+    - Rule of Five (C++11+): if you define any of the five (destructor, copy ctor,
+      copy-assign, move ctor, move-assign), define all five explicitly, because
+      declaring any one suppresses compiler generation of the others.
+
+  Marking move operations noexcept is critical: STL containers (e.g., std::vector)
+  use move only if it is noexcept; otherwise they fall back to copy during
+  reallocation.
+
+  Gotchas:
+    - std::move on a const object silently selects the copy constructor (there is no
+      const&& move overload).
+    - Using a moved-from object (other than assigning or destroying it) is undefined
+      behaviour for some types.
+    - Returning a local variable by name already triggers NRVO/RVO; wrapping it in
+      std::move can prevent the optimisation (Core Guidelines F.48).
+    - Forgetting noexcept on move operations — containers fall back to copying,
+      negating the performance benefit.
+exercises:
+  - prompt: |
+      Buffer wraps std::vector<char>. Add a move constructor (and move-assignment) that
+      transfers the internal vector using std::move, and mark both noexcept. Then write
+      a small test showing that after Buffer b2 = std::move(b1), b1.data() is empty.
+    kind: fix-it
+    broken_code: |
+      class Buffer {
+      public:
+          explicit Buffer(std::size_t n) : data_(n, 0) {}
+
+          const std::vector<char>& data() const { return data_; }
+
+      private:
+          std::vector<char> data_;
+          // no move constructor — vector<Buffer> copies on reallocation
+      };
+    fixed_code: |
+      class Buffer {
+      public:
+          explicit Buffer(std::size_t n) : data_(n, 0) {}
+
+          Buffer(Buffer&& other) noexcept
+              : data_(std::move(other.data_)) {}
+
+          Buffer& operator=(Buffer&& other) noexcept {
+              if (this != &other)
+                  data_ = std::move(other.data_);
+              return *this;
+          }
+
+          const std::vector<char>& data() const { return data_; }
+
+      private:
+          std::vector<char> data_;
+      };
+
+      // Verification
+      // Buffer b1(128);
+      // Buffer b2 = std::move(b1);
+      // assert(b1.data().empty());   // b1 was moved from
+      // assert(b2.data().size() == 128);
+    bug: |
+      Without a move constructor, std::vector<Buffer> cannot use move during
+      reallocation (e.g., push_back that triggers resize) — it copies instead, paying
+      the full heap-allocation cost each time. Providing noexcept move operations
+      signals to the STL that moving is safe even under exception-guarantee constraints,
+      enabling the move path.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Socket wraps a raw file descriptor (int fd). The destructor calls close(fd), but
+      there are no copy or move controls. The compiler generates a copy constructor that
+      duplicates fd — both objects then close the same descriptor. Implement all five
+      special members: delete copy; define move to steal fd and set the source to -1.
+    kind: fix-it
+    broken_code: |
+      class Socket {
+      public:
+          explicit Socket(int fd) : fd_(fd) {}
+          ~Socket() { if (fd_ != -1) ::close(fd_); }
+          int fd() const { return fd_; }
+      private:
+          int fd_;
+          // compiler generates: Socket(const Socket&) — copies fd_ (double-close bug)
+      };
+    fixed_code: |
+      class Socket {
+      public:
+          explicit Socket(int fd) : fd_(fd) {}
+
+          ~Socket() { if (fd_ != -1) ::close(fd_); }
+
+          Socket(const Socket&)            = delete;
+          Socket& operator=(const Socket&) = delete;
+
+          Socket(Socket&& other) noexcept
+              : fd_(other.fd_) {
+              other.fd_ = -1;
+          }
+
+          Socket& operator=(Socket&& other) noexcept {
+              if (this != &other) {
+                  if (fd_ != -1) ::close(fd_);
+                  fd_       = other.fd_;
+                  other.fd_ = -1;
+              }
+              return *this;
+          }
+
+          int fd() const { return fd_; }
+
+      private:
+          int fd_;
+      };
+    bug: |
+      The compiler-generated copy constructor copies fd_ by value, so both the original
+      and the copy hold the same file descriptor. When both destructors run, close() is
+      called twice on the same fd — double-close is UB and can silently close a
+      completely unrelated file opened later with the same descriptor number. Deleting
+      copy and providing move (which sets the source fd to -1) makes ownership
+      exclusive and the destructor idempotent.
+    check: none
+    signal: ""
+
+  - prompt: |
+      The call to consume() fails to compile because unique_ptr is not copyable. Fix
+      the call site with std::move. Then read the code comment that dereferences ptr
+      after the move — explain why that is dangerous and what a sanitizer would report.
+    kind: fix-it
+    broken_code: |
+      void consume(std::unique_ptr<int> p) {
+          // takes ownership
+      }
+
+      void caller() {
+          auto ptr = std::make_unique<int>(42);
+          consume(ptr);         // error: call to deleted copy constructor
+          int v = *ptr;         // would be use-after-move if above compiled
+      }
+    fixed_code: |
+      void consume(std::unique_ptr<int> p) {
+          // takes ownership
+      }
+
+      void caller() {
+          auto ptr = std::make_unique<int>(42);
+          consume(std::move(ptr));   // transfer ownership — ptr is now null
+          // int v = *ptr;           // DANGER: ptr is nullptr after move — null deref UB
+      }
+    bug: |
+      unique_ptr's copy constructor is deleted — you must explicitly opt in to transfer
+      with std::move. After the move, ptr holds nullptr; dereferencing it is undefined
+      behaviour (null pointer dereference). ASan/UBSan would report a null-dereference
+      at the dereference site. The correct rule: treat a moved-from object as
+      destroyed — only assign to it or let it go out of scope.
+    check: none
+    signal: ""
+
+  - prompt: |
+      MyData has a move constructor that is NOT marked noexcept. When objects are
+      stored in std::vector and the vector reallocates, the STL falls back to copying
+      instead of moving. Observe the behaviour difference; then add noexcept and confirm
+      the move path is taken.
+    kind: spot-the-bug
+    broken_code: |
+      struct MyData {
+          std::vector<int> payload;
+
+          explicit MyData(int n) : payload(n, 0) {}
+
+          MyData(MyData&& other)   // missing noexcept — STL won't use this on realloc
+              : payload(std::move(other.payload)) {
+              std::puts("moved");
+          }
+
+          MyData(const MyData& other)
+              : payload(other.payload) {
+              std::puts("copied");
+          }
+      };
+
+      // Push enough elements to force reallocation:
+      // std::vector<MyData> v;
+      // v.reserve(1);
+      // v.emplace_back(100);
+      // v.emplace_back(200);   // triggers realloc — prints "copied", not "moved"
+    fixed_code: |
+      struct MyData {
+          std::vector<int> payload;
+
+          explicit MyData(int n) : payload(n, 0) {}
+
+          MyData(MyData&& other) noexcept   // noexcept — STL uses move on realloc
+              : payload(std::move(other.payload)) {
+              std::puts("moved");
+          }
+
+          MyData(const MyData& other)
+              : payload(other.payload) {
+              std::puts("copied");
+          }
+      };
+    bug: |
+      std::vector's reallocation algorithm (used during push_back / insert when
+      capacity is exceeded) requires strong exception safety: if a move can throw, it
+      might leave the new buffer in a partially-moved, unrecoverable state. So the STL
+      only uses the move constructor when it is declared noexcept; otherwise it copies.
+      Adding noexcept is the correct fix — it also signals to callers that the operation
+      cannot fail, which is almost always true for move constructors.
+    check: none
+    signal: ""

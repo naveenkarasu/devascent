@@ -1,0 +1,135 @@
+- category: 'Dynamic Programming'
+  lang: go
+  title: 'Dynamic Programming — Go refresher'
+  summary: |
+    Dynamic programming (DP) solves problems by breaking them into overlapping
+    sub-problems and storing results so each sub-problem is solved only once.
+    Two styles: top-down (recursion + memoisation) and bottom-up (iterative table).
+
+    Recipe:
+      1. Define dp[i] (or dp[i][j]) clearly in English.
+      2. Write the recurrence.
+      3. Identify base cases.
+      4. Decide traversal order so dependencies are computed first.
+
+    Go notes:
+      - Bottom-up: declare with make([]int, n+1) or make([][]int, m+1).
+      - Top-down: use a map[string]int or [][]int memo; a -1 sentinel marks unvisited.
+      - Go 1.21 added max/min builtins; for older code write inline helpers.
+      - 2-D DP: make([][]int, m); for i := range dp { dp[i] = make([]int, n) }.
+  sections:
+    - title: Declarations
+      ops:
+        - label: '1-D DP table, zeroed'
+          code: 'dp := make([]int, n+1)'
+        - label: '2-D DP table'
+          code: |
+            dp := make([][]int, m+1)
+            for i := range dp {
+                dp[i] = make([]int, n+1)
+            }
+        - label: 'memo map for top-down DP'
+          code: 'memo := make(map[string]int)'
+        - label: 'sentinel for unvisited cells'
+          code: |
+            for i := range dp {
+                dp[i] = -1
+            }
+    - title: Basic operations
+      ops:
+        - label: 'fill 1-D table with constant'
+          code: |
+            for i := range dp {
+                dp[i] = 1 << 62
+            }
+        - label: 'take the max of two options'
+          code: 'dp[i] = max(dp[i-1], dp[i-2]+nums[i])'
+        - label: 'take the min'
+          code: 'dp[i] = min(dp[i-1]+cost[i], dp[i-2]+cost[i])'
+        - label: 'carry 2-D recurrence'
+          code: 'dp[i][j] = dp[i-1][j] + dp[i][j-1]'
+    - title: Iteration & loops
+      ops:
+        - label: 'bottom-up 1-D forward'
+          code: 'for i := 1; i <= n; i++ { dp[i] = dp[i-1] + something }'
+        - label: 'bottom-up 2-D nested loops'
+          code: |
+            for i := 1; i <= m; i++ {
+                for j := 1; j <= n; j++ {
+                    dp[i][j] = ...
+                }
+            }
+        - label: 'knapsack inner loop (0-1, iterate backwards)'
+          code: 'for j := capacity; j >= weight; j-- { dp[j] = max(dp[j], dp[j-weight]+value) }'
+        - label: 'coin change inner loop (unbounded, forward)'
+          code: |
+            for _, c := range coins {
+                for j := c; j <= amount; j++ {
+                    dp[j] = min(dp[j], dp[j-c]+1)
+                }
+            }
+    - title: Special operations (dynamic programming)
+      ops:
+        - label: 'LCS length (2-D DP)'
+          code: |
+            if a[i-1] == b[j-1] {
+                dp[i][j] = dp[i-1][j-1] + 1
+            } else {
+                dp[i][j] = max(dp[i-1][j], dp[i][j-1])
+            }
+        - label: 'longest increasing subsequence (patience sort style)'
+          code: |
+            tails := []int{}
+            for _, v := range nums {
+                pos := sort.SearchInts(tails, v)
+                if pos == len(tails) {
+                    tails = append(tails, v)
+                } else {
+                    tails[pos] = v
+                }
+            }
+        - label: 'top-down memo lookup'
+          code: |
+            key := strconv.Itoa(i)+","+strconv.Itoa(j)
+            if v, ok := memo[key]; ok {
+                return v
+            }
+        - label: 'reconstruct path by backtracking from dp table'
+          code: |
+            for i, j := m, n; i > 0 && j > 0; {
+                if a[i-1] == b[j-1] {
+                    i--
+                    j--
+                } else if dp[i-1][j] > dp[i][j-1] {
+                    i--
+                } else {
+                    j--
+                }
+            }
+  example: |
+    Worked example — coin change: fewest coins to make amount, or -1 if impossible.
+
+      dp[j] = minimum coins to make amount j. Start dp[0]=0, everything else
+      infinity. For each coin c and each amount j >= c, try using one more coin c:
+      dp[j] = min(dp[j], dp[j-c]+1). Final answer is dp[amount] if not infinity.
+
+        func coinChange(coins []int, amount int) int {
+            const inf = 1 << 30
+            dp := make([]int, amount+1)
+            for i := range dp { dp[i] = inf }
+            dp[0] = 0
+            for _, c := range coins {
+                for j := c; j <= amount; j++ {
+                    if dp[j-c]+1 < dp[j] {
+                        dp[j] = dp[j-c] + 1
+                    }
+                }
+            }
+            if dp[amount] == inf {
+                return -1
+            }
+            return dp[amount]
+        }
+
+    Takeaway: define dp clearly, set base cases, then fill forward. The inner
+    loop direction matters: forward for unbounded (reuse coins), backward for 0-1.

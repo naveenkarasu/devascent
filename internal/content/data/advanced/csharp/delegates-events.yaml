@@ -1,0 +1,225 @@
+lang: csharp
+group: Delegates & Events
+title: "Delegates & Events — type-safe function pointers and the publisher/subscriber pattern"
+tag: E
+summary: |
+  A delegate is a type-safe function pointer: a type that encapsulates a method
+  reference with a specific signature. Func<T, TResult>, Action<T>, and Predicate<T>
+  are the built-in generic delegate types. Multicast delegates hold an invocation list
+  — assigning += adds a method; invoking the delegate calls all methods in order.
+
+  Events are a restricted delegate pattern: event EventHandler<T> exposes only +=
+  and -= to outsiders (they cannot invoke or replace the delegate directly), enforcing
+  the publisher/subscriber contract.
+
+  Lambda expressions are syntactic sugar for anonymous delegate instances. C# 10
+  added explicit return types on lambdas; C# 12 added default parameters on lambdas.
+
+  Delegates underpin all of LINQ (method arguments are Func<T, TResult>),
+  event-driven UI, and callbacks.
+
+  Common mistakes:
+  - EventHandler<TEventArgs> convention: sender is object, args derive from EventArgs.
+    Deviating breaks interop with frameworks expecting the standard signature.
+  - Multicast delegates ignore return values from all methods except the last. If any
+    subscriber throws, subsequent subscribers do not run.
+  - Lambdas that capture this or large objects keep those alive; this can cause memory
+    leaks if the subscriber outlives the publisher.
+exercises:
+  - prompt: |
+      Build a Logger class with an event Action<string> OnMessage. Subscribe three
+      handlers (console, file-stub, in-memory list). Raise the event and verify all
+      three fire. Unsubscribe the console handler and raise again to verify it no
+      longer fires.
+    kind: fix-it
+    broken_code: |
+      var logger = new Logger();
+
+      // Three handlers
+      logger.OnMessage += msg => Console.WriteLine($"[Console] {msg}");
+      logger.OnMessage += msg => File.AppendAllText("log.txt", msg + "\n");
+
+      var inMemory = new List<string>();
+      Action<string> memHandler = msg => inMemory.Add(msg);
+      logger.OnMessage += memHandler;
+
+      logger.Log("hello");
+
+      // Unsubscribe console — but we lost the lambda reference, so -= won't work
+      logger.OnMessage -= msg => Console.WriteLine($"[Console] {msg}");
+      logger.Log("world");
+
+      public class Logger
+      {
+          // Broken: public field delegate — outsiders can invoke or null it out
+          public Action<string> OnMessage;
+
+          public void Log(string message) => OnMessage(message);
+      }
+    fixed_code: |
+      var logger = new Logger();
+
+      // Keep a reference to unsubscribe later
+      Action<string> consoleHandler = msg => Console.WriteLine($"[Console] {msg}");
+      Action<string> fileHandler    = _ => { };   // file-stub: no-op, keeps output deterministic
+
+      var inMemory = new List<string>();
+      Action<string> memHandler = msg => inMemory.Add(msg);
+
+      logger.OnMessage += consoleHandler;
+      logger.OnMessage += fileHandler;
+      logger.OnMessage += memHandler;
+
+      logger.Log("hello");     // all three fire
+
+      logger.OnMessage -= consoleHandler;
+      logger.Log("world");     // console handler no longer fires
+
+      Console.WriteLine(string.Join(", ", inMemory));   // hello, world
+
+      public class Logger
+      {
+          // Correct: event restricts outsiders to += and -=
+          public event Action<string> OnMessage;
+
+          public void Log(string message) => OnMessage?.Invoke(message);
+      }
+    bug: |
+      A public delegate field lets outsiders invoke it directly or set it to null,
+      breaking encapsulation. Use event. To unsubscribe a lambda with -=, you must
+      hold a reference to the same delegate instance — a new lambda (even with
+      identical code) is a different object.
+    check: stdout
+    signal: "[Console] hello\nhello, world"
+
+  - prompt: |
+      The event is invoked without a null guard. When no handlers are subscribed it
+      throws NullReferenceException. Fix it and explain why ?.Invoke() is thread-safe
+      for the invocation itself.
+    kind: fix-it
+    broken_code: |
+      var btn = new Button();
+      btn.SimulateClick("OK");   // crash
+
+      public class Button
+      {
+          public event Action<string> Clicked;
+
+          public void SimulateClick(string label)
+          {
+              // Throws NullReferenceException when no subscribers are attached
+              Clicked(label);
+          }
+      }
+    fixed_code: |
+      var btn = new Button();
+      btn.SimulateClick("OK");   // no-op, no exception
+      Console.WriteLine("No subscribers - safe");
+
+      public class Button
+      {
+          public event Action<string> Clicked;
+
+          public void SimulateClick(string label)
+          {
+              // ?.Invoke() reads the delegate reference into a local copy first,
+              // then checks null and invokes — thread-safe for the invocation.
+              Clicked?.Invoke(label);
+          }
+      }
+    bug: |
+      Invoking a null delegate throws NullReferenceException. ?.Invoke() is safe
+      because the compiler reads the delegate field into a temporary before the null
+      check — even if another thread unsubscribes between the check and the invoke,
+      the temporary still holds the old invocation list. The invocation itself proceeds
+      safely. However, checking subscriber count and then invoking is still a TOCTOU
+      race — always use ?.Invoke().
+    check: stdout
+    signal: "No subscribers - safe"
+
+  - prompt: |
+      Rewrite the custom delegate type Transform using Func<double, double>. Then
+      explain when a custom named delegate is still preferable.
+    kind: fix-it
+    broken_code: |
+      Transform square = x => x * x;
+      Transform cube   = x => x * x * x;
+
+      Console.WriteLine(Apply(square, 4));   // 16
+      Console.WriteLine(Apply(cube,   3));   // 27
+
+      // This fails — Func<double,double> and Transform are structurally
+      // compatible but nominally distinct types.
+      Func<double, double> fn = x => x + 1;
+      Transform t2 = fn;   // CS0029: cannot implicitly convert
+
+      static double Apply(Transform t, double value) => t(value);
+
+      // Custom delegate
+      delegate double Transform(double x);
+    fixed_code: |
+      // Use Func<double, double> everywhere
+      Func<double, double> square = x => x * x;
+      Func<double, double> cube   = x => x * x * x;
+
+      Console.WriteLine(Apply(square, 4));   // 16
+      Console.WriteLine(Apply(cube,   3));   // 27
+
+      Func<double, double> fn = x => x + 1;
+      Apply(fn, 5);   // now works — same type
+
+      static double Apply(Func<double, double> t, double value) => t(value);
+
+      // When to prefer a custom delegate:
+      // - Named parameters improve readability (e.g., delegate bool Predicate<T>(T item))
+      // - You need XML documentation on the type itself
+      // - You want variance annotations unavailable on Func/Action
+      // - The signature has more than 16 parameters (Func caps at 16)
+    bug: |
+      Func<double, double> and Transform are structurally identical but nominally
+      different types. You cannot assign one to the other without an explicit new
+      Transform(fn) wrapper. Use Func/Action for anonymous, short-lived callbacks;
+      use a custom delegate when the type needs a meaningful name, documentation,
+      or specific variance annotations.
+    check: compiles
+    signal: ""
+
+  - prompt: |
+      After the loop all events fire with the same (final) value of i. Why? Fix it
+      using a local copy inside the loop. NOTE: the loop must be a for(int i...) loop
+      — foreach is per-iteration-scoped in C# 5+ and does NOT show this bug.
+    kind: spot-the-bug
+    broken_code: |
+      var actions = new List<Action>();
+
+      for (int i = 0; i < 5; i++)
+      {
+          // Each lambda captures the SAME variable i, not its current value.
+          actions.Add(() => Console.WriteLine(i));
+      }
+
+      // By the time we invoke, the loop has finished and i == 5.
+      foreach (var a in actions)
+          a();   // prints 5, 5, 5, 5, 5
+    fixed_code: |
+      var actions = new List<Action>();
+
+      for (int i = 0; i < 5; i++)
+      {
+          // Capture a local copy — each lambda now has its own independent variable.
+          int captured = i;
+          actions.Add(() => Console.WriteLine(captured));
+      }
+
+      foreach (var a in actions)
+          a();   // prints 0, 1, 2, 3, 4
+    bug: |
+      Lambda closures capture VARIABLES by reference, not their values at the time of
+      creation. All five lambdas share the single loop variable i. When the loop
+      finishes i == 5, so every lambda prints 5. The fix is to copy i into a new local
+      variable (int captured = i) inside the loop body — each iteration creates a
+      fresh, independent variable that the lambda captures.
+      Note: foreach in C# 5+ declares a new loop variable per iteration, so this bug
+      does not appear with foreach; it only manifests with for loops.
+    check: stdout
+    signal: "0\n1\n2\n3\n4"

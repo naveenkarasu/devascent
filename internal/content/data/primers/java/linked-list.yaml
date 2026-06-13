@@ -1,0 +1,150 @@
+- category: Linked List
+  lang: java
+  title: Linked List — Java refresher
+  summary: |
+    A linked list is a chain of nodes; each node holds a value and a pointer (next)
+    to the following node. Unlike an array there is no index — you reach element k by
+    walking k hops from the head. The last node's next is null.
+
+    Two techniques solve most problems:
+      - DUMMY HEAD: allocate a throwaway node in front of the real head. It removes
+        the "what if I modify the first node?" special case — you always have a node
+        to attach to, and return dummy.next at the end.
+      - SLOW / FAST pointers: advance one pointer by 1 and another by 2. The fast one
+        reaches the end when the slow one is at the MIDDLE; if they ever meet, there
+        is a CYCLE. This finds middles and loops in one pass, O(1) extra space.
+
+    Java notes:
+      - A node is usually: class ListNode { int val; ListNode next; }
+      - Always check node != null before reading node.next (avoid NullPointerException).
+      - Reversing is just re-pointing next links; keep a tmp so you do not lose the rest.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'list node class'
+          code: |
+            class ListNode {
+                int val;
+                ListNode next;
+                ListNode(int v) { val = v; }
+            }
+        - label: 'pointer starting at head'
+          code: 'ListNode cur = head;'
+        - label: 'dummy head (removes first-node edge cases)'
+          code: |
+            ListNode dummy = new ListNode(0);
+            dummy.next = head;
+            ListNode tail = dummy;
+        - label: 'slow and fast pointers'
+          code: 'ListNode slow = head, fast = head;'
+    - title: Basic operations
+      ops:
+        - label: 'walk the list'
+          code: 'for (ListNode cur = head; cur != null; cur = cur.next) { ... }'
+        - label: 'read node value'
+          code: 'int v = cur.val;'
+        - label: 'advance one step'
+          code: 'cur = cur.next;'
+        - label: 'attach a node at tail'
+          code: |
+            tail.next = newNode;
+            tail = tail.next;
+        - label: 'return the real head (after dummy head use)'
+          code: 'return dummy.next;'
+    - title: Most-used built-in functions
+      ops:
+        - label: 'slow / fast to find middle'
+          code: |
+            while (fast != null && fast.next != null) {
+                slow = slow.next;
+                fast = fast.next.next;
+            }
+        - label: 'detect cycle (Floyd)'
+          code: |
+            while (fast != null && fast.next != null) {
+                slow = slow.next;
+                fast = fast.next.next;
+                if (slow == fast) return true;
+            }
+            return false;
+    - title: Iteration & loops
+      ops:
+        - label: 'reverse in place'
+          code: |
+            ListNode prev = null, cur = head;
+            while (cur != null) {
+                ListNode next = cur.next;
+                cur.next = prev;
+                prev = cur;
+                cur = next;
+            }
+        - label: 'merge two sorted lists'
+          code: |
+            while (a != null && b != null) {
+                if (a.val <= b.val) {
+                    tail.next = a;
+                    a = a.next;
+                } else {
+                    tail.next = b;
+                    b = b.next;
+                }
+                tail = tail.next;
+            }
+            tail.next = (a != null) ? a : b;
+        - label: 'find kth from end (two-pointer gap)'
+          code: |
+            ListNode fast = head;
+            for (int i = 0; i < k; i++) fast = fast.next;
+            ListNode slow = head;
+            while (fast != null) {
+                slow = slow.next;
+                fast = fast.next;
+            }
+    - title: Special operations (linked list)
+      ops:
+        - label: 're-point a link (save next before overwriting)'
+          code: |
+            ListNode tmp = cur.next;
+            cur.next = prev;
+            prev = cur;
+            cur = tmp;
+        - label: 'delete a node given only that node (copy-forward trick)'
+          code: |
+            node.val = node.next.val;
+            node.next = node.next.next;
+        - label: 'split list at middle (for merge sort)'
+          code: |
+            ListNode mid = slow;
+            ListNode second = slow.next;
+            mid.next = null;
+        - label: 'check palindrome: reverse second half, compare'
+          code: |
+            ListNode rev = reverse(slow);
+            ListNode check = head;
+            while (rev != null) {
+                if (rev.val != check.val) return false;
+                rev = rev.next;
+                check = check.next;
+            }
+  example: |
+    Worked example — reverse a singly linked list:
+
+      Walk the list carrying a prev pointer (starts null). For each node, remember its
+      next, flip its link to point back at prev, then slide prev and cur forward. When
+      cur falls off the end, prev is the new head.
+
+        ListNode reverseList(ListNode head) {
+            ListNode prev = null;
+            ListNode cur = head;
+            while (cur != null) {
+                ListNode next = cur.next;   // save the rest before we overwrite
+                cur.next = prev;            // flip this link backward
+                prev = cur;                 // advance prev
+                cur = next;                 // advance cur
+            }
+            return prev;                    // prev is the new head
+        }
+
+    The saved next is essential — without it, cur.next = prev would lose the rest of
+    the list. Takeaway: linked-list problems are about carefully re-pointing next
+    links; a dummy head and slow/fast pointers remove most of the edge cases.

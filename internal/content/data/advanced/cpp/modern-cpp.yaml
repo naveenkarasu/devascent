@@ -1,0 +1,208 @@
+lang: cpp
+group: Modern C++ — auto, Lambdas, constexpr, Utilities
+title: "Modern C++ — auto, Lambdas, constexpr, Utilities"
+tag: E
+summary: |
+  A cluster of features added across C++11/14/17/20 that collectively define the
+  modern idiom:
+
+    - auto (C++11) — type deduction for variable declarations; removes redundant type
+      repetition. With decltype(auto), also captures reference-ness.
+    - Range-for (C++11) — for (auto& x : container) replaces verbose iterator loops.
+    - Lambdas (C++11, extended in C++14/17/20) — anonymous function objects with a
+      capture clause. Captures can be by value [=], by reference [&], or explicit
+      [x, &y]. C++14 added generic lambdas (auto parameters); C++20 added template
+      lambdas.
+    - Structured bindings (C++17) — auto [key, val] = *it; decomposes pairs, tuples,
+      and structs.
+    - constexpr (C++11, relaxed in C++14, if constexpr in C++17) — marks functions or
+      variables as evaluable at compile time. C++20 extends this further; consteval
+      forces compile-time evaluation.
+    - std::optional<T> (C++17) — represents a value that may be absent; avoids
+      sentinel values and nullable pointers for non-polymorphic types.
+    - std::variant<Ts...> (C++17) — a type-safe tagged union; use with std::visit for
+      exhaustive dispatch.
+    - std::string_view (C++17) — non-owning view of a string; avoids copies when
+      reading string data.
+    - Concepts (C++20), Ranges (C++20), std::format (C++20) — see Templates section
+      for Concepts/Ranges; std::format provides Python-style string formatting.
+    - std::expected<T, E> (C++23) — a value-or-error type (similar to Rust's Result).
+
+  Gotchas:
+    - auto with std::vector<bool> deduces a proxy object, not bool& — a known landmine.
+    - Capturing this by value ([=]) in a lambda before C++17 captures the pointer this,
+      not a copy of the object.
+    - std::string_view stores a pointer/length pair; returning a string_view to a local
+      std::string is a dangling view — UB.
+    - std::variant can become valueless_by_exception if assignment throws after
+      destroying the old value.
+exercises:
+  - prompt: |
+      A loop captures the loop variable i by reference inside lambdas stored in a
+      vector<std::function<int()>>. After the loop all lambdas return the same value
+      (the final value of i). Identify the stale-reference bug and fix it by capturing
+      i by value.
+    kind: spot-the-bug
+    broken_code: |
+      std::vector<std::function<int()>> make_counters() {
+          std::vector<std::function<int()>> funcs;
+          for (int i = 0; i < 5; ++i) {
+              funcs.push_back([&i]() { return i; });  // captures i by reference
+          }
+          // After the loop, i == 5 and is about to be destroyed.
+          // All lambdas now hold a dangling reference to i.
+          return funcs;
+      }
+
+      // make_counters()[0]() → UB (dangling ref); if i is still alive: returns 5
+    fixed_code: |
+      std::vector<std::function<int()>> make_counters() {
+          std::vector<std::function<int()>> funcs;
+          for (int i = 0; i < 5; ++i) {
+              funcs.push_back([i]() { return i; });  // capture by value: each lambda
+          }                                          // holds its own copy of i
+          return funcs;
+      }
+
+      // make_counters()[0]() → 0
+      // make_counters()[2]() → 2
+    bug: |
+      [&i] captures a reference to the loop variable i. After the loop body, i is
+      either incremented to 5 (and the loop ends) or goes out of scope entirely if it
+      is declared in the for-init. All lambdas share that single i; calling them after
+      the loop is either a dangling reference (UB, detectable by ASan) or returns the
+      post-loop value. Capturing by value [i] copies the current value of i at each
+      iteration, giving each lambda its own independent integer.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Rewrite find_first_positive to return std::optional<int> instead of a raw int*
+      that is nullptr on failure. Callers must check before use. Show a caller that
+      incorrectly calls .value() without checking — and the exception it throws.
+    kind: fix-it
+    broken_code: |
+      // Returns nullptr if no positive value found — easy to forget to check
+      const int* find_first_positive(const std::vector<int>& v) {
+          for (const int& x : v)
+              if (x > 0) return &x;
+          return nullptr;
+      }
+
+      void caller() {
+          std::vector<int> v{-1, -2, -3};
+          const int* p = find_first_positive(v);
+          std::printf("%d\n", *p);   // UB: null pointer dereference
+      }
+    fixed_code: |
+      // C++17: caller is forced to acknowledge the absent case
+      std::optional<int> find_first_positive(const std::vector<int>& v) {
+          for (int x : v)
+              if (x > 0) return x;
+          return std::nullopt;
+      }
+
+      void caller() {
+          std::vector<int> v{-1, -2, -3};
+          auto result = find_first_positive(v);
+
+          // Safe access patterns:
+          int val = result.value_or(0);         // default if absent
+          if (result.has_value())
+              std::printf("%d\n", result.value());
+
+          // Unsafe — throws std::bad_optional_access if empty:
+          // std::printf("%d\n", result.value());
+      }
+    bug: |
+      Returning a raw pointer requires the caller to remember to null-check; forgetting
+      causes a null-dereference UB crash. std::optional<int> (C++17) makes the
+      "might be absent" contract explicit in the type — callers must engage with
+      .has_value(), value_or(), or the monadic interface. Unchecked .value() on an
+      empty optional throws std::bad_optional_access (a catchable exception), which is
+      far more diagnosable than a null-dereference crash.
+    check: none
+    signal: ""
+
+  - prompt: |
+      A std::variant<Circle, Rectangle> is used with std::visit. A new shape Triangle
+      is added to the variant but the visitor lambda is not updated. Show that the
+      compiler catches the missing case as an error, and update the visitor.
+    kind: fix-it
+    broken_code: |
+      struct Circle    { double radius; };
+      struct Rectangle { double w, h; };
+      struct Triangle  { double base, height; };
+
+      using Shape = std::variant<Circle, Rectangle>;   // Triangle not yet added
+
+      double area(const Shape& s) {
+          return std::visit([](const auto& shape) -> double {
+              if constexpr (std::is_same_v<decltype(shape), const Circle&>)
+                  return 3.14159 * shape.radius * shape.radius;
+              else
+                  return shape.w * shape.h;
+          }, s);
+      }
+      // Adding Triangle to the variant without updating the visitor causes a
+      // compile error — std::visit cannot match the Triangle alternative.
+    fixed_code: |
+      struct Circle    { double radius; };
+      struct Rectangle { double w, h; };
+      struct Triangle  { double base, height; };
+
+      using Shape = std::variant<Circle, Rectangle, Triangle>;
+
+      double area(const Shape& s) {
+          return std::visit([](const auto& shape) -> double {
+              if constexpr (std::is_same_v<decltype(shape), const Circle&>)
+                  return 3.14159 * shape.radius * shape.radius;
+              else if constexpr (std::is_same_v<decltype(shape), const Rectangle&>)
+                  return shape.w * shape.h;
+              else  // Triangle
+                  return 0.5 * shape.base * shape.height;
+          }, s);
+      }
+    bug: |
+      std::visit requires the visitor to handle every alternative in the variant. When
+      Triangle is added to the variant but the visitor does not cover it, the compiler
+      rejects the std::visit call with a substitution failure. This compile-time
+      exhaustiveness check is the key safety property of std::variant — it is the
+      C++ equivalent of an exhaustive match in functional languages.
+    check: none
+    signal: ""
+
+  - prompt: |
+      serialize<T> must handle arithmetic types (write the numeric value) and strings
+      (write quoted). Without if constexpr, both branches must compile for every T —
+      causing errors when the numeric branch tries to call arithmetic operations on a
+      std::string. Fix with if constexpr (C++17).
+    kind: fix-it
+    broken_code: |
+      template <typename T>
+      std::string serialize(const T& val) {
+          // BUG: both branches compile for every T
+          if (std::is_arithmetic_v<T>) {
+              return std::to_string(val);  // error when T == std::string
+          } else {
+              return '"' + val + '"';      // error when T == int (no operator+ for char+int)
+          }
+      }
+    fixed_code: |
+      template <typename T>
+      std::string serialize(const T& val) {
+          if constexpr (std::is_arithmetic_v<T>) {
+              return std::to_string(val);   // only instantiated when T is arithmetic
+          } else {
+              return '"' + val + '"';       // only instantiated when T is not arithmetic
+          }
+      }
+    bug: |
+      A regular if is a runtime branch — both arms must be syntactically and
+      semantically valid for every substituted T. if constexpr (C++17) discards the
+      non-taken branch during template instantiation, so each arm only needs to be
+      valid for the types that actually reach it. Before C++17, this required separate
+      template specialisations or std::enable_if SFINAE — if constexpr is dramatically
+      simpler.
+    check: none
+    signal: ""

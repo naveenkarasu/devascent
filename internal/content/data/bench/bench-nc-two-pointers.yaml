@@ -1,0 +1,210 @@
+# Canonical NeetCode 150 — Two Pointers (original prompts, own solutions).
+- id: nc-valid-palindrome
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Valid Palindrome
+  difficulty: easy
+  pattern: two-pointers
+  category: Two Pointers & Sliding Window
+  lists: [neetcode150, blind75]
+  func_name: is_palindrome
+  prompt: |
+    Valid Palindrome
+
+    Return True if the string is a palindrome considering only alphanumeric
+    characters and ignoring case, else False.
+
+    Examples:
+      is_palindrome("A man, a plan, a canal: Panama") -> True
+      is_palindrome("race a car") -> False
+  starter: |
+    def is_palindrome(s):
+        pass  # write your solution; delete this line
+  solution: |
+    def is_palindrome(s):
+        i, j = 0, len(s) - 1
+        while i < j:
+            while i < j and not s[i].isalnum():
+                i += 1
+            while i < j and not s[j].isalnum():
+                j -= 1
+            if s[i].lower() != s[j].lower():
+                return False
+            i += 1
+            j -= 1
+        return True
+  tests:
+    - {name: case 1, input: ["A man, a plan, a canal: Panama"], expected: true}
+    - {name: case 2, input: ["race a car"], expected: false}
+    - {name: case 3, input: [" "], expected: true}
+
+- id: nc-two-sum-ii
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Two Sum II - Input Array Is Sorted
+  difficulty: medium
+  pattern: two-pointers
+  category: Two Pointers & Sliding Window
+  lists: [neetcode150]
+  func_name: two_sum_ii
+  prompt: |
+    Two Sum II (Sorted Input)
+
+    Given a 1-indexed sorted array and a target, return the 1-based indices
+    [i, j] (i < j) of the two numbers that sum to the target. Exactly one
+    solution exists; use O(1) extra space.
+
+    Examples:
+      two_sum_ii([2,7,11,15], 9) -> [1, 2]
+      two_sum_ii([2,3,4], 6) -> [1, 3]
+  starter: |
+    def two_sum_ii(numbers, target):
+        pass  # write your solution; delete this line
+  solution: |
+    def two_sum_ii(numbers, target):
+        i, j = 0, len(numbers) - 1
+        while i < j:
+            total = numbers[i] + numbers[j]
+            if total == target:
+                return [i + 1, j + 1]
+            if total < target:
+                i += 1
+            else:
+                j -= 1
+        return []
+  tests:
+    - {name: case 1, input: [[2,7,11,15], 9], expected: [1,2]}
+    - {name: case 2, input: [[2,3,4], 6], expected: [1,3]}
+    - {name: case 3, input: [[-1,0], -1], expected: [1,2]}
+
+- id: nc-container-most-water
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Container With Most Water
+  difficulty: medium
+  pattern: two-pointers
+  category: Two Pointers & Sliding Window
+  lists: [neetcode150, blind75]
+  func_name: max_area
+  prompt: |
+    Container With Most Water
+
+    Each element is the height of a vertical line at that index. Pick two lines
+    that, with the x-axis, hold the most water. Return that maximum area.
+
+    Examples:
+      max_area([1,8,6,2,5,4,8,3,7]) -> 49
+      max_area([1,1]) -> 1
+  starter: |
+    def max_area(heights):
+        pass  # write your solution; delete this line
+  solution: |
+    def max_area(heights):
+        i, j = 0, len(heights) - 1
+        best = 0
+        while i < j:
+            area = min(heights[i], heights[j]) * (j - i)
+            best = max(best, area)
+            if heights[i] < heights[j]:
+                i += 1
+            else:
+                j -= 1
+        return best
+  tests:
+    - {name: case 1, input: [[1,8,6,2,5,4,8,3,7]], expected: 49}
+    - {name: case 2, input: [[1,1]], expected: 1}
+    - {name: case 3, input: [[4,3,2,1,4]], expected: 16}
+
+- id: nc-trapping-rain-water
+  time_complexity: "O(n)"
+  space_complexity: "O(1)"
+  title: Trapping Rain Water
+  difficulty: hard
+  pattern: two-pointers
+  category: Two Pointers & Sliding Window
+  lists: [neetcode150]
+  func_name: trap
+  prompt: |
+    Trapping Rain Water
+
+    Given an elevation map (array of bar heights, each width 1), return how many
+    units of water it can trap after raining.
+
+    Examples:
+      trap([0,1,0,2,1,0,1,3,2,1,2,1]) -> 6
+      trap([4,2,0,3,2,5]) -> 9
+  starter: |
+    def trap(heights):
+        pass  # write your solution; delete this line
+  solution: |
+    def trap(heights):
+        if not heights:
+            return 0
+        i, j = 0, len(heights) - 1
+        left_max, right_max = heights[i], heights[j]
+        total = 0
+        while i < j:
+            if left_max < right_max:
+                i += 1
+                left_max = max(left_max, heights[i])
+                total += left_max - heights[i]
+            else:
+                j -= 1
+                right_max = max(right_max, heights[j])
+                total += right_max - heights[j]
+        return total
+  tests:
+    - {name: case 1, input: [[0,1,0,2,1,0,1,3,2,1,2,1]], expected: 6}
+    - {name: case 2, input: [[4,2,0,3,2,5]], expected: 9}
+    - {name: case 3, input: [[]], expected: 0}
+
+- id: nc-3sum
+  time_complexity: "O(n^2)"
+  space_complexity: "O(n)"
+  title: 3Sum
+  difficulty: medium
+  pattern: two-pointers
+  category: Two Pointers & Sliding Window
+  lists: [neetcode150, blind75]
+  func_name: three_sum
+  prompt: |
+    3Sum
+
+    Return all unique triplets [a, b, c] from the array with a + b + c = 0.
+    Return each triplet sorted ascending, and the list of triplets sorted
+    (so the output is deterministic). No duplicate triplets.
+
+    Examples:
+      three_sum([-1,0,1,2,-1,-4]) -> [[-1,-1,2],[-1,0,1]]
+      three_sum([0,1,1]) -> []
+  starter: |
+    def three_sum(nums):
+        pass  # write your solution; delete this line
+  solution: |
+    def three_sum(nums):
+        nums.sort()
+        res = []
+        n = len(nums)
+        for i in range(n):
+            if i > 0 and nums[i] == nums[i - 1]:
+                continue
+            lo, hi = i + 1, n - 1
+            while lo < hi:
+                total = nums[i] + nums[lo] + nums[hi]
+                if total < 0:
+                    lo += 1
+                elif total > 0:
+                    hi -= 1
+                else:
+                    res.append([nums[i], nums[lo], nums[hi]])
+                    lo += 1
+                    hi -= 1
+                    while lo < hi and nums[lo] == nums[lo - 1]:
+                        lo += 1
+                    while lo < hi and nums[hi] == nums[hi + 1]:
+                        hi -= 1
+        return res
+  tests:
+    - {name: case 1, input: [[-1,0,1,2,-1,-4]], expected: [[-1,-1,2],[-1,0,1]]}
+    - {name: case 2, input: [[0,1,1]], expected: []}
+    - {name: case 3, input: [[0,0,0]], expected: [[0,0,0]]}

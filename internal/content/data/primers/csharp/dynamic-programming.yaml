@@ -1,0 +1,107 @@
+- category: 'Dynamic Programming'
+  lang: csharp
+  title: 'Dynamic Programming — C# refresher'
+  summary: |
+    Dynamic programming (DP) solves problems by breaking them into overlapping
+    subproblems and storing each subproblem's result so it is never recomputed. The
+    two flavors are top-down (recursion + memoization) and bottom-up (tabulation).
+
+    The key insight: if a problem has OPTIMAL SUBSTRUCTURE and OVERLAPPING SUBPROBLEMS,
+    DP applies. Define the state (what varies), the recurrence (how states connect),
+    and the base case. Then either memoize a recursive function or fill a table.
+
+    C# notes:
+      - Dictionary<(int,int), int> or int[,] for 2-D DP state.
+      - int[] dp = new int[n+1] zero-initializes; set base cases explicitly.
+      - Array.Fill(dp, int.MaxValue) for problems where you minimize a value.
+      - For 1-D DP space optimization, keep only the previous row/value.
+  sections:
+    - title: Declarations
+      ops:
+        - label: '1-D DP table'
+          code: 'int[] dp = new int[n + 1];'
+        - label: '2-D DP table'
+          code: 'int[,] dp = new int[m + 1, n + 1];'
+        - label: 'memoization dictionary (2-D state)'
+          code: 'var memo = new Dictionary<(int, int), int>();'
+        - label: 'initialize to "infinity" for minimization'
+          code: |
+            Array.Fill(dp, int.MaxValue);
+            dp[0] = 0;
+    - title: Basic operations
+      ops:
+        - label: 'read 2-D table cell'
+          code: 'int v = dp[i, j];'
+        - label: 'write 2-D table cell'
+          code: 'dp[i, j] = val;'
+        - label: 'memoization lookup + store'
+          code: |
+            if (memo.TryGetValue((i, j), out var cached)) return cached;
+            int result = /* compute */;
+            memo[(i, j)] = result;
+            return result;
+        - label: 'transition: take max/min of options'
+          code: 'dp[i] = Math.Max(dp[i - 1], dp[i - weight] + value);'
+    - title: Iteration & loops
+      ops:
+        - label: 'bottom-up 1-D (coin change)'
+          code: |
+            int[] dp = new int[amount + 1];
+            Array.Fill(dp, amount + 1);
+            dp[0] = 0;
+            for (int a = 1; a <= amount; a++)
+                foreach (int coin in coins)
+                    if (coin <= a) dp[a] = Math.Min(dp[a], dp[a - coin] + 1);
+        - label: 'bottom-up 2-D (longest common subsequence)'
+          code: |
+            int[,] dp = new int[m + 1, n + 1];
+            for (int i = 1; i <= m; i++)
+                for (int j = 1; j <= n; j++)
+                    dp[i, j] = s[i-1] == t[j-1]
+                        ? dp[i-1, j-1] + 1
+                        : Math.Max(dp[i-1, j], dp[i, j-1]);
+    - title: Special operations (dynamic programming)
+      ops:
+        - label: 'longest increasing subsequence (O(n log n) patience sort)'
+          code: |
+            var tails = new List<int>();
+            foreach (int x in nums) {
+                int pos = tails.BinarySearch(x);
+                if (pos < 0) pos = ~pos;
+                if (pos == tails.Count) tails.Add(x);
+                else tails[pos] = x;
+            }
+            return tails.Count;
+        - label: 'knapsack 0/1: skip or take each item'
+          code: |
+            int[] dp = new int[capacity + 1];
+            foreach (var (w, v) in items)
+                for (int c = capacity; c >= w; c--)
+                    dp[c] = Math.Max(dp[c], dp[c - w] + v);
+        - label: 'number of ways (count paths / combinations)'
+          code: |
+            int[] dp = new int[amount + 1];
+            dp[0] = 1;
+            foreach (int coin in coins)
+                for (int a = coin; a <= amount; a++)
+                    dp[a] += dp[a - coin];
+  example: |
+    Worked example — minimum coin change (fewest coins to make amount):
+
+      dp[a] = minimum coins needed to make amount a. Base: dp[0]=0 (zero coins for
+      zero). For each amount try every coin: if we can afford it, update with the
+      best (1 + dp[a-coin]). Fill from small to large so earlier answers are ready.
+
+        int CoinChange(int[] coins, int amount) {
+            int[] dp = new int[amount + 1];
+            Array.Fill(dp, amount + 1);   // sentinel > any real answer
+            dp[0] = 0;
+            for (int a = 1; a <= amount; a++)
+                foreach (int coin in coins)
+                    if (coin <= a)
+                        dp[a] = Math.Min(dp[a], dp[a - coin] + 1);
+            return dp[amount] > amount ? -1 : dp[amount];
+        }
+
+    Takeaway: initialize the table to a sentinel, set the base case, then fill in
+    order of dependency. The recurrence is the heart — get it right and the rest follows.

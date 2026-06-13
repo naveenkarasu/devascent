@@ -1,0 +1,187 @@
+lang: javascript
+group: Core
+title: "Core — Closures, Scope, Hoisting, `this`, Prototypes"
+tag: E
+summary: |
+  Closures are the combination of a function and the lexical environment in which it was
+  defined. Every function in JS creates a closure at function-creation time, capturing a
+  reference (not a copy) to the enclosing scope's variables. This is how module patterns,
+  memoisation, and event-handler state all work.
+
+  Scope (`var`/`let`/`const`): `var` is function-scoped and hoisted to the top of its
+  function with an initial value of `undefined`. `let` and `const` are block-scoped and
+  are hoisted to the top of their block but are not initialized — reading them before the
+  declaration throws a `ReferenceError` (the Temporal Dead Zone, TDZ). Always prefer
+  `const`, then `let`.
+
+  Hoisting: function declarations are fully hoisted (name + body). `var` declarations are
+  hoisted (name only, value is `undefined`). `let`/`const` declarations enter TDZ. Class
+  declarations are also TDZ.
+
+  `this` binding — determined at call time, not definition time (except arrow functions).
+  Rules in priority order:
+    1. `new` binding — newly created object
+    2. Explicit binding — `call`/`apply`/`bind` argument
+    3. Implicit binding — the object left of the dot at the call site (`obj.method()`)
+    4. Default binding — `globalThis` (non-strict) or `undefined` (strict)
+    5. Arrow functions — lexical `this`, inherited from enclosing scope; cannot be
+       overridden by `call`/`apply`/`bind`
+
+  Prototypes: every JS object has an internal [[Prototype]] link. Property lookup walks
+  the chain until the property is found or `null` is reached. ES6 `class` syntax is
+  syntactic sugar over the same prototype mechanism; `extends` wires up the prototype
+  chain, not a true copy-based inheritance.
+
+  Gotchas: arrow functions cannot be used as constructors (`new ArrowFn()` throws
+  `TypeError`). Class methods are in strict mode by default — a detached class method
+  has `this === undefined`, not `globalThis`. `typeof undeclaredVar` returns `"undefined"`
+  (no ReferenceError), but accessing a `let`/`const` in TDZ does throw.
+exercises:
+  - prompt: |
+      This code is supposed to print 0, 1, 2 — one number per second — but instead
+      prints 3, 3, 3. Predict what it prints and explain why. Then fix it using `let`.
+    kind: predict-output
+    broken_code: |
+      for (var i = 0; i < 3; i++) {
+        setTimeout(function () {
+          console.log(i);
+        }, i * 1000);
+      }
+    fixed_code: |
+      for (let i = 0; i < 3; i++) {
+        setTimeout(function () {
+          console.log(i);
+        }, i * 1000);
+      }
+    bug: |
+      `var` is function-scoped — there is only one `i` variable shared by all three
+      callbacks. By the time any `setTimeout` fires, the loop has finished and `i === 3`,
+      so every callback logs 3. `let` creates a new binding per iteration, so each
+      closure captures its own copy of `i`.
+    check: stdout
+    signal: "0\n1\n2"
+
+  - prompt: |
+      `greet` is extracted from `user` and passed to `setTimeout`. Predict what it logs,
+      then fix it three ways: using `.bind()`, an arrow wrapper, and an arrow method field.
+    kind: fix-it
+    broken_code: |
+      class User {
+        constructor(name) {
+          this.name = name;
+        }
+
+        greet() {
+          console.log(`Hello, ${this.name}`);
+        }
+      }
+
+      const user = new User("Alice");
+      setTimeout(user.greet, 0); // detached — `this` is lost
+    fixed_code: |
+      class User {
+        constructor(name) {
+          this.name = name;
+        }
+
+        greet = () => {
+          console.log(`Hello, ${this.name}`);
+        };
+      }
+
+      const user = new User("Alice");
+      setTimeout(user.greet, 0); // arrow field — `this` is lexically bound
+    bug: |
+      Extracting a method from an object (`user.greet`) detaches it from `user`. When
+      `setTimeout` later calls the function, there is no object to the left of the dot, so
+      `this` falls back to `globalThis` (non-strict) or `undefined` (strict mode in
+      classes), causing `this.name` to be `undefined`. Fix with `.bind(user)`, an arrow
+      wrapper `() => user.greet()`, or an arrow class field so `this` is lexically bound
+      at definition time.
+    check: stdout
+    signal: "Hello, Alice"
+
+  - prompt: |
+      This snippet crashes at runtime. Identify exactly which line throws, name the error,
+      and explain why the `var` version of the same pattern works silently instead.
+    kind: spot-the-bug
+    broken_code: |
+      {
+        console.log(x); // line A
+        let x = 10;
+        console.log(x); // line B
+      }
+    fixed_code: |
+      {
+        let x = 10;
+        console.log(x); // 10
+      }
+    bug: |
+      Line A throws `ReferenceError: Cannot access 'x' before initialization`. `let`
+      declarations are hoisted to the top of their block but are NOT initialized — the
+      period between the block start and the declaration is the Temporal Dead Zone (TDZ).
+      Any read or write inside the TDZ throws. With `var`, the equivalent code would log
+      `undefined` silently because `var` is hoisted with an initial value of `undefined`.
+      The fix is to declare before use.
+    check: stdout
+    signal: "10"
+
+  - prompt: |
+      Trace the prototype chain of `dog` by hand, then verify with `Object.getPrototypeOf`.
+      Rewrite the constructor function as a `class` and confirm the chain is identical.
+    kind: predict-output
+    broken_code: |
+      function Animal(name) {
+        this.name = name;
+      }
+
+      Animal.prototype.speak = function () {
+        console.log(`${this.name} makes a noise.`);
+      };
+
+      function Dog(name) {
+        Animal.call(this, name);
+      }
+
+      Dog.prototype = Object.create(Animal.prototype);
+      Dog.prototype.constructor = Dog;
+
+      Dog.prototype.bark = function () {
+        console.log(`${this.name} barks.`);
+      };
+
+      const dog = new Dog("Rex");
+      dog.speak();
+      dog.bark();
+      console.log(dog instanceof Dog);
+      console.log(dog instanceof Animal);
+    fixed_code: |
+      class Animal {
+        constructor(name) {
+          this.name = name;
+        }
+
+        speak() {
+          console.log(`${this.name} makes a noise.`);
+        }
+      }
+
+      class Dog extends Animal {
+        bark() {
+          console.log(`${this.name} barks.`);
+        }
+      }
+
+      const dog = new Dog("Rex");
+      dog.speak();
+      dog.bark();
+      console.log(dog instanceof Dog);
+      console.log(dog instanceof Animal);
+    bug: |
+      No bug — this is a tracing exercise. `class` is syntactic sugar over the prototype
+      mechanism: `Dog.prototype.__proto__ === Animal.prototype` in both versions. The
+      `instanceof` chain is identical. `class extends` wires up the same prototype links
+      that `Object.create(Animal.prototype)` builds manually — it is not copy-based
+      inheritance.
+    check: stdout
+    signal: "Rex makes a noise.\nRex barks.\ntrue\ntrue"

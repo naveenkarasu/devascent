@@ -1,0 +1,31 @@
+lang: rust
+group: Positioning & Domains
+title: "Positioning & Domains — where Rust fits and why it matters"
+tag: C
+summary: |
+  Rust is a systems language that achieves C/C++-level performance without a garbage
+  collector, enforcing memory safety at compile time through the ownership and
+  borrow-checking system. The steep initial learning curve is front-loaded: once the
+  borrow checker is understood, entire categories of bugs become impossible at runtime —
+  use-after-free, double-free, dangling pointers, and data races are all compile-time
+  errors rather than runtime surprises.
+
+  Primary domains:
+  - Systems programming: operating systems, device drivers, embedded (no-std targets)
+  - Command-line tools: the clap ecosystem makes CLI authoring ergonomic
+  - WebAssembly: Rust compiles to WASM with minimal runtime overhead; the wasm-bindgen
+    toolchain enables interop with JavaScript
+  - Performance-critical services: async/tokio powers low-latency network services;
+    projects like Cloudflare Workers, Discord, and Dropbox have adopted Rust for
+    hot-path components
+  - Embedded systems: no-std Rust, cortex-m crates, and probe-rs for flashing/debugging
+
+  The key pitch is fearless concurrency and memory safety without GC. Rust does not
+  prevent all bugs — logic errors, deadlocks, and panics are still possible — but it
+  eliminates an entire class of memory safety vulnerabilities that have historically
+  dominated CVE databases in C and C++ codebases.
+
+  Reading blurb: The Rust Book's Foreword and Getting Started chapters explain the
+  motivation and the key trade-offs. The Rustonomicon covers unsafe Rust for completeness.
+  Start with The Rust Book (doc.rust-lang.org/book) before any framework or domain
+  crate.

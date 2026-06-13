@@ -1,0 +1,107 @@
+# Slot: machine-error (TypeScript variants) — read a small broken TS program and
+# spot the bug. TypeScript adds a type checker on top of JavaScript, so many
+# mistakes are caught at COMPILE time, before the program ever runs.
+- id: ts_err_type
+  slot: machine-error
+  lang: typescript
+  order: 3
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    This TypeScript program won't compile:
+
+        const age: number = "30";
+        console.log(age + 1);
+
+    The compiler says: Type 'string' is not assignable to type 'number'. Why?
+  choices:
+    - text: "\"30\" is a string, but age is annotated number — TypeScript rejects the mismatch."
+      correct: true
+      feedback: "Right. The type annotation `: number` is a contract; assign a number, or convert with Number(\"30\"). Caught before it runs."
+    - text: "You can't add 1 to a variable in TypeScript."
+      correct: false
+      feedback: "Not it — age + 1 is fine for a number. Assigning a string to a number-typed variable is the problem."
+    - text: "console.log can't take age + 1."
+      correct: false
+      feedback: "Not it — console.log handles the number fine. The string-to-number assignment fails the type check."
+
+- id: ts_err_typo
+  slot: machine-error
+  lang: typescript
+  order: 3
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    This TypeScript program won't compile:
+
+        const nums = [1, 2, 3];
+        console.log(nums.lenght);
+
+    The compiler says: Property 'lenght' does not exist on type 'number[]'. Did
+    you mean 'length'? Why?
+  choices:
+    - text: "'lenght' is a typo — the property is 'length'. TypeScript flags the unknown member."
+      correct: true
+      feedback: "Right. Because the array's type is known, TS checks every property name and catches the misspelling for you."
+    - text: "Arrays don't have a length in TypeScript."
+      correct: false
+      feedback: "Not it — arrays do have .length. The name is just misspelled as 'lenght'."
+    - text: "You must write nums['lenght'] with quotes."
+      correct: false
+      feedback: "Not it — quoting it wouldn't help and loses the check. The real issue is the typo for 'length'."
+
+- id: ts_err_undef
+  slot: machine-error
+  lang: typescript
+  order: 3
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    This TypeScript program won't compile:
+
+        function first(s?: string) {
+            return s.length;
+        }
+
+    The compiler says: 's' is possibly 'undefined'. Why?
+  choices:
+    - text: "s? makes the parameter optional, so s may be undefined — guard it before using .length."
+      correct: true
+      feedback: "Right. The ? means s might not be passed. Check first (if (s) ...) or the type checker won't let you read .length."
+    - text: "A function can't return s.length."
+      correct: false
+      feedback: "Not it — returning a number is fine. The issue is s could be undefined, so .length isn't safe."
+    - text: "You must write the return type as `: number`."
+      correct: false
+      feedback: "Not it — TS can infer the return type. The real problem is the possibly-undefined s."
+
+- id: ts_err_arg
+  slot: machine-error
+  lang: typescript
+  order: 3
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    This TypeScript program won't compile:
+
+        function double(n: number): number {
+            return n * 2;
+        }
+        console.log(double("5"));
+
+    The compiler says: Argument of type 'string' is not assignable to parameter of
+    type 'number'. Why?
+  choices:
+    - text: "double expects a number, but \"5\" is a string — pass double(5), or Number(\"5\")."
+      correct: true
+      feedback: "Right. The parameter type number is enforced at the call site; \"5\" is the wrong type. Caught before it runs."
+    - text: "double can only be called once per program."
+      correct: false
+      feedback: "Not it — you can call it as often as you like. The argument \"5\" is the wrong type."
+    - text: "n * 2 is invalid inside the function."
+      correct: false
+      feedback: "Not it — n * 2 is valid for a number. The bug is passing the string \"5\" as the argument."

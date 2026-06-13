@@ -1,0 +1,117 @@
+- category: 'Arrays & Hashing'
+  lang: cpp
+  title: Arrays & Hashing — C++ refresher
+  summary: |
+    Arrays and hash maps are the backbone of most interview problems. In C++,
+    vector<T> is your go-to dynamic array: random access in O(1), push_back in
+    amortized O(1). For hash maps use unordered_map<K,V> (average O(1) lookup);
+    for ordered maps use map<K,V> (O(log n)). For sets use unordered_set<T> or
+    set<T> respectively.
+
+    Common patterns: frequency counting (unordered_map or int[26]), two-sum with
+    a complement map, grouping (map from key to vector of values).
+
+    C++ notes:
+      - map[key] inserts a zero-valued entry if key is absent — use .count(key)
+        or .find(key) to test membership without side effects.
+      - vector.size() returns size_t (unsigned) — cast to int for safe subtraction.
+      - Initialise a fixed-size array of zeros: int arr[26] = {};
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'dynamic array'
+          code: 'vector<int> v = {1, 2, 3};'
+        - label: 'array of fixed size, zero-initialised'
+          code: 'int arr[26] = {};'
+        - label: 'hash map (key -> value)'
+          code: 'unordered_map<string, int> freq;'
+        - label: 'hash set'
+          code: 'unordered_set<int> seen;'
+        - label: '2-D grid'
+          code: 'vector<vector<int>> grid(rows, vector<int>(cols, 0));'
+    - title: Basic operations
+      ops:
+        - label: 'append to vector'
+          code: 'v.push_back(42);'
+        - label: 'access by index'
+          code: 'int x = v[i];'
+        - label: 'size (cast to int to avoid unsigned bugs)'
+          code: 'int n = (int)v.size();'
+        - label: 'increment map value (auto-inserts 0 first time)'
+          code: 'freq[word]++;'
+        - label: 'test map membership without inserting'
+          code: 'if (freq.count(key)) { ... }   // or freq.find(key) != freq.end()'
+        - label: 'insert into set'
+          code: 'seen.insert(x);'
+    - title: Most-used built-in functions
+      ops:
+        - label: 'sort ascending'
+          code: 'sort(v.begin(), v.end());'
+        - label: 'sort descending'
+          code: 'sort(v.begin(), v.end(), greater<int>());'
+        - label: 'reverse in place'
+          code: 'reverse(v.begin(), v.end());'
+        - label: 'min element'
+          code: '*min_element(v.begin(), v.end());'
+        - label: 'max element'
+          code: '*max_element(v.begin(), v.end());'
+        - label: 'fill with a value'
+          code: 'fill(v.begin(), v.end(), 0);'
+        - label: 'accumulate (sum)'
+          code: 'int total = accumulate(v.begin(), v.end(), 0);'
+    - title: Iteration & loops
+      ops:
+        - label: 'range-for over vector'
+          code: 'for (auto& x : v) { ... }'
+        - label: 'indexed loop'
+          code: 'for (int i = 0; i < (int)v.size(); i++) { ... }'
+        - label: 'iterate map entries with structured binding'
+          code: |
+            for (auto& [key, val] : freq) {
+                // use key and val
+            }
+        - label: 'iterate set'
+          code: 'for (auto& x : seen) { ... }'
+    - title: Special operations (arrays & hashing)
+      ops:
+        - label: 'two-sum: find pair summing to target'
+          code: |
+            unordered_map<int, int> idx;
+            for (int i = 0; i < (int)nums.size(); i++) {
+                int comp = target - nums[i];
+                if (idx.count(comp)) return {idx[comp], i};
+                idx[nums[i]] = i;
+            }
+        - label: 'group anagrams: key = sorted string'
+          code: |
+            unordered_map<string, vector<string>> groups;
+            for (auto& w : words) {
+                string key = w;
+                sort(key.begin(), key.end());
+                groups[key].push_back(w);
+            }
+        - label: 'prefix-sum array'
+          code: |
+            vector<int> pre(n + 1, 0);
+            for (int i = 0; i < n; i++) pre[i + 1] = pre[i] + nums[i];
+        - label: 'check if element exists in set O(1)'
+          code: 'if (seen.count(x)) { ... }'
+  example: |
+    Worked example — find two indices that sum to target (Two Sum):
+
+      Store each number we have seen so far in a hash map (value -> index).
+      For each new number, check if its complement (target - num) is already
+      in the map. If yes, we found our pair. One pass, O(n) time and space.
+
+        vector<int> twoSum(vector<int>& nums, int target) {
+            unordered_map<int, int> idx;
+            for (int i = 0; i < (int)nums.size(); i++) {
+                int comp = target - nums[i];
+                if (idx.count(comp)) return {idx[comp], i};
+                idx[nums[i]] = i;
+            }
+            return {};
+        }
+
+    Takeaway: an unordered_map turns "have I seen X before?" into O(1). Use
+    .count(key) to test membership; map[key]++ to tally frequencies.

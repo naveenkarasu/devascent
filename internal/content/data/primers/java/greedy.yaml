@@ -1,0 +1,124 @@
+- category: Greedy
+  lang: java
+  title: Greedy — Java refresher
+  summary: |
+    A greedy algorithm builds the answer step by step, always taking the choice that
+    looks best RIGHT NOW and never reconsidering. When it works, it is short and fast
+    (often one pass, O(n) or O(n log n) after a sort).
+
+    The catch: greedy is only correct when a locally-best choice is guaranteed to be
+    part of a globally-best answer. For many problems it is NOT (those usually need
+    Dynamic Programming instead). So the real skill is spotting the "greedy-safe"
+    structure — typically: sort by some key, then sweep once making the obvious local
+    pick. If you cannot argue why local-best stays globally-best, be suspicious.
+
+    Java notes:
+      - Sorting is the usual setup: Arrays.sort(a) for primitives.
+      - To sort objects by a field, use a Comparator (often a lambda).
+      - Track a running best with Math.max / Math.min instead of re-scanning.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'running best tracker'
+          code: 'int best = 0;'
+        - label: 'running farthest tracker'
+          code: 'int farthest = 0;'
+        - label: 'greedy counter'
+          code: 'int count = 0;'
+        - label: 'greedy end accumulator'
+          code: 'int end = 0;'
+        - label: 'priority queue for greedy scheduling'
+          code: 'PriorityQueue<Integer> pq = new PriorityQueue<>();'
+    - title: Basic operations
+      ops:
+        - label: 'sort array ascending'
+          code: 'Arrays.sort(a);'
+        - label: 'sort objects by a key'
+          code: 'intervals.sort((x, y) -> Integer.compare(x[0], y[0]));'
+        - label: 'track running max / min'
+          code: 'best = Math.max(best, candidate);'
+        - label: 'track reachable frontier'
+          code: 'farthest = Math.max(farthest, i + a[i]);'
+    - title: Iteration & loops
+      ops:
+        - label: 'sweep once, make local decision'
+          code: |
+            for (int v : a) {
+                if (localCondition) take(v);
+            }
+        - label: 'jump game sweep (update frontier)'
+          code: |
+            for (int i = 0; i < a.length; i++) {
+                if (i > farthest) return false;
+                farthest = Math.max(farthest, i + a[i]);
+            }
+        - label: 'interval greedy: check overlap then extend'
+          code: |
+            for (int[] iv : intervals) {
+                if (iv[0] > end) {
+                    count++;
+                    end = iv[1];
+                }
+            }
+    - title: Special operations (greedy)
+      ops:
+        - label: 'minimum number of jumps (track current and next reach)'
+          code: |
+            int jumps = 0, curEnd = 0, farthest = 0;
+            for (int i = 0; i < n-1; i++) {
+                farthest = Math.max(farthest, i+a[i]);
+                if (i == curEnd) {
+                    jumps++;
+                    curEnd = farthest;
+                }
+            }
+        - label: 'activity selection: sort by end time, greedily take non-overlapping'
+          code: |
+            Arrays.sort(intervals, (x, y) -> Integer.compare(x[1], y[1]));
+            int end = Integer.MIN_VALUE;
+            for (int[] iv : intervals) {
+                if (iv[0] >= end) {
+                    count++;
+                    end = iv[1];
+                }
+            }
+        - label: 'gas station: running tank and total surplus'
+          code: |
+            int total = 0, tank = 0, start = 0;
+            for (int i = 0; i < n; i++) {
+                total += gain[i];
+                tank += gain[i];
+                if (tank < 0) {
+                    start = i+1;
+                    tank = 0;
+                }
+            }
+        - label: 'two-heap trick for streaming median'
+          code: |
+            PriorityQueue<Integer> lo = new PriorityQueue<>(Collections.reverseOrder());
+            PriorityQueue<Integer> hi = new PriorityQueue<>();
+  example: |
+    Worked example — Jump Game (each a[i] is the max jump from index i; can you
+    reach the last index?):
+
+      Greedy idea: track the FARTHEST index reachable so far. Walk left to right; if
+      you ever stand on an index beyond that frontier, you are stuck — return false.
+      Otherwise extend the frontier. No backtracking, no DP table — one pass.
+
+        boolean canJump(int[] a) {
+            int farthest = 0;
+            for (int i = 0; i < a.length; i++) {
+                if (i > farthest) {
+                    return false;        // this index is unreachable
+                }
+                farthest = Math.max(farthest, i + a[i]);
+                if (farthest >= a.length - 1) {
+                    return true;         // last index already reachable
+                }
+            }
+            return true;
+        }
+
+    Why greedy is safe here: extending to the farthest reach can never hurt — any
+    index a smaller reach could touch, the larger reach also touches. Takeaway:
+    greedy = one confident local pick per step, but only after you can justify it.

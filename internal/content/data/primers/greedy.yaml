@@ -1,0 +1,101 @@
+- category: "Greedy"
+  lang: python
+  title: "Greedy — Python refresher"
+  summary: |
+    A greedy algorithm makes the locally optimal choice at each step, trusting that
+    locally best leads to globally best. It works when the problem has the "greedy
+    choice property" — you can prove no other choice at step k leads to a better
+    outcome. Reach for greedy when you see interval scheduling, minimum steps, or
+    "maximum reachable" type problems. Always validate the choice is safe.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'sort input before greedy scan'
+          code: 'intervals.sort(key=lambda x: x[1])'
+        - label: 'running frontier / max-reach tracker'
+          code: 'reach = 0'
+        - label: 'running accumulator'
+          code: 'total = 0'
+        - label: 'heap for greedy ordering (min-cost next)'
+          code: |
+            import heapq
+            h = []
+        - label: 'two-bucket balance (bracket counting)'
+          code: 'lo, hi = 0, 0'
+    - title: Basic operations
+      ops:
+        - label: 'update running max reach'
+          code: 'reach = max(reach, i + nums[i])'
+        - label: 'take or skip decision'
+          code: |
+            if cur_end >= start:
+                count += 1
+                cur_end = end
+        - label: 'accumulate profit (buy low sell high)'
+          code: 'total += max(0, prices[i+1] - prices[i])'
+        - label: 'push to greedy heap'
+          code: 'heapq.heappush(h, (cost, item))'
+        - label: 'pop cheapest from heap'
+          code: 'cost, item = heapq.heappop(h)'
+    - title: Iteration & loops
+      ops:
+        - label: 'greedy sweep over sorted intervals'
+          code: |
+            intervals.sort(key=lambda x: x[1])
+            end = float("-inf")
+            for s, e in intervals:
+                if s > end:
+                    count += 1
+                    end = e
+        - label: 'jump game sweep'
+          code: |
+            reach = 0
+            for i, v in enumerate(nums):
+                if i > reach: return False
+                reach = max(reach, i + v)
+        - label: 'two-pass bracket balance'
+          code: |
+            lo = hi = 0
+            for c in s:
+                lo += 1 if c == "(" else -1
+                hi += 1 if c != ")" else -1
+                if hi < 0: break
+                lo = max(lo, 0)
+    - title: Special operations (greedy)
+      ops:
+        - label: 'non-overlapping intervals (min removals)'
+          code: |
+            intervals.sort(key=lambda x: x[1])
+            end, removed = float("-inf"), 0
+            for s, e in intervals:
+                if s >= end: end = e
+                else: removed += 1
+        - label: 'assign tasks greedily by sorted order'
+          code: |
+            tasks.sort()
+            workers.sort()
+            pairs = sum(w >= t for w, t in zip(reversed(workers), tasks))
+        - label: 'gas station circular greedy'
+          code: |
+            total = curr = start = 0
+            for i, (g, c) in enumerate(zip(gas, cost)):
+                total += g - c
+                curr += g - c
+                if curr < 0:
+                    start = i + 1
+                    curr = 0
+  example: |
+    Worked example — Jump Game (can you reach the last index?):
+      At each index i, you can jump up to nums[i] steps. Track the farthest index
+      you can reach so far. If i ever exceeds reach, you're stuck.
+
+        def can_jump(nums):
+            reach = 0
+            for i, v in enumerate(nums):
+                if i > reach:
+                    return False
+                reach = max(reach, i + v)
+            return True
+
+    Takeaway: maintain the best "running frontier" and greedily extend it —
+    no backtracking needed.

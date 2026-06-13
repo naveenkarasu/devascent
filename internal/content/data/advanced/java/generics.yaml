@@ -1,0 +1,188 @@
+lang: java
+group: Generics
+title: "Generics — bounded types, wildcards & type erasure"
+tag: E
+summary: |
+  Generics allow writing type-safe, reusable data structures and algorithms without
+  casting. Introduced in Java 5, they are implemented via type erasure: the compiler
+  enforces type constraints but strips them at bytecode generation time, so List<String>
+  and List<Integer> are the same List class at runtime.
+
+  Type erasure [context]: the erased-type design was chosen for JVM backward
+  compatibility. Consequences: no `new T[]`, no `instanceof List<String>`, no
+  overloading on generic type alone. Understanding this prevents reflection/cast hacks
+  in framework code.
+
+  Bounded types and wildcards:
+  - <T extends Comparable<T>> — upper bound on a type parameter; lets you call
+    .compareTo() inside a generic method.
+  - <? extends Number> (upper-bounded wildcard) — read-safe (produces a Number) but
+    write-restricted (cannot add elements safely).
+  - <? super Integer> (lower-bounded wildcard) — write-safe (accepts Integer) but
+    reads yield only Object.
+  - PECS mnemonic (Effective Java): Producer Extends, Consumer Super. Use
+    ? extends T for sources, ? super T for sinks.
+
+  Gotchas:
+  - List<Object> does NOT accept List<String> — generics are invariant. Arrays are
+    covariant (String[] IS-A Object[]), which is why arrays and generics don't mix well.
+  - Heap pollution: mixing raw types and parameterised types can cause an
+    unchecked-cast WARNING at compile time and a ClassCastException at runtime, at a
+    code point seemingly unrelated to where the raw type was introduced.
+  - Cannot use primitives as type arguments — use wrapper types (List<int> is illegal;
+    use List<Integer>).
+exercises:
+  - prompt: |
+      Implement a generic max() method that returns the largest element in a list.
+      The method must work with List<String>, List<Integer>, and any other
+      Comparable type — without casting. Then call it with both types.
+    kind: implement
+    broken_code: |
+      import java.util.*;
+
+      public class Main {
+          // Does not compile: compareTo is not available on an unbounded T
+          static <T> T max(List<T> list) {
+              T result = list.get(0);
+              for (T item : list) {
+                  if (item.compareTo(result) > 0) {   // error: cannot find symbol
+                      result = item;
+                  }
+              }
+              return result;
+          }
+
+          public static void main(String[] args) {
+              System.out.println(max(List.of("banana", "apple", "cherry")));
+              System.out.println(max(List.of(3, 1, 4, 1, 5, 9)));
+          }
+      }
+    fixed_code: |
+      import java.util.*;
+
+      public class Main {
+          static <T extends Comparable<T>> T max(List<T> list) {
+              if (list.isEmpty()) throw new IllegalArgumentException("List must not be empty");
+              T result = list.get(0);
+              for (T item : list) {
+                  if (item.compareTo(result) > 0) {
+                      result = item;
+                  }
+              }
+              return result;
+          }
+
+          public static void main(String[] args) {
+              System.out.println(max(List.of("banana", "apple", "cherry")));  // cherry
+              System.out.println(max(List.of(3, 1, 4, 1, 5, 9)));             // 9
+          }
+      }
+    bug: |
+      Without the bound <T extends Comparable<T>>, the compiler does not know that T
+      supports compareTo(), so the call is rejected. Adding the bound tells the
+      compiler T is guaranteed to implement Comparable<T>, making the method type-safe
+      and usable with any naturally ordered type.
+    check: stdout
+    signal: "cherry\n9"
+
+  - prompt: |
+      The copy() method below refuses to accept a List<Integer> as the source
+      argument. Fix the signature using PECS so that a List<Integer> (or any
+      List<? extends Number>) can be the source, and a List<Number> (or wider) can
+      be the destination.
+    kind: fix-it
+    broken_code: |
+      import java.util.*;
+
+      public class Main {
+          static void copy(List<Number> src, List<Number> dst) {
+              for (Number n : src) {
+                  dst.add(n);
+              }
+          }
+
+          public static void main(String[] args) {
+              // This call does not compile — List<Integer> is NOT a List<Number>:
+              List<Integer> ints = List.of(1, 2, 3);
+              List<Number>  nums = new ArrayList<>();
+              copy(ints, nums);   // compile error: incompatible types
+          }
+      }
+    fixed_code: |
+      import java.util.*;
+
+      public class Main {
+          static void copy(List<? extends Number> src, List<? super Number> dst) {
+              for (Number n : src) {
+                  dst.add(n);
+              }
+          }
+
+          public static void main(String[] args) {
+              // Now both calls compile:
+              List<Integer> ints = List.of(1, 2, 3);
+              List<Number>  nums = new ArrayList<>();
+              copy(ints, nums);   // OK: List<Integer> satisfies ? extends Number
+          }
+      }
+    bug: |
+      Generics are invariant: List<Integer> is NOT a subtype of List<Number>, even
+      though Integer extends Number. The PECS rule fixes this: the source produces
+      Number values (use ? extends Number), and the destination consumes Number values
+      (use ? super Number). Without wildcards, the compiler correctly rejects the call
+      because allowing it unsafely could let you insert a Double into what the caller
+      believes is a List<Integer>.
+    check: compile-error
+    signal: "incompatible types"
+
+  - prompt: |
+      The legacy method below uses a raw List parameter, which suppresses all generic
+      type checks and produces an unchecked-cast warning at compile time (and risks a
+      ClassCastException at runtime). Migrate it to List<?> to restore type safety.
+      Then explain in a comment why you can iterate but not add elements to a List<?>.
+    kind: fix-it
+    broken_code: |
+      import java.util.*;
+
+      public class Main {
+          // Raw type: all generic checking is suppressed; compiler issues unchecked warning
+          static void printAll(List items) {
+              for (Object item : items) {
+                  System.out.println(item);
+              }
+          }
+
+          public static void main(String[] args) {
+              printAll(List.of("a", "b"));
+              printAll(List.of(1, 2));
+          }
+      }
+    fixed_code: |
+      import java.util.*;
+
+      public class Main {
+          // List<?> is safer: the wildcard says "a list of some specific but unknown type"
+          static void printAll(List<?> items) {
+              for (Object item : items) {
+                  System.out.println(item);
+              }
+              // items.add("hello");  // would not compile — cannot add to List<?>
+              //   because the element type is unknown; adding anything except null
+              //   could violate the caller's type invariant.
+          }
+
+          public static void main(String[] args) {
+              printAll(List.of("a", "b"));
+              printAll(List.of(1, 2));
+          }
+      }
+    bug: |
+      A raw type (List without a type argument) tells the compiler to ignore all
+      generic type information for that variable — all operations involving the element
+      type become unchecked, producing an unchecked-cast WARNING at compile time and
+      risking a ClassCastException at runtime if the elements are of an unexpected type.
+      List<?> (unbounded wildcard) is safer: the compiler knows it is a list of some
+      specific type and rejects any attempt to add elements (except null), while still
+      allowing read-only iteration as Object.
+    check: stdout
+    signal: "a\nb\n1\n2"

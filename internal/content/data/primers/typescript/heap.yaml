@@ -1,0 +1,145 @@
+- category: 'Heap / Priority Queue'
+  lang: typescript
+  title: 'Heap / Priority Queue — TypeScript refresher'
+  summary: |
+    A heap (priority queue) gives O(log n) insert and O(log n) extract-min/max, and
+    O(1) peek at the minimum/maximum element. It is essential for problems involving
+    "k-th largest", scheduling, and Dijkstra's algorithm.
+
+    IMPORTANT: TypeScript/JavaScript has NO built-in heap. You must either:
+      1. Use a typed MinHeap / MaxHeap class (skeleton shown below), or
+      2. Install a library such as `heap-js` (`npm i heap-js`) which provides
+         `Heap<T>` with a typed comparator.
+
+    Common heap patterns:
+      - K largest / K smallest: keep a fixed-size heap of size k.
+      - Merge K sorted lists: use a min-heap of (value, listIndex, nodeIndex).
+      - Top-K frequent elements: bucket sort or min-heap of size k.
+
+    The array-based binary heap stores the tree in a flat array where the children of
+    index i are at 2*i+1 and 2*i+2, and the parent of i is at Math.floor((i-1)/2).
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'MinHeap class skeleton (array-based, typed)'
+          code: |
+            class MinHeap {
+              private data: number[] = [];
+              get size(): number {
+                return this.data.length;
+              }
+              peek(): number | undefined {
+                return this.data[0];
+              }
+              push(val: number): void {
+                this.data.push(val);
+                this._bubbleUp(this.data.length - 1);
+              }
+              pop(): number | undefined {
+                const top = this.data[0];
+                const last = this.data.pop()!;
+                if (this.data.length > 0) {
+                  this.data[0] = last;
+                  this._sinkDown(0);
+                }
+                return top;
+              }
+              private _bubbleUp(i: number): void {
+                while (i > 0) {
+                  const p = Math.floor((i - 1) / 2);
+                  if (this.data[p] <= this.data[i]) break;
+                  [this.data[p], this.data[i]] = [this.data[i], this.data[p]];
+                  i = p;
+                }
+              }
+              private _sinkDown(i: number): void {
+                const n = this.data.length;
+                while (true) {
+                  let min = i, l = 2*i+1, r = 2*i+2;
+                  if (l < n && this.data[l] < this.data[min]) min = l;
+                  if (r < n && this.data[r] < this.data[min]) min = r;
+                  if (min === i) break;
+                  [this.data[min], this.data[i]] = [this.data[i], this.data[min]];
+                  i = min;
+                }
+              }
+            }
+        - label: 'using heap-js library (install: npm i heap-js)'
+          code: |
+            import Heap from "heap-js";
+            const minHeap = new Heap<number>((a, b) => a - b);
+            const maxHeap = new Heap<number>((a, b) => b - a);
+    - title: Basic operations
+      ops:
+        - label: 'push (O(log n))'
+          code: 'heap.push(val);'
+        - label: 'peek min/max without removing (O(1))'
+          code: 'const top = heap.peek();'
+        - label: 'pop min/max (O(log n))'
+          code: 'const min = heap.pop();'
+        - label: 'heap size'
+          code: 'const n: number = heap.size;'
+        - label: 'check if empty'
+          code: |
+            if (heap.size === 0) {
+              /* empty */
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'drain heap in sorted order'
+          code: |
+            const sorted: number[] = [];
+            while (heap.size > 0) sorted.push(heap.pop()!);
+        - label: 'k-th largest: maintain min-heap of size k'
+          code: |
+            for (const n of nums) {
+              heap.push(n);
+              if (heap.size > k) heap.pop();   // evict smallest
+            }
+            return heap.peek()!;              // smallest of top-k = k-th largest
+    - title: Special operations (Heap / Priority Queue)
+      ops:
+        - label: 'k-th largest element in a stream'
+          code: |
+            class KthLargest {
+              private heap: MinHeap;
+              private k: number;
+              constructor(k: number, nums: number[]) {
+                this.k = k;
+                this.heap = new MinHeap();
+                for (const n of nums) this.add(n);
+              }
+              add(val: number): number {
+                this.heap.push(val);
+                if (this.heap.size > this.k) this.heap.pop();
+                return this.heap.peek()!;
+              }
+            }
+        - label: 'merge K sorted arrays using a min-heap'
+          code: |
+            // heap stores [value, arrayIndex, elementIndex]
+            // push first element of each array, then pop-and-push until empty
+        - label: 'top K frequent elements'
+          code: |
+            const freq = new Map<number, number>();
+            for (const n of nums) freq.set(n, (freq.get(n) ?? 0) + 1);
+            // push [count, num] to min-heap of size k
+            // keep only k entries; evict smallest count
+  example: |
+    Worked example — find the k-th largest element in an unsorted array.
+
+      Maintain a min-heap of at most k elements. For every new number, push it.
+      If the heap grows beyond k, pop the smallest. After processing all numbers,
+      the heap's minimum (peek) is the k-th largest overall.
+
+        function findKthLargest(nums: number[], k: number): number {
+            const heap = new MinHeap();
+            for (const n of nums) {
+                heap.push(n);
+                if (heap.size > k) heap.pop();   // drop the k+1-th largest
+            }
+            return heap.peek()!;
+        }
+
+    Takeaway: there is no built-in heap in TypeScript. Implement a MinHeap class or
+    use heap-js. A min-heap of size k solves "k-th largest" in O(n log k) time.

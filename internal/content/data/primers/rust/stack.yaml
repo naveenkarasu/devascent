@@ -1,0 +1,138 @@
+- category: 'Stack'
+  lang: rust
+  title: 'Stack — Rust refresher'
+  summary: |
+    A stack is a last-in first-out (LIFO) structure. In Rust the idiomatic stack
+    is a plain Vec<T>: push() adds to the end, pop() removes from the end, and
+    last() / last_mut() peeks without removing.
+
+    Common stack patterns in DSA:
+      - Matching delimiters: push open brackets, pop and verify on close.
+      - Monotonic stack: maintain a stack that is always increasing or decreasing
+        to find the next-greater / previous-smaller element in O(n).
+      - Expression evaluation and history (undo/redo) use stacks naturally.
+
+    Rust notes:
+      - pop() returns Option<T> — always handle the None case or use unwrap()
+        only when you know the stack is non-empty.
+      - Vec is the correct choice; there is no separate Stack type in std.
+      - For a double-ended queue (deque) use VecDeque instead.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'empty stack'
+          code: 'let mut stack: Vec<i32> = Vec::new();'
+        - label: 'stack pre-filled with values'
+          code: 'let mut stack = vec![1, 2, 3];'
+    - title: Basic operations
+      ops:
+        - label: 'push'
+          code: 'stack.push(42);'
+        - label: 'pop (returns Option<T>)'
+          code: 'let top = stack.pop();  // None if empty'
+        - label: 'peek at top without removing'
+          code: 'if let Some(&top) = stack.last() { /* use top */ }'
+        - label: 'check empty'
+          code: 'if stack.is_empty() { /* stack is empty */ }'
+        - label: 'length'
+          code: 'let n = stack.len();'
+    - title: Iteration & loops
+      ops:
+        - label: 'drain/consume entire stack (top first)'
+          code: |
+            while let Some(val) = stack.pop() {
+                println!("{}", val);
+            }
+        - label: 'iterate without consuming (bottom to top)'
+          code: 'for val in stack.iter() { /* val is &T */ }'
+        - label: 'iterate top to bottom by reversing'
+          code: 'for val in stack.iter().rev() { /* top first */ }'
+    - title: Special operations (stack)
+      ops:
+        - label: 'valid parentheses — matching brackets'
+          code: |
+            let mut stack: Vec<char> = Vec::new();
+            for c in s.chars() {
+                match c {
+                    '(' | '[' | '{' => stack.push(c),
+                    ')' => { if stack.pop() != Some('(') { return false; } }
+                    ']' => { if stack.pop() != Some('[') { return false; } }
+                    '}' => { if stack.pop() != Some('{') { return false; } }
+                    _ => {}
+                }
+            }
+            stack.is_empty()
+        - label: 'monotonic decreasing stack (next greater element)'
+          code: |
+            let mut result = vec![-1i32; nums.len()];
+            let mut stack: Vec<usize> = Vec::new();
+            for i in 0..nums.len() {
+                while let Some(&top) = stack.last() {
+                    if nums[top] < nums[i] {
+                        result[top] = nums[i];
+                        stack.pop();
+                    } else { break; }
+                }
+                stack.push(i);
+            }
+        - label: 'evaluate simple RPN (Reverse Polish Notation)'
+          code: |
+            let mut stack: Vec<i64> = Vec::new();
+            for token in tokens {
+                match token.as_str() {
+                    "+" => {
+                        let b = stack.pop().unwrap();
+                        let a = stack.pop().unwrap();
+                        stack.push(a + b);
+                    }
+                    "-" => {
+                        let b = stack.pop().unwrap();
+                        let a = stack.pop().unwrap();
+                        stack.push(a - b);
+                    }
+                    "*" => {
+                        let b = stack.pop().unwrap();
+                        let a = stack.pop().unwrap();
+                        stack.push(a * b);
+                    }
+                    n => stack.push(n.parse().unwrap()),
+                }
+            }
+        - label: 'largest rectangle in histogram (monotonic stack)'
+          code: |
+            let mut stack: Vec<usize> = Vec::new();
+            let mut max_area = 0i64;
+            let heights: Vec<i32> = heights.iter().chain(std::iter::once(&0)).cloned().collect();
+            for i in 0..heights.len() {
+                while let Some(&top) = stack.last() {
+                    if heights[top] > heights[i] {
+                        stack.pop();
+                        let width = if stack.is_empty() { i } else { i - stack.last().unwrap() - 1 };
+                        max_area = max_area.max(heights[top] as i64 * width as i64);
+                    } else { break; }
+                }
+                stack.push(i);
+            }
+  example: |
+    Worked example — check if a string of brackets is valid:
+
+      For each open bracket push it. For each close bracket pop and check that the
+      popped bracket matches. If the stack is empty at the end, all brackets matched.
+      An unmatched close or a leftover open both return false.
+
+        fn is_valid(s: &str) -> bool {
+            let mut stack: Vec<char> = Vec::new();
+            for c in s.chars() {
+                match c {
+                    '(' | '[' | '{' => stack.push(c),
+                    ')' => { if stack.pop() != Some('(') { return false; } }
+                    ']' => { if stack.pop() != Some('[') { return false; } }
+                    '}' => { if stack.pop() != Some('{') { return false; } }
+                    _   => {}
+                }
+            }
+            stack.is_empty()
+        }
+
+    Takeaway: pop() returns Option so an empty stack on a close bracket is
+    caught automatically — the None != Some(open) check handles it cleanly.

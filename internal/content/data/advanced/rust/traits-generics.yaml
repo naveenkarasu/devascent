@@ -1,0 +1,215 @@
+lang: rust
+group: Traits & Generics
+title: "Traits & Generics — shared behaviour and zero-cost polymorphism"
+tag: E
+summary: |
+  Traits define shared behaviour across types — Rust's answer to interfaces. They enable
+  static dispatch (monomorphization via impl Trait / T: Trait bounds — zero runtime cost)
+  and dynamic dispatch (dyn Trait trait objects — vtable lookup, slight overhead, but
+  enables heterogeneous collections).
+
+  Generics combined with trait bounds let you write code that works across types while
+  constraining allowable behaviour. where clauses keep signatures readable when multiple
+  bounds combine. Associated types (e.g., Iterator::Item) bind one output type per
+  implementation, avoiding phantom type parameter proliferation. #[derive(Debug, Clone,
+  PartialEq)] auto-implements the most common traits.
+
+  The orphan rule: you can only implement a trait for a type if at least one of them is
+  defined in your crate. This prevents conflicting implementations across the ecosystem
+  and is a common surprise for newcomers (e.g., you cannot impl Display for Vec<T>
+  directly — you must wrap it in a newtype).
+
+  (Reference-only for now: Rust is not graded yet. When the toolchain is wired these
+  exercises auto-grade against the exact compiler errors they carry.)
+exercises:
+  - prompt: |
+      The generic function largest compares elements but the compiler does not know
+      whether T supports the > operator. Add the minimum trait bound to make it compile.
+    kind: fix-it
+    broken_code: |
+      fn largest<T>(list: &[T]) -> &T {
+          let mut largest = &list[0];
+          for item in list {
+              if item > largest {
+                  largest = item;
+              }
+          }
+          largest
+      }
+
+      fn main() {
+          let numbers = vec![34, 50, 25, 100, 65];
+          println!("Largest: {}", largest(&numbers));
+      }
+    fixed_code: |
+      fn largest<T: PartialOrd>(list: &[T]) -> &T {
+          let mut largest = &list[0];
+          for item in list {
+              if item > largest {
+                  largest = item;
+              }
+          }
+          largest
+      }
+
+      fn main() {
+          let numbers = vec![34, 50, 25, 100, 65];
+          println!("Largest: {}", largest(&numbers));
+      }
+    bug: |
+      The > operator is defined by the PartialOrd trait. Without a bound, T is
+      completely unconstrained and the compiler does not know whether T supports
+      comparison. Adding T: PartialOrd tells the compiler the operation is legal,
+      resolving E0369.
+    check: compile-error
+    signal: "E0369"
+  - prompt: |
+      The function make_shape tries to return two different concrete types from a single
+      impl Shape return position. Fix it by switching to a trait object so both branches
+      can return different types.
+    kind: fix-it
+    broken_code: |
+      trait Shape {
+          fn area(&self) -> f64;
+      }
+
+      struct Circle {
+          radius: f64,
+      }
+      impl Shape for Circle {
+          fn area(&self) -> f64 {
+              std::f64::consts::PI * self.radius * self.radius
+          }
+      }
+
+      struct Square {
+          side: f64,
+      }
+      impl Shape for Square {
+          fn area(&self) -> f64 {
+              self.side * self.side
+          }
+      }
+
+      fn make_shape(circle: bool) -> impl Shape {
+          if circle {
+              Circle { radius: 5.0 }
+          } else {
+              Square { side: 3.0 }   // mismatched types — each arm must return the same concrete type
+          }
+      }
+
+      fn main() {}
+    fixed_code: |
+      trait Shape {
+          fn area(&self) -> f64;
+      }
+
+      struct Circle {
+          radius: f64,
+      }
+      impl Shape for Circle {
+          fn area(&self) -> f64 {
+              std::f64::consts::PI * self.radius * self.radius
+          }
+      }
+
+      struct Square {
+          side: f64,
+      }
+      impl Shape for Square {
+          fn area(&self) -> f64 {
+              self.side * self.side
+          }
+      }
+
+      fn make_shape(circle: bool) -> Box<dyn Shape> {
+          if circle {
+              Box::new(Circle { radius: 5.0 })
+          } else {
+              Box::new(Square { side: 3.0 })
+          }
+      }
+
+      fn main() {
+          let shape = make_shape(true);
+          println!("{}", shape.area());
+      }
+    bug: |
+      impl Trait in return position requires every return branch to return the exact same
+      concrete type at compile time. When two branches return Circle and Square
+      respectively, the compiler sees mismatched types and fires E0308. Switching to
+      Box<dyn Shape> uses dynamic dispatch so the concrete type can differ at runtime.
+    check: compile-error
+    signal: "E0308"
+  - prompt: |
+      The custom iterator struct is defined but the impl Iterator block is missing the
+      associated type declaration. Fill in the associated type and implement next to
+      complete the iterator.
+    kind: fix-it
+    broken_code: |
+      struct Counter {
+          count: u32,
+          max: u32,
+      }
+
+      impl Counter {
+          fn new(max: u32) -> Self {
+              Counter { count: 0, max }
+          }
+      }
+
+      impl Iterator for Counter {
+          // missing: type Item = ...;
+
+          fn next(&mut self) -> Option<Self::Item> {
+              if self.count < self.max {
+                  self.count += 1;
+                  Some(self.count)
+              } else {
+                  None
+              }
+          }
+      }
+
+      fn main() {
+          let sum: u32 = Counter::new(5).sum();
+          println!("Sum: {sum}");
+      }
+    fixed_code: |
+      struct Counter {
+          count: u32,
+          max: u32,
+      }
+
+      impl Counter {
+          fn new(max: u32) -> Self {
+              Counter { count: 0, max }
+          }
+      }
+
+      impl Iterator for Counter {
+          type Item = u32;
+
+          fn next(&mut self) -> Option<Self::Item> {
+              if self.count < self.max {
+                  self.count += 1;
+                  Some(self.count)
+              } else {
+                  None
+              }
+          }
+      }
+
+      fn main() {
+          let sum: u32 = Counter::new(5).sum();
+          println!("Sum: {sum}");   // Sum: 15
+      }
+    bug: |
+      The Iterator trait declares an associated type Item that specifies what each call
+      to next yields. Without type Item = u32; the compiler does not know what
+      Self::Item refers to and the impl is incomplete. Associated types bind one concrete
+      type per implementation, keeping the trait clean without requiring extra generic
+      parameters on the impl.
+    check: compile-error
+    signal: "E0046"

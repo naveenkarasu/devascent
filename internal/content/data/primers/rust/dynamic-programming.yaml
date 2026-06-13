@@ -1,0 +1,129 @@
+- category: 'Dynamic Programming'
+  lang: rust
+  title: 'Dynamic Programming — Rust refresher'
+  summary: |
+    Dynamic programming (DP) solves problems by breaking them into overlapping
+    subproblems, solving each once, and reusing results. Two styles:
+      - Top-down (memoization): recursion + a cache (Vec or HashMap).
+      - Bottom-up (tabulation): fill a DP table iteratively.
+
+    Most interview DP problems need a 1-D or 2-D Vec; bottom-up is usually
+    simpler to write in Rust because it avoids recursive borrowing issues.
+
+    Rust notes:
+      - Initialize DP arrays with vec![0i64; n+1] or vec![vec![0; cols]; rows].
+      - Use i64 to avoid overflow when accumulating counts.
+      - Memoization with a HashMap: map.entry(key).or_insert_with(|| compute()).
+      - Rolling-array optimization: keep only the last row to reduce 2-D DP to O(n).
+
+    Classic problems: climbing stairs, coin change, longest common subsequence,
+    knapsack, word break, edit distance, palindrome substrings.
+  sections:
+    - title: Declarations
+      ops:
+        - label: '1-D DP table of size n+1'
+          code: 'let mut dp = vec![0i64; n + 1];'
+        - label: '2-D DP table (rows x cols)'
+          code: 'let mut dp = vec![vec![0i64; cols + 1]; rows + 1];'
+        - label: 'HashMap memo cache'
+          code: 'let mut memo: HashMap<(usize, usize), i64> = HashMap::new();'
+    - title: Basic operations
+      ops:
+        - label: 'set base case'
+          code: 'dp[0] = 1;'
+        - label: 'transition (recurrence)'
+          code: 'dp[i] = dp[i - 1] + dp[i - 2];'
+        - label: 'take max/min of choices'
+          code: 'dp[i] = dp[i - 1].min(dp[i - 2] + cost[i]);'
+        - label: 'answer is typically dp[n] or dp[n][m]'
+          code: 'dp[n]'
+    - title: Iteration & loops
+      ops:
+        - label: '1-D bottom-up fill'
+          code: |
+            for i in 1..=n {
+                dp[i] = dp[i - 1] + dp[i - 2]; // example: Fibonacci
+            }
+        - label: '2-D bottom-up fill (LCS style)'
+          code: |
+            for i in 1..=m {
+                for j in 1..=n {
+                    dp[i][j] = if a[i-1] == b[j-1] {
+                        dp[i-1][j-1] + 1
+                    } else {
+                        dp[i-1][j].max(dp[i][j-1])
+                    };
+                }
+            }
+        - label: 'coin change — unbounded knapsack'
+          code: |
+            for &coin in &coins {
+                for amt in coin as usize..=amount as usize {
+                    if dp[amt - coin as usize] != i32::MAX {
+                        dp[amt] = dp[amt].min(dp[amt - coin as usize] + 1);
+                    }
+                }
+            }
+    - title: Special operations (dynamic programming)
+      ops:
+        - label: 'climbing stairs (Fibonacci-style)'
+          code: |
+            let (mut a, mut b) = (1i64, 1i64);
+            for _ in 2..=n {
+                let c = a + b;
+                a = b;
+                b = c;
+            }
+            b
+        - label: 'longest increasing subsequence (patience sort O(n log n))'
+          code: |
+            let mut tails: Vec<i32> = Vec::new();
+            for &x in nums {
+                let pos = tails.partition_point(|&t| t < x);
+                if pos == tails.len() { tails.push(x); }
+                else { tails[pos] = x; }
+            }
+            tails.len()
+        - label: '0/1 knapsack'
+          code: |
+            for i in 0..n {
+                for w in (weights[i]..=capacity).rev() {
+                    dp[w] = dp[w].max(dp[w - weights[i]] + values[i]);
+                }
+            }
+        - label: 'word break using DP'
+          code: |
+            let mut dp = vec![false; s.len() + 1];
+            dp[0] = true;
+            for i in 1..=s.len() {
+                for word in &word_set {
+                    let wl = word.len();
+                    if i >= wl && dp[i - wl] && &s[i - wl..i] == word.as_str() {
+                        dp[i] = true; break;
+                    }
+                }
+            }
+  example: |
+    Worked example — coin change: fewest coins to make amount:
+
+      dp[a] = minimum coins to make amount a. For each amount build up from
+      smaller sub-amounts. Start dp[0] = 0 (zero coins for zero amount), every
+      other cell at i32::MAX (unreachable). Fill left-to-right for each coin.
+
+        fn coin_change(coins: &[i32], amount: i32) -> i32 {
+            let n = amount as usize;
+            let mut dp = vec![i32::MAX; n + 1];
+            dp[0] = 0;
+            for amt in 1..=n {
+                for &c in coins {
+                    let c = c as usize;
+                    if c <= amt && dp[amt - c] != i32::MAX {
+                        dp[amt] = dp[amt].min(dp[amt - c] + 1);
+                    }
+                }
+            }
+            if dp[n] == i32::MAX { -1 } else { dp[n] }
+        }
+
+    Takeaway: bottom-up DP avoids recursion depth limits and Rust borrow issues.
+    Sentinel i32::MAX signals unreachable; always guard before adding 1 to it.

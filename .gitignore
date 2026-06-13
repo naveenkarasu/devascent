@@ -1,0 +1,26 @@
+# Go build output
+*.exe
+*.test
+/devascent
+/cmd/devascent/devascent
+
+# Release artifacts (GoReleaser / manual cross-compile)
+/dist/
+
+# Local player save data (when DEVASCENT_SAVE_DIR points into the repo)
+/.devascent-save/
+
+# Internal-only docs — design specs, research, scratch notes. NOT for the public repo.
+/docs/
+/claudedocs/
+
+# Scratch — screenshots, UI mocks, capture scripts, throwaway save dirs. NOT for the public repo.
+/tmp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# session/repo index — internal, never published (a prior index was removed pre-publish)
+/PROJECT_INDEX.md
+/PROJECT_INDEX.json

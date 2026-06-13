@@ -1,0 +1,50 @@
+id: boot-sequence
+lang: go
+order: 1
+title: Boot Sequence
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A program runs instructions top to bottom. Two things you'll do constantly:
+      *show* a value and *hand back* a value.
+
+          func boot() string {
+              return "ready"
+          }
+
+      fmt.Println(x) displays x; return x hands x back to whoever called the
+      function. In DevAscent we grade by what you RETURN, not what you print.
+      A Go function declares its result type after the parameters — here, string.
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: A function header is written for you. Make it hand back the exact text Hello, world!
+    task:
+      prompt: Make greet() return the exact text "Hello, world!"
+      func_name: greet
+      starter: |
+        func greet() string {
+            // hint: text goes in double quotes. Use  return "Hello, world!"  (exact punctuation)
+        }
+      solution: |
+        func greet() string {
+            return "Hello, world!"
+        }
+      tests:
+        - {name: 'greet()', input: [], expected: "Hello, world!"}
+  - kind: you_do
+    title: You do — solo
+    body: Now on your own.
+    task:
+      prompt: Make announce() return the exact text "DevAscent online"
+      func_name: announce
+      starter: |
+        func announce() string {
+            // <- delete this line and write your code
+        }
+      solution: |
+        func announce() string {
+            return "DevAscent online"
+        }
+      tests:
+        - {name: 'announce()', input: [], expected: "DevAscent online"}

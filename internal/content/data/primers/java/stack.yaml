@@ -1,0 +1,101 @@
+- category: Stack
+  lang: java
+  title: Stack — Java refresher
+  summary: |
+    A stack is Last-In-First-Out (LIFO): you push onto the top and pop from the top,
+    like a stack of plates. It shines whenever the most RECENT thing you saw is the
+    first you need to resolve — matching brackets, undo history, or "next greater
+    element" style problems.
+
+    Java notes:
+      - PREFER ArrayDeque as your stack (push/pop/peek). The old java.util.Stack
+        class works but is legacy and synchronized (slower); interviewers expect
+        ArrayDeque or a Deque now.
+      - peek() looks at the top without removing; pop() removes and returns it.
+      - Always check isEmpty() before pop()/peek() or you get an exception.
+      - A common trick: push INDICES instead of values when you need positions.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'stack of integers (preferred: ArrayDeque)'
+          code: 'Deque<Integer> stack = new ArrayDeque<>();'
+        - label: 'stack of characters'
+          code: 'Deque<Character> stack = new ArrayDeque<>();'
+        - label: 'stack of indices (common trick)'
+          code: 'Deque<Integer> idxStack = new ArrayDeque<>();'
+        - label: 'monotonic stack (same type, different invariant)'
+          code: 'Deque<Integer> mono = new ArrayDeque<>();'
+    - title: Basic operations
+      ops:
+        - label: 'push (add to top)'
+          code: 'stack.push(x);'
+        - label: 'pop (remove and return top)'
+          code: 'int top = stack.pop();'
+        - label: 'peek (look without removing)'
+          code: 'int top = stack.peek();'
+        - label: 'empty check (always before pop/peek)'
+          code: 'if (!stack.isEmpty()) { ... }'
+        - label: 'size'
+          code: 'int n = stack.size();'
+    - title: Iteration & loops
+      ops:
+        - label: 'process all remaining stack items'
+          code: |
+            while (!stack.isEmpty()) {
+                int v = stack.pop();
+                ...
+            }
+        - label: 'drain into a list (preserves pop order)'
+          code: |
+            List<Integer> out = new ArrayList<>();
+            while (!stack.isEmpty()) out.add(stack.pop());
+        - label: 'push index, process later by value'
+          code: |
+            for (int i = 0; i < n; i++) {
+                while (!stack.isEmpty() && a[stack.peek()] < a[i]) {
+                    int idx = stack.pop();
+                    /* process idx */
+                }
+                stack.push(i);
+            }
+    - title: Special operations (stack)
+      ops:
+        - label: 'matching brackets: push expected closer'
+          code: 'if (c == ''('') stack.push('')'');'
+        - label: 'matching brackets: validate closer'
+          code: 'if (stack.isEmpty() || stack.pop() != c) return false;'
+        - label: 'next greater element (monotonic stack)'
+          code: |
+            while (!stack.isEmpty() && a[stack.peek()] < a[i]) result[stack.pop()] = a[i];
+            stack.push(i);
+        - label: 'evaluate postfix: pop two operands'
+          code: |
+            int b = stack.pop(), a = stack.pop();
+            stack.push(a + b);
+        - label: 'min-stack: push pair (value, current-min)'
+          code: 'stack.push(new int[]{val, Math.min(val, stack.isEmpty() ? val : stack.peek()[1])});'
+  example: |
+    Worked example — valid parentheses ( "()[]{}" is valid, "(]" is not ):
+
+      Walk the string. Push every opening bracket. On a closing bracket, the top of
+      the stack MUST be its matching opener — if the stack is empty or the top does
+      not match, it is invalid. At the end the stack must be empty (nothing left open).
+
+        boolean isValid(String s) {
+            Deque<Character> stack = new ArrayDeque<>();
+            for (char c : s.toCharArray()) {
+                if (c == '(') stack.push(')');
+                else if (c == '[') stack.push(']');
+                else if (c == '{') stack.push('}');
+                else {                                  // a closing bracket
+                    if (stack.isEmpty() || stack.pop() != c) {
+                        return false;
+                    }
+                }
+            }
+            return stack.isEmpty();
+        }
+
+    Trick used here: pushing the EXPECTED closer means the check on a closing bracket
+    is a single equality test. Takeaway: when correctness depends on the most recent
+    unmatched item, a stack is almost always the tool.

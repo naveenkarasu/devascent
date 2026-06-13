@@ -1,0 +1,151 @@
+- category: 'Advanced Graphs'
+  lang: rust
+  title: 'Advanced Graphs — Rust refresher'
+  summary: |
+    Advanced graph algorithms build on BFS/DFS from the Trees & Graphs primer.
+    Key algorithms covered here: Dijkstra (single-source shortest path),
+    Bellman-Ford (handles negative weights), topological sort (DAG ordering),
+    Union-Find (disjoint sets / connectivity), and Prim/Kruskal (MST).
+
+    Rust representation: adjacency list Vec<Vec<(usize, i64)>> where each entry
+    is (neighbor, weight). Union-Find uses a Vec<usize> parent array.
+
+    Rust notes:
+      - Dijkstra requires a min-heap: BinaryHeap<Reverse<(i64, usize)>>.
+      - Union-Find with path compression is idiomatic as a flat Vec<usize>.
+      - Bellman-Ford iterates edges n-1 times; represent edges as Vec<(usize,usize,i64)>.
+      - Cycle detection in a directed graph uses DFS with a three-state visited
+        array (0 = unseen, 1 = on current path, 2 = finished).
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'weighted adjacency list'
+          code: 'let mut adj: Vec<Vec<(usize, i64)>> = vec![Vec::new(); n];'
+        - label: 'add a directed weighted edge'
+          code: 'adj[u].push((v, w));'
+        - label: 'Union-Find parent array'
+          code: 'let mut parent: Vec<usize> = (0..n).collect();'
+        - label: 'distance array for shortest path'
+          code: 'let mut dist = vec![i64::MAX; n];'
+    - title: Basic operations
+      ops:
+        - label: 'Union-Find find with path compression'
+          code: |
+            fn find(parent: &mut Vec<usize>, x: usize) -> usize {
+                if parent[x] != x { parent[x] = find(parent, parent[x]); }
+                parent[x]
+            }
+        - label: 'Union-Find union'
+          code: |
+            fn union(parent: &mut Vec<usize>, a: usize, b: usize) {
+                let ra = find(parent, a);
+                let rb = find(parent, b);
+                if ra != rb { parent[ra] = rb; }
+            }
+        - label: 'relax an edge (Bellman-Ford / Dijkstra)'
+          code: |
+            if dist[u] != i64::MAX && dist[u] + w < dist[v] {
+                dist[v] = dist[u] + w;
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'Dijkstra shortest paths from src'
+          code: |
+            dist[src] = 0;
+            let mut heap: BinaryHeap<Reverse<(i64, usize)>> = BinaryHeap::new();
+            heap.push(Reverse((0, src)));
+            while let Some(Reverse((d, u))) = heap.pop() {
+                if d > dist[u] { continue; }
+                for &(v, w) in &adj[u] {
+                    if dist[u] + w < dist[v] {
+                        dist[v] = dist[u] + w;
+                        heap.push(Reverse((dist[v], v)));
+                    }
+                }
+            }
+        - label: 'Bellman-Ford n-1 relaxations'
+          code: |
+            dist[src] = 0;
+            for _ in 0..n - 1 {
+                for &(u, v, w) in &edges {
+                    if dist[u] != i64::MAX && dist[u] + w < dist[v] {
+                        dist[v] = dist[u] + w;
+                    }
+                }
+            }
+        - label: 'Kruskal MST (sort edges + Union-Find)'
+          code: |
+            edges.sort_by_key(|&(_, _, w)| w);
+            let mut parent: Vec<usize> = (0..n).collect();
+            let mut mst_cost = 0i64;
+            for &(u, v, w) in &edges {
+                let ru = find(&mut parent, u);
+                let rv = find(&mut parent, v);
+                if ru != rv { parent[ru] = rv; mst_cost += w; }
+            }
+    - title: Special operations (advanced graphs)
+      ops:
+        - label: 'detect cycle in directed graph (three-color DFS)'
+          code: |
+            fn has_cycle(u: usize, adj: &Vec<Vec<usize>>, color: &mut Vec<u8>) -> bool {
+                color[u] = 1;
+                for &v in &adj[u] {
+                    if color[v] == 1 { return true; }
+                    if color[v] == 0 && has_cycle(v, adj, color) { return true; }
+                }
+                color[u] = 2;
+                false
+            }
+        - label: 'count connected components via Union-Find'
+          code: |
+            let mut parent: Vec<usize> = (0..n).collect();
+            for &(u, v) in &edges { union(&mut parent, u, v); }
+            let components = (0..n).filter(|&i| find(&mut parent, i) == i).count();
+        - label: 'number of provinces (DFS on adjacency matrix)'
+          code: |
+            let mut visited = vec![false; n];
+            let mut count = 0;
+            for i in 0..n {
+                if !visited[i] {
+                    dfs_adj(i, &matrix, &mut visited);
+                    count += 1;
+                }
+            }
+        - label: 'Prim MST from node 0 (min-heap)'
+          code: |
+            let mut in_mst = vec![false; n];
+            let mut heap: BinaryHeap<Reverse<(i64, usize)>> = BinaryHeap::new();
+            heap.push(Reverse((0, 0)));
+            let mut cost = 0i64;
+            while let Some(Reverse((w, u))) = heap.pop() {
+                if in_mst[u] { continue; }
+                in_mst[u] = true;
+                cost += w;
+                for &(v, ew) in &adj[u] { if !in_mst[v] { heap.push(Reverse((ew, v))); } }
+            }
+  example: |
+    Worked example — Dijkstra single-source shortest paths:
+
+      Use a min-heap of (distance, node) pairs. Pop the closest unvisited node,
+      relax its neighbors, and push updated distances. Skip stale entries
+      (d > dist[u]) because the heap may hold outdated distances after a relax.
+
+        fn dijkstra(src: usize, adj: &Vec<Vec<(usize, i64)>>, n: usize) -> Vec<i64> {
+            let mut dist = vec![i64::MAX; n];
+            let mut heap: BinaryHeap<Reverse<(i64, usize)>> = BinaryHeap::new();
+            dist[src] = 0;
+            heap.push(Reverse((0, src)));
+            while let Some(Reverse((d, u))) = heap.pop() {
+                if d > dist[u] { continue; }
+                for &(v, w) in &adj[u] {
+                    if dist[u] + w < dist[v] {
+                        dist[v] = dist[u] + w;
+                        heap.push(Reverse((dist[v], v)));
+                    }
+                }
+            }
+            dist
+        }
+
+    Takeaway: the stale-entry guard (d > dist[u]) is essential — without it you
+    process nodes multiple times. Negative edges break Dijkstra; use Bellman-Ford.

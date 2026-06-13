@@ -1,0 +1,162 @@
+lang: go
+group: Gotchas
+title: "Go Gotchas — cross-cutting footguns"
+tag: gotcha
+summary: |
+  This file collects the cross-cutting Go gotchas from the Stage 2 research report.
+  Each maps to a specific topic's exercises; these spot-the-bug drills give isolated,
+  focused practice on the three highest-frequency surprises:
+
+  1. Typed-nil interface — a function returns a *ConcreteError nil pointer as the error
+     interface. The caller's "if err != nil" check fires even though nothing went wrong.
+     Root cause: an interface value is a (type, data) pair; assigning a typed nil pointer
+     fills the type slot, making the interface non-nil. Fix: return nil directly.
+
+  2. Nil map write — a map declared with var m map[string]int (zero value is nil) panics
+     on the first write with "assignment to entry in nil map". Reading a nil map is safe
+     (returns zero value). Fix: initialise with make(map[string]int) or a map literal.
+
+  3. Slice aliasing after re-slice — taking a sub-slice of a larger slice does not copy;
+     both share the same backing array. Mutations via either handle affect the other.
+     Fix: use copy() or append to a nil slice to get an independent copy.
+exercises:
+  - prompt: |
+      Spot the bug: this function is supposed to return nil when there is no error.
+      But in main, "err is not nil" prints even when fail is false. Why?
+    kind: spot-the-bug
+    broken_code: |
+      package main
+
+      import "fmt"
+
+      type AppError struct{ Code int }
+
+      func (e *AppError) Error() string { return fmt.Sprintf("error %d", e.Code) }
+
+      func run(fail bool) error {
+          var err *AppError
+          if fail {
+              err = &AppError{Code: 42}
+          }
+          return err // typed nil — interface is NOT nil
+      }
+
+      func main() {
+          if err := run(false); err != nil {
+              fmt.Println("err is not nil:", err) // prints despite fail==false
+          } else {
+              fmt.Println("no error")
+          }
+      }
+    fixed_code: |
+      package main
+
+      import "fmt"
+
+      type AppError struct{ Code int }
+
+      func (e *AppError) Error() string { return fmt.Sprintf("error %d", e.Code) }
+
+      func run(fail bool) error {
+          if fail {
+              return &AppError{Code: 42}
+          }
+          return nil // untyped nil — interface (nil, nil) — err == nil is true
+      }
+
+      func main() {
+          if err := run(false); err != nil {
+              fmt.Println("err is not nil:", err)
+          } else {
+              fmt.Println("no error") // prints correctly
+          }
+      }
+    bug: |
+      A Go interface value is a (type, data) pair. When a *AppError nil pointer is
+      assigned to the error interface, the type slot is set to *AppError and the data
+      slot is nil — the interface itself is not nil. The nil check err != nil compares
+      the interface value, not the underlying pointer, so it is true. The fix: never
+      assign a concrete nil pointer to an interface return; return the untyped nil
+      literal directly, which sets both slots to nil.
+    check: stdout
+    signal: "no error"
+
+  - prompt: |
+      Spot the bug: this code panics at runtime. What is the panic message and why?
+      Fix it with one change.
+    kind: spot-the-bug
+    broken_code: |
+      package main
+
+      import "fmt"
+
+      func main() {
+          var scores map[string]int // nil map
+          scores["Alice"] = 10     // panic: assignment to entry in nil map
+          fmt.Println(scores)
+      }
+    fixed_code: |
+      package main
+
+      import "fmt"
+
+      func main() {
+          scores := make(map[string]int) // initialised map
+          scores["Alice"] = 10
+          fmt.Println(scores)
+      }
+    bug: |
+      var scores map[string]int declares a nil map. The Go runtime panics immediately
+      on any write to a nil map: "assignment to entry in nil map". Reading a nil map is
+      safe and returns the zero value, but writes require the hash-table internals to be
+      allocated. make(map[string]int) performs that allocation. A map literal
+      map[string]int{} is equally correct.
+    check: stdout
+    signal: "map[Alice:10]"
+
+  - prompt: |
+      Spot the bug: the caller expects modify not to change original, but both slices
+      end up with the same values. Why, and how do you fix it?
+    kind: spot-the-bug
+    broken_code: |
+      package main
+
+      import "fmt"
+
+      func modify(s []int) []int {
+          s[0] = 999 // mutates the caller's backing array
+          return s
+      }
+
+      func main() {
+          original := []int{1, 2, 3}
+          changed := modify(original[:]) // re-slice — still shares backing array
+          fmt.Println("original:", original) // want [1 2 3], gets [999 2 3]
+          fmt.Println("changed: ", changed)
+      }
+    fixed_code: |
+      package main
+
+      import "fmt"
+
+      func modify(s []int) []int {
+          dup := make([]int, len(s))
+          copy(dup, s)
+          dup[0] = 999
+          return dup
+      }
+
+      func main() {
+          original := []int{1, 2, 3}
+          changed := modify(original)
+          fmt.Println("original:", original) // [1 2 3]
+          fmt.Println("changed: ", changed)  // [999 2 3]
+      }
+    bug: |
+      original[:] creates a new slice header but the pointer field still references
+      the same backing array. Mutating s[0] inside modify writes to that shared array,
+      changing original too. To isolate the function's modifications, copy the slice
+      into a fresh allocation first. copy(dst, src) copies min(len(dst), len(src))
+      elements; the destination slice must be pre-allocated with make.
+    check: stdout
+    signal: "original: [1 2 3]\nchanged:  [999 2 3]"

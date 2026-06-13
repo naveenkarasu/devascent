@@ -1,0 +1,178 @@
+- category: 'Strings'
+  lang: go
+  title: 'Strings — Go refresher'
+  summary: |
+    Go strings are immutable byte sequences (UTF-8 encoded). Iterating with range
+    gives Unicode code points (rune), not bytes — important for multi-byte chars.
+    Single characters are called runes (type rune, alias for int32).
+
+    Key Go string facts:
+      - s[i] gives a byte; use []rune(s) if you need index-safe character access.
+      - Concatenation with + creates a new string; build output with strings.Builder.
+      - strings and strconv packages cover almost every need.
+      - strconv.Itoa(n) / strconv.Atoi(s) convert between int and string.
+      - rune - 'a' maps lowercase letters to 0..25, just like Java's c - 'a'.
+      - == compares string content (not identity), so s == t is always safe.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'string literal'
+          code: 's := "hello"'
+        - label: 'empty string'
+          code: 's := ""'
+        - label: 'rune (single character) literal'
+          code: 'r := ''a'''
+        - label: 'convert string to rune slice (for indexed access)'
+          code: 'rs := []rune(s)'
+        - label: 'mutable builder'
+          code: 'var sb strings.Builder'
+    - title: Basic operations
+      ops:
+        - label: 'length in bytes'
+          code: 'n := len(s)'
+        - label: 'length in runes (characters)'
+          code: 'n := len([]rune(s))'
+        - label: 'byte at index (raw byte, not rune)'
+          code: 'b := s[i]'
+        - label: 'substring [lo, hi)'
+          code: 'sub := s[lo:hi]'
+        - label: 'concatenate (new string)'
+          code: 't := s + "!"'
+        - label: 'append byte to builder'
+          code: 'sb.WriteByte(b)'
+        - label: 'append rune to builder'
+          code: 'sb.WriteRune(r)'
+        - label: 'append string to builder'
+          code: 'sb.WriteString(part)'
+    - title: Most-used built-in functions
+      ops:
+        - label: 'contains'
+          code: 'strings.Contains(s, "lo")'
+        - label: 'has prefix'
+          code: 'strings.HasPrefix(s, "he")'
+        - label: 'has suffix'
+          code: 'strings.HasSuffix(s, "lo")'
+        - label: 'to lower case'
+          code: 'strings.ToLower(s)'
+        - label: 'to upper case'
+          code: 'strings.ToUpper(s)'
+        - label: 'trim whitespace'
+          code: 'strings.TrimSpace(s)'
+        - label: 'split on delimiter'
+          code: 'parts := strings.Split(s, " ")'
+        - label: 'join a slice of strings'
+          code: 'result := strings.Join(parts, "-")'
+        - label: 'replace all occurrences'
+          code: 'strings.ReplaceAll(s, "a", "o")'
+        - label: 'index of substring (-1 if absent)'
+          code: 'i := strings.Index(s, "ab")'
+    - title: Conversions to other types
+      ops:
+        - label: 'string -> []byte'
+          code: 'bs := []byte(s)'
+        - label: '[]byte -> string'
+          code: 's := string(bs)'
+        - label: 'string -> []rune'
+          code: 'rs := []rune(s)'
+        - label: '[]rune -> string'
+          code: 's := string(rs)'
+        - label: 'string -> int'
+          code: 'n, _ := strconv.Atoi("42")'
+        - label: 'int -> string'
+          code: 's := strconv.Itoa(42)'
+        - label: 'digit rune -> int'
+          code: 'n := int(r - ''0'')  // ''7'' -> 7'
+        - label: 'lowercase rune -> 0..25 index'
+          code: 'idx := int(r - ''a'')  // ''c'' -> 2'
+    - title: Iteration & loops
+      ops:
+        - label: 'range over runes (Unicode-safe)'
+          code: |
+            for i, r := range s {
+                _ = i
+                _ = r
+            }
+        - label: 'range over bytes'
+          code: |
+            for i := 0; i < len(s); i++ {
+                b := s[i]
+                _ = b
+            }
+        - label: 'two-pointer on rune slice'
+          code: |
+            rs := []rune(s)
+            lo, hi := 0, len(rs)-1
+            for lo < hi {
+                ...
+                lo++
+                hi--
+            }
+    - title: Ordering & comparison
+      ops:
+        - label: 'content equality'
+          code: 'if a == b { ... }'
+        - label: 'lexicographic compare (<0, 0, >0)'
+          code: 'cmp := strings.Compare(a, b)'
+        - label: 'sort runes of a string'
+          code: |
+            rs := []rune(s)
+            sort.Slice(rs, func(i, j int) bool { return rs[i] < rs[j] })
+        - label: 'sort a slice of strings'
+          code: 'sort.Strings(words)'
+    - title: Special operations (string patterns)
+      ops:
+        - label: 'frequency table for lowercase letters'
+          code: |
+            freq := [26]int{}
+            for _, r := range s {
+                freq[r-'a']++
+            }
+        - label: 'reverse a string'
+          code: |
+            rs := []rune(s)
+            for lo, hi := 0, len(rs)-1; lo < hi; lo, hi = lo+1, hi-1 {
+                rs[lo], rs[hi] = rs[hi], rs[lo]
+            }
+            return string(rs)
+        - label: 'build output efficiently (avoid + in a loop)'
+          code: |
+            var sb strings.Builder
+            for _, part := range parts {
+                sb.WriteString(part)
+            }
+            return sb.String()
+        - label: 'check if anagram (same sorted runes)'
+          code: |
+            ra, rb := []rune(a), []rune(b)
+            sort.Slice(ra, func(i, j int) bool { return ra[i] < ra[j] })
+            sort.Slice(rb, func(i, j int) bool { return rb[i] < rb[j] })
+            return string(ra) == string(rb)
+  example: |
+    Worked example — are two strings anagrams (same letters, any order)?
+
+      Different lengths can never be anagrams. Otherwise count each rune of the
+      first string (+1) and subtract for the second (-1). If every count is zero
+      the letters matched exactly. One pass each, O(n), no sorting needed.
+
+        func isAnagram(a, b string) bool {
+            if len([]rune(a)) != len([]rune(b)) {
+                return false
+            }
+            var freq [26]int
+            for _, r := range a {
+                freq[r-'a']++
+            }
+            for _, r := range b {
+                freq[r-'a']--
+            }
+            for _, v := range freq {
+                if v != 0 {
+                    return false
+                }
+            }
+            return true
+        }
+
+    Takeaway: a [26]int is a tiny, fast frequency map for lowercase letters.
+    Use strings.Builder whenever assembling output in a loop, and range over
+    a string to get runes — not bytes — for correct Unicode handling.

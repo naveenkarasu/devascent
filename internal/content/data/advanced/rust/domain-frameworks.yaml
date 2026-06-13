@@ -1,0 +1,56 @@
+lang: rust
+group: Domain Frameworks
+title: "Domain Frameworks — async/tokio, Axum, and clap at project scale"
+tag: P
+summary: |
+  This is a project-scale ([P]) reference topic. The frameworks here require meaningful
+  setup and are best encountered in the context of a working project, not isolated
+  exercises.
+
+  async / tokio
+  Rust's async/await syntax provides cooperative multitasking without a garbage collector.
+  async fn desugars to a state machine that implements the Future trait. Futures are lazy
+  — they do not run until polled by a runtime. Tokio is the dominant async runtime:
+  it provides an executor (tokio::main macro), async I/O primitives, timers, and task
+  spawning (tokio::spawn). The key distinction from OS threads: thousands of async tasks
+  can run on a small thread pool because they yield cooperatively at .await points rather
+  than blocking a thread.
+
+  Common pitfalls in async Rust:
+  - Calling a blocking function (.unwrap() on a Mutex, std::thread::sleep, synchronous
+    file I/O) inside an async task stalls the entire executor thread. Use tokio's async
+    equivalents (tokio::time::sleep, tokio::fs) or offload to tokio::task::spawn_blocking.
+  - Futures are not Send by default when they hold non-Send types across .await points.
+    tokio::spawn requires Send futures; store only Send types in async task state.
+  - async closures are not yet stable (as of Rust 2024 edition) — use async blocks
+    inside regular closures as a workaround.
+
+  Axum
+  Axum is an async HTTP framework built on top of tokio and hyper. Routes are defined
+  with a Router; handlers are async functions whose parameters are extractors
+  (FromRequest / FromRequestParts) — path parameters, query strings, JSON bodies, and
+  state are extracted from the request automatically. Middleware is composed via
+  tower::ServiceBuilder. Axum is deliberately low-magic: the extractor system is
+  explicit and the compiler errors are actionable.
+
+  Typical entry point:
+    #[tokio::main]
+    async fn main() {
+        let app = Router::new().route("/", get(handler));
+        let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+        axum::serve(listener, app).await.unwrap();
+    }
+
+  Actix-web is an alternative async HTTP framework with a slightly different design
+  (actor model heritage, different extractor syntax). Both are production-ready.
+
+  clap
+  clap is the standard CLI argument parsing library. The derive API (recommended) uses
+  #[derive(Parser)] on a struct to declare arguments, subcommands, and flags as fields
+  with attributes. The builder API provides the same power without derive macros.
+  Integrate with error handling by having main return Result and using ? on clap::Parser
+  parse or by calling .parse() which exits automatically on error.
+
+  Suggested learning path: understand async/await and the tokio runtime first, then build
+  a small Axum service or a clap CLI as a standalone project. These frameworks are where
+  the Traits & Generics and Error Handling topics from Stage 2 pay off most visibly.

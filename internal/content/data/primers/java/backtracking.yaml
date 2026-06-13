@@ -1,0 +1,127 @@
+- category: Backtracking
+  lang: java
+  title: Backtracking — Java refresher
+  summary: |
+    Backtracking explores all candidate solutions by building one step at a time and
+    ABANDONING a path the moment it cannot lead to a valid answer ("prune"). It is
+    how you generate every subset, permutation, or combination, and how you solve
+    puzzles like Sudoku or N-Queens.
+
+    The shape is always the same recursion:
+      1. If the current partial solution is complete, record it.
+      2. Otherwise, for each choice: APPLY it, RECURSE, then UNDO it (the backtrack).
+
+    That "undo" is the whole trick — you reuse one path object instead of copying, so
+    after exploring a branch you restore state and try the next choice.
+
+    Java notes:
+      - Carry the partial answer in a List you add to and then remove the last from.
+      - When you record a complete answer, add a COPY: new ArrayList<>(path) — else
+        every saved result points at the same list you keep mutating.
+      - Sort first if you must skip duplicates.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'mutable path accumulator'
+          code: 'List<Integer> path = new ArrayList<>();'
+        - label: 'results collector'
+          code: 'List<List<Integer>> results = new ArrayList<>();'
+        - label: 'visited array (for permutations / grids)'
+          code: 'boolean[] used = new boolean[n];'
+        - label: 'visited set (for graph backtracking)'
+          code: 'Set<Integer> visited = new HashSet<>();'
+    - title: Basic operations
+      ops:
+        - label: 'choose (apply a step)'
+          code: 'path.add(candidate);'
+        - label: 'recurse deeper'
+          code: 'backtrack(path, start + 1);'
+        - label: 'un-choose (backtrack — remove last)'
+          code: 'path.remove(path.size() - 1);'
+        - label: 'record a finished answer (COPY the path!)'
+          code: 'results.add(new ArrayList<>(path));'
+        - label: 'prune a dead branch early'
+          code: 'if (sum > target) return;'
+    - title: Iteration & loops
+      ops:
+        - label: 'iterate candidates from start (combinations, subsets)'
+          code: |
+            for (int i = start; i < nums.length; i++) {
+                path.add(nums[i]);
+                backtrack(path, i+1);
+                path.remove(path.size()-1);
+            }
+        - label: 'iterate all indices (permutations)'
+          code: |
+            for (int i = 0; i < nums.length; i++) {
+                if (used[i]) continue;
+                used[i] = true;
+                path.add(nums[i]);
+                backtrack(path);
+                used[i] = false;
+                path.remove(path.size()-1);
+            }
+        - label: 'skip duplicates after sorting'
+          code: 'if (i > start && nums[i] == nums[i-1]) continue;'
+        - label: '4-direction grid walk'
+          code: |
+            int[][] dirs = {{0,1},{0,-1},{1,0},{-1,0}};
+            for (int[] d : dirs) {
+                int nr = r+d[0], nc = c+d[1];
+                ...
+            }
+    - title: Special operations (backtracking)
+      ops:
+        - label: 'base case: path reached target length'
+          code: |
+            if (path.size() == k) {
+                results.add(new ArrayList<>(path));
+                return;
+            }
+        - label: 'base case: remaining sum hits 0'
+          code: |
+            if (remaining == 0) {
+                results.add(new ArrayList<>(path));
+                return;
+            }
+        - label: 'generate permutations: mark used inline'
+          code: |
+            for (int i = 0; i < n; i++) {
+                if (!used[i]) {
+                    used[i] = true;
+                    /* recurse */
+                    used[i] = false;
+                }
+            }
+        - label: 'N-Queens: mark a column as occupied'
+          code: |
+            cols.add(col);
+            diag1.add(row-col);
+            diag2.add(row+col);
+            /* recurse */
+            cols.remove(col);
+  example: |
+    Worked example — all subsets of distinct numbers (the power set):
+
+      At each index you make a binary choice: include nums[i] or not. Recurse to the
+      next index. Every time you reach the end of the array, the current path is one
+      valid subset — save a copy. The add/recurse/remove dance walks every combination.
+
+        List<List<Integer>> subsets(int[] nums) {
+            List<List<Integer>> results = new ArrayList<>();
+            backtrack(nums, 0, new ArrayList<>(), results);
+            return results;
+        }
+
+        void backtrack(int[] nums, int start,
+                       List<Integer> path, List<List<Integer>> results) {
+            results.add(new ArrayList<>(path));   // every prefix is a valid subset
+            for (int i = start; i < nums.length; i++) {
+                path.add(nums[i]);                // choose
+                backtrack(nums, i + 1, path, results);  // explore
+                path.remove(path.size() - 1);     // un-choose (backtrack)
+            }
+        }
+
+    Takeaway: choose → recurse → un-choose is the universal skeleton. The only bug
+    that really bites is forgetting to COPY the path when you store a result.

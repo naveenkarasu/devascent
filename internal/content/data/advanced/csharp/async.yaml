@@ -1,0 +1,219 @@
+lang: csharp
+group: Async
+title: "Async — Task-based Asynchronous Pattern and common pitfalls"
+tag: E
+summary: |
+  C#'s async/await model (Task-based Asynchronous Pattern, TAP) allows non-blocking
+  I/O and CPU-bound work without explicit thread management. The compiler transforms
+  an async method into a state machine. await suspends the method and yields control
+  back to the caller until the awaited Task completes, without blocking a thread.
+
+  Key concepts:
+  - Task vs ValueTask: Task is a reference type; every async completion allocates a
+    heap object. ValueTask avoids the allocation when the operation completes
+    synchronously (common for cached results). Use ValueTask for high-frequency async
+    methods; use Task by default.
+  - CancellationToken: the idiomatic way to cancel async operations. Pass it through
+    the call chain; do not ignore it.
+  - ConfigureAwait(false): in library code, prevents capturing the
+    SynchronizationContext, avoiding deadlocks in UI/ASP.NET Classic contexts.
+  - IAsyncEnumerable<T>: async streaming (C# 8+); consumed with await foreach.
+  - async void: only for event handlers. Exceptions thrown in async void cannot be
+    caught by the caller and crash the process.
+  - Deadlock pattern: calling .Result or .Wait() on a Task from a context that has a
+    SynchronizationContext blocks the thread while the continuation is posted back to
+    the same thread — classic deadlock.
+
+  Common mistakes:
+  - async void outside event handlers swallows exceptions and prevents await from the
+    caller.
+  - Not using ConfigureAwait(false) in library code causes deadlocks in
+    SynchronizationContext-heavy hosts.
+  - Task.Run(() => SomeAsync()) is an antipattern for I/O-bound work; use Task.Run
+    only for CPU-bound work.
+exercises:
+  - prompt: |
+      The method blocks on an async call using .Result instead of awaiting it. In a
+      host with a SynchronizationContext (WPF, WinForms, classic ASP.NET) this causes
+      a deadlock: the thread is blocked waiting for the Task, while the async
+      continuation is posted back to the same blocked thread. Fix it by awaiting the
+      inner call instead of using .Result (async all the way).
+    kind: fix-it
+    broken_code: |
+      // BUG: .Result blocks the calling thread waiting for the Task.
+      // In a context-bearing host (WPF, WinForms, old ASP.NET) this deadlocks:
+      // the continuation is posted back to the blocked thread — neither can proceed.
+      var processed = ProcessAsync("hello").Result;
+      Console.WriteLine(processed);
+
+      static async Task<string> ProcessAsync(string input)
+          => await Task.FromResult(input.ToUpper());
+    fixed_code: |
+      // FIX: await all the way — never block on a Task from a context-bearing thread.
+      var processed = await ProcessAsync("hello");
+      Console.WriteLine(processed);
+
+      static async Task<string> ProcessAsync(string input)
+          => await Task.FromResult(input.ToUpper());
+    bug: |
+      .Result and .Wait() block the current thread waiting for the Task to complete.
+      If that thread holds a SynchronizationContext (WPF, WinForms, old ASP.NET), the
+      async continuation is posted back to the same context — but the thread is blocked
+      waiting for it. Neither can proceed: classic deadlock. The fix is async all the
+      way — never block on a Task in a context-bearing thread.
+    check: stdout
+    signal: "HELLO"
+
+  - prompt: |
+      Only the outermost method accepts a CancellationToken. Thread it through all
+      inner calls, add a 500ms timeout, and verify cancellation propagates as
+      OperationCanceledException.
+    kind: fix-it
+    broken_code: |
+      static async Task<string> FetchDataAsync(CancellationToken ct)
+      {
+          // ct is silently ignored — inner calls cannot be cancelled.
+          var raw  = await DownloadAsync();
+          var data = await ParseAsync(raw);
+          return data;
+      }
+
+      static async Task<string> DownloadAsync()
+          => await Task.Delay(1000).ContinueWith(_ => "raw-data");
+
+      static async Task<string> ParseAsync(string raw)
+          => await Task.FromResult(raw.ToUpper());
+    fixed_code: |
+      // Usage with 500ms timeout (top-level statements precede local functions):
+      using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+      try
+      {
+          var result = await FetchDataAsync(cts.Token);
+          Console.WriteLine(result);
+      }
+      catch (OperationCanceledException)
+      {
+          Console.WriteLine("Cancelled after timeout.");
+      }
+
+      static async Task<string> FetchDataAsync(CancellationToken ct)
+      {
+          var raw  = await DownloadAsync(ct);
+          var data = await ParseAsync(raw, ct);
+          return data;
+      }
+
+      static async Task<string> DownloadAsync(CancellationToken ct)
+      {
+          await Task.Delay(1000, ct);   // throws OperationCanceledException on cancel
+          return "raw-data";
+      }
+
+      static async Task<string> ParseAsync(string raw, CancellationToken ct)
+      {
+          ct.ThrowIfCancellationRequested();
+          return await Task.FromResult(raw.ToUpper());
+      }
+    bug: |
+      Ignoring CancellationToken means cancellation is not honoured; the operation
+      runs to completion even after the client disconnects or the timeout fires. Thread
+      the token through every async call. Task.Delay(ms, ct) and
+      ct.ThrowIfCancellationRequested() are the two primary injection points.
+    check: stdout
+    signal: "Cancelled after timeout."
+
+  - prompt: |
+      All tasks must start concurrently before Task.WhenAll waits on them. Show that
+      without .ToArray() the LINQ expression is lazy and add the materialisation.
+    kind: fix-it
+    broken_code: |
+      var users = await LoadUsersAsync(new[] { 1, 2, 3 });
+      Console.WriteLine(string.Join(",", users.Select(u => u.Id)));
+
+      static async Task<User[]> LoadUsersAsync(IEnumerable<int> ids)
+      {
+          // Lazy: tasks are not started here — just an IEnumerable<Task<User>>
+          var tasks = ids.Select(id => FetchUserAsync(id));
+
+          // Task.WhenAll iterates the lazy sequence: tasks are created one by one,
+          // not all upfront. Fragile for generators with side effects.
+          return await Task.WhenAll(tasks);
+      }
+
+      static Task<User> FetchUserAsync(int id)
+          => Task.FromResult(new User(id));
+
+      record User(int Id);
+    fixed_code: |
+      var users = await LoadUsersAsync(new[] { 1, 2, 3 });
+      Console.WriteLine(string.Join(",", users.Select(u => u.Id)));   // 1,2,3
+
+      static async Task<User[]> LoadUsersAsync(IEnumerable<int> ids)
+      {
+          // .ToArray() materialises: all tasks created and started immediately.
+          var tasks = ids.Select(id => FetchUserAsync(id)).ToArray();
+          return await Task.WhenAll(tasks);
+      }
+
+      static Task<User> FetchUserAsync(int id)
+          => Task.FromResult(new User(id));
+
+      record User(int Id);
+    bug: |
+      LINQ's Select is deferred. Without .ToArray() / .ToList(), Task.WhenAll
+      receives a lazy IEnumerable<Task<T>> and iterates it internally — tasks are
+      created sequentially as WhenAll pulls each element. For hot-path Task-returning
+      methods this still works, but for async generators or methods with side effects
+      the order and timing are unpredictable. Always materialise before Task.WhenAll.
+    check: stdout
+    signal: "1,2,3"
+
+  - prompt: |
+      A ValueTask is awaited twice — once inline and once stored and awaited again
+      later. Explain why this is undefined behaviour and fix it.
+    kind: fix-it
+    broken_code: |
+      await DemoAsync();
+
+      static async Task DemoAsync()
+      {
+          ValueTask<int> vt = GetValueAsync();
+
+          // First await — OK
+          int first = await vt;
+
+          // BUG: ValueTask may only be consumed once. Awaiting again is
+          // undefined behaviour; the underlying IValueTaskSource may have
+          // already been returned to a pool.
+          int second = await vt;
+
+          Console.WriteLine($"{first}, {second}");
+      }
+
+      static ValueTask<int> GetValueAsync() => new ValueTask<int>(42);
+    fixed_code: |
+      await DemoAsync();
+
+      static async Task DemoAsync()
+      {
+          // Option A: convert to Task if you need to await multiple times
+          Task<int> task = GetValueAsync().AsTask();
+          int first  = await task;
+          int second = await task;
+          Console.WriteLine($"{first}, {second}");   // 42, 42
+      }
+
+      // Option B: restructure so the ValueTask is awaited exactly once —
+      // await it directly and use the value, never storing the ValueTask:
+      //     int value = await GetValueAsync();
+      //     Console.WriteLine(value);
+
+      static ValueTask<int> GetValueAsync() => new ValueTask<int>(42);
+    bug: |
+      ValueTask is designed for the single-await pattern. After the first await the
+      underlying IValueTaskSource may be recycled (returned to an object pool). A
+      second await operates on an already-recycled source — the result is undefined
+      and may return stale data, throw, or corrupt the pool. Use .AsTask() to convert
+      to a Task (which IS safely re-awaitable) if multiple awaits are needed.
+    check: stdout
+    signal: "42, 42"

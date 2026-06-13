@@ -1,0 +1,139 @@
+lang: typescript
+group: Interfaces & Types
+title: "Interfaces & Types — interface vs type, Structural Typing, Optional/Readonly"
+tag: E
+summary: |
+  Both `interface` and `type` describe object shapes, but they differ in key ways:
+
+  - Declaration merging: interfaces can be re-declared to extend; duplicate type
+    aliases are errors.
+  - Extending: interfaces use the `extends` keyword; type aliases use `&`
+    intersection.
+  - Non-object shapes: type aliases can represent unions, tuples, and primitives;
+    interfaces cannot.
+  - Compiler performance: interfaces are slightly faster (cached); complex type
+    intersections are re-evaluated.
+
+  Structural typing ("duck typing at compile time") — TS checks shape, not name. A
+  class Dog satisfies interface Pet if it has all Pet's members — no `implements`
+  keyword needed. Only members in the target type are checked; extra members are fine
+  on pre-assigned variables.
+
+  Excess property checking (fresh object literal rule) — when you assign an object
+  literal directly to a typed variable, TS additionally checks for unknown properties.
+  This check is skipped when assigning through an intermediate variable.
+
+  Common mistakes: excess property checking only fires on fresh object literals —
+  variables silently carry extra fields; interface declaration merging in global
+  augmentation can cause confusing accidental merges; interfaces cannot represent union
+  types; structural typing means a value with more fields than the target is
+  assignable, which surprises devs from nominally-typed languages.
+exercises:
+  - prompt: |
+      Part A: define `interface Config` with a `timeout: number` field. In a second
+      block, augment it by adding `retries: number` via declaration merging.
+      Part B: replicate the same combined shape using a type alias
+      `type Config2 = Config & { retries: number }`.
+      Both should accept `{ timeout: 1000, retries: 3 }`.
+    kind: fix-it
+    broken_code: |
+      interface Config {
+        timeout: number;
+      }
+
+      // Attempt to extend Config by redeclaring — will this compile?
+      type Config = Config & { retries: number };
+
+      const cfg: Config = { timeout: 1000, retries: 3 };
+    fixed_code: |
+      // Part A — declaration merging (interface only)
+      interface Config {
+        timeout: number;
+      }
+      interface Config {
+        retries: number;
+      }
+
+      // Part B — intersection type alias achieves the same shape
+      type Config2 = Config & { retries: number };
+
+      const cfg: Config = { timeout: 1000, retries: 3 };
+      const cfg2: Config2 = { timeout: 1000, retries: 3 };
+    bug: |
+      `type` aliases cannot be re-declared — the second `type Config = ...` is a
+      duplicate identifier error. Only `interface` supports declaration merging. The
+      equivalent for type aliases is an intersection (`&`), which produces the same
+      structural shape but is a new alias, not a mutation of the original.
+    check: compiles
+    signal: ""
+  - prompt: |
+      Explain why `let l: Logger = new ConsoleLogger()` compiles but the object
+      literal version does not. Fix the object literal form so it compiles.
+    kind: fix-it
+    broken_code: |
+      interface Logger {
+        log(msg: string): void;
+      }
+
+      class ConsoleLogger {
+        prefix = "INFO";
+        log(msg: string): void {
+          console.log(`${this.prefix}: ${msg}`);
+        }
+      }
+
+      let a: Logger = new ConsoleLogger();          // OK?
+      let b: Logger = { log: console.log, prefix: "x" }; // OK?
+    fixed_code: |
+      interface Logger {
+        log(msg: string): void;
+      }
+
+      class ConsoleLogger {
+        prefix = "INFO";
+        log(msg: string): void {
+          console.log(`${this.prefix}: ${msg}`);
+        }
+      }
+
+      let a: Logger = new ConsoleLogger(); // OK — variable assignment skips excess-property check
+
+      const raw = { log: console.log, prefix: "x" };
+      let b: Logger = raw; // OK — intermediate variable bypasses fresh-literal check
+    bug: |
+      TypeScript applies excess property checking only on fresh object literals
+      assigned directly to a typed variable. `new ConsoleLogger()` is not a fresh
+      literal so extra fields are fine. The object literal `{ log, prefix }` IS a
+      fresh literal, so the unknown `prefix` field causes an error. Assigning through
+      an intermediate variable sidesteps this check.
+    check: compiles
+    signal: ""
+  - prompt: |
+      Create a `ReadonlyConfig` from `Config` using `Readonly<>`. Attempt to mutate a
+      field and observe the compile error. Then note that `Object.freeze` is needed
+      for actual runtime protection.
+    kind: spot-the-bug
+    broken_code: |
+      interface Config {
+        host: string;
+        port: number;
+      }
+
+      const cfg: Readonly<Config> = { host: "localhost", port: 3000 };
+      cfg.port = 4000; // should this compile?
+    fixed_code: |
+      interface Config {
+        host: string;
+        port: number;
+      }
+
+      const cfg: Readonly<Config> = Object.freeze({ host: "localhost", port: 3000 });
+      // cfg.port = 4000;  // compile error: cannot assign to 'port' because it is a read-only property
+    bug: |
+      `Readonly<Config>` marks all properties as readonly at compile time, so
+      `cfg.port = 4000` is a type error. However, `Readonly<>` is erased at runtime —
+      the underlying JS object is still mutable. `Object.freeze` is needed to enforce
+      immutability at runtime. The two layers are independent: you can have one without
+      the other.
+    check: compiles
+    signal: ""

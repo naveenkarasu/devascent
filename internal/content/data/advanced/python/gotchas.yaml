@@ -1,0 +1,57 @@
+lang: python
+group: Gotchas
+title: "Python Gotchas — the classic footguns"
+tag: gotcha
+summary: |
+  Python has a handful of well-documented footguns that catch even experienced
+  developers. They are concrete, memorable, and highly testable — perfect for a
+  "fix it" / "spot the bug" drill. The two below are the most famous: the mutable
+  default argument (evaluated once at definition time, so it persists across calls)
+  and the late-binding closure (closures capture a variable by reference, so a loop
+  variable is shared by every closure it creates).
+exercises:
+  - prompt: |
+      This helper is supposed to return a NEW list each call. But the second call
+      returns [1, 2] instead of [2] — the default list is shared across calls.
+      Fix it so every call starts from a fresh list.
+    kind: fix-it
+    broken_code: |
+      def append_to(element, to=[]):
+          to.append(element)
+          return to
+    fixed_code: |
+      def append_to(element, to=None):
+          if to is None:
+              to = []
+          to.append(element)
+          return to
+    bug: |
+      Default arguments are evaluated ONCE, when the function is defined — not on
+      each call. So `to=[]` creates a single list that every call shares and mutates.
+      The fix: default to None and create a fresh list inside the body.
+    check: tests
+    func_name: append_to
+    tests:
+      - name: "first call returns a fresh list"
+        input: [1]
+        expected: [1]
+      - name: "second call is independent (not [1, 2])"
+        input: [2]
+        expected: [2]
+  - prompt: |
+      What does this print, and why? (Hint: it is NOT [0, 1, 2, 3, 4].) Then fix it
+      so each function returns its own number.
+    kind: spot-the-bug
+    broken_code: |
+      funcs = [lambda: i for i in range(5)]
+      print([f() for f in funcs])
+    fixed_code: |
+      funcs = [lambda i=i: i for i in range(5)]
+      print([f() for f in funcs])
+    bug: |
+      Closures capture the VARIABLE i by reference, not its value at creation time.
+      By the time the lambdas run, the loop has finished and i == 4, so all five
+      return 4 → [4, 4, 4, 4, 4]. Binding it as a default (`lambda i=i: i`) captures
+      the value at each iteration.
+    check: stdout
+    signal: "[0, 1, 2, 3, 4]"

@@ -1,0 +1,122 @@
+- category: 'Greedy'
+  lang: javascript
+  title: 'Greedy — JavaScript refresher'
+  summary: |
+    A greedy algorithm makes the locally optimal choice at each step, hoping it leads
+    to a globally optimal solution. No backtracking — once a choice is made, it stands.
+    The hard part is PROVING the greedy choice is safe; the code is usually short.
+
+    Classic greedy problems: interval scheduling (sort by end time, always pick earliest
+    ending), jump game (track max reachable index), gas station (track running surplus),
+    task scheduling, minimum coins.
+
+    JavaScript notes:
+      - Sorting is the most common first step — always supply a comparator for numbers.
+      - arr.sort((a, b) => a.end - b.end) sorts objects by a field.
+      - Use destructuring to unpack interval pairs: const [start, end] = interval.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'sort intervals by end time (classic greedy setup)'
+          code: 'intervals.sort((a, b) => a[1] - b[1]);'
+        - label: 'track greedy state variable'
+          code: 'let count = 0, lastEnd = -Infinity;'
+        - label: 'track max-reach for jump game'
+          code: 'let maxReach = 0;'
+    - title: Basic operations
+      ops:
+        - label: 'pick earliest-ending interval that does not overlap'
+          code: |
+            if (interval[0] >= lastEnd) {
+              count++;
+              lastEnd = interval[1];
+            }
+        - label: 'update max reach (jump game)'
+          code: 'maxReach = Math.max(maxReach, i + jumps[i]);'
+        - label: 'check feasibility at each step'
+          code: 'if (i > maxReach) return false;   // cannot reach index i'
+        - label: 'running surplus (gas station)'
+          code: |
+            total += gas[i] - cost[i];
+            tank += gas[i] - cost[i];
+            if (tank < 0) {
+              start = i + 1;
+              tank = 0;
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'sweep sorted intervals'
+          code: |
+            for (const interval of intervals) {
+              /* make greedy choice */
+            }
+        - label: 'two-pass greedy (forward then backward)'
+          code: |
+            for (let i = 0; i < n; i++) {
+              /* forward pass */
+            }
+            for (let i = n-1; i >= 0; i--) {
+              /* backward pass */
+            }
+        - label: 'greedy with priority (sort then iterate)'
+          code: |
+            items.sort((a, b) => b.value - a.value);
+            for (const item of items) {
+              /* take if feasible */
+            }
+    - title: Special operations (greedy)
+      ops:
+        - label: 'minimum number of non-overlapping intervals to remove'
+          code: |
+            intervals.sort((a, b) => a[1] - b[1]);
+            let count = 0, lastEnd = -Infinity;
+            for (const [start, end] of intervals) {
+                if (start >= lastEnd) {
+                    lastEnd = end;
+                } else {
+                    count++;
+                }
+            }
+            return count;
+        - label: 'jump game II — minimum jumps to reach end'
+          code: |
+            let jumps = 0, curEnd = 0, farthest = 0;
+            for (let i = 0; i < arr.length - 1; i++) {
+                farthest = Math.max(farthest, i + arr[i]);
+                if (i === curEnd) {
+                    jumps++;
+                    curEnd = farthest;
+                }
+            }
+            return jumps;
+        - label: 'assign cookies (greedy match smallest sufficient cookie)'
+          code: |
+            greed.sort((a, b) => a - b);
+            sizes.sort((a, b) => a - b);
+            let child = 0, cookie = 0;
+            while (child < greed.length && cookie < sizes.length) {
+                if (sizes[cookie] >= greed[child]) child++;
+                cookie++;
+            }
+            return child;
+  example: |
+    Worked example — minimum number of arrows to burst all balloons:
+
+      Each balloon spans [start, end]. One arrow at position x bursts all balloons
+      whose range contains x. Sort by end time and fire each arrow at the end of
+      the current balloon. Any balloon that starts after that point needs a new arrow.
+
+        function findMinArrowShots(points) {
+            points.sort((a, b) => a[1] - b[1]);
+            let arrows = 1, arrowPos = points[0][1];
+            for (const [start, end] of points) {
+                if (start > arrowPos) {
+                    arrows++;
+                    arrowPos = end;
+                }
+            }
+            return arrows;
+        }
+
+    Takeaway: greedy interval problems almost always start with sorting by end time.
+    Prove "taking the earliest-ending option never makes things worse" to justify it.

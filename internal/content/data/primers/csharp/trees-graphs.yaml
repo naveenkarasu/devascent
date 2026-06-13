@@ -1,0 +1,140 @@
+- category: 'Trees & Graphs'
+  lang: csharp
+  title: 'Trees & Graphs — C# refresher'
+  summary: |
+    Trees are connected acyclic graphs; binary trees are the most common interview form.
+    Graphs add cycles and multiple parents. Both are traversed with DFS (stack or
+    recursion) or BFS (queue). Choose BFS for shortest-path problems; DFS for connected
+    components, cycle detection, and tree traversals.
+
+    Key operations: pre/in/post-order DFS on a binary tree, level-order BFS, graph DFS
+    with a visited set to avoid revisiting nodes.
+
+    C# notes:
+      - Binary tree nodes are typically a custom class: class TreeNode { int val; TreeNode left, right; }
+      - Adjacency list: Dictionary<int, List<int>> or List<int>[] adj = new List<int>[n].
+      - Queue<T> for BFS; Stack<T> or recursion for DFS.
+      - HashSet<int> visited to detect cycles and avoid infinite loops.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'binary tree node class'
+          code: |
+            class TreeNode
+            {
+                public int val;
+                public TreeNode left, right;
+                public TreeNode(int v) { val = v; }
+            }
+        - label: 'adjacency list graph'
+          code: |
+            var adj = new Dictionary<int, List<int>>();
+            adj[u] = new List<int>();
+            adj[u].Add(v);
+        - label: 'visited set'
+          code: 'var visited = new HashSet<int>();'
+        - label: 'BFS queue'
+          code: 'var queue = new Queue<TreeNode>();'
+    - title: Basic operations
+      ops:
+        - label: 'enqueue for BFS'
+          code: 'queue.Enqueue(root);'
+        - label: 'dequeue for BFS'
+          code: 'TreeNode node = queue.Dequeue();'
+        - label: 'null check before accessing children'
+          code: 'if (node.left != null) queue.Enqueue(node.left);'
+        - label: 'mark visited (graph node)'
+          code: 'visited.Add(node);'
+    - title: Iteration & loops
+      ops:
+        - label: 'inorder DFS (left, root, right) — recursive'
+          code: |
+            void Inorder(TreeNode node)
+            {
+                if (node == null) return;
+                Inorder(node.left);
+                result.Add(node.val);
+                Inorder(node.right);
+            }
+        - label: 'level-order BFS'
+          code: |
+            var queue = new Queue<TreeNode>();
+            queue.Enqueue(root);
+            while (queue.Count > 0)
+            {
+                int size = queue.Count;
+                for (int i = 0; i < size; i++)
+                {
+                    var node = queue.Dequeue();
+                    // process node
+                    if (node.left != null) queue.Enqueue(node.left);
+                    if (node.right != null) queue.Enqueue(node.right);
+                }
+            }
+        - label: 'graph DFS iterative'
+          code: |
+            var stack = new Stack<int>();
+            stack.Push(start);
+            visited.Add(start);
+            while (stack.Count > 0)
+            {
+                int node = stack.Pop();
+                foreach (int nb in adj[node])
+                    if (visited.Add(nb)) stack.Push(nb);
+            }
+    - title: Special operations (trees & graphs)
+      ops:
+        - label: 'tree height / max depth'
+          code: 'int Height(TreeNode n) => n == null ? 0 : 1 + Math.Max(Height(n.left), Height(n.right));'
+        - label: 'count connected components'
+          code: |
+            int count = 0;
+            for (int i = 0; i < n; i++)
+                if (visited.Add(i))
+                {
+                    Dfs(i);
+                    count++;
+                }
+        - label: 'detect cycle in undirected graph (DFS + parent)'
+          code: |
+            bool HasCycle(int node, int parent)
+            {
+                visited.Add(node);
+                foreach (int nb in adj[node])
+                {
+                    if (!visited.Contains(nb)) { if (HasCycle(nb, node)) return true; }
+                    else if (nb != parent) return true;
+                }
+                return false;
+            }
+        - label: 'topological sort (Kahn BFS)'
+          code: |
+            int[] indegree = new int[n];
+            foreach (var (u, v) in edges) indegree[v]++;
+            var queue = new Queue<int>();
+            for (int i = 0; i < n; i++)
+                if (indegree[i] == 0) queue.Enqueue(i);
+            var order = new List<int>();
+            while (queue.Count > 0)
+            {
+                int u = queue.Dequeue();
+                order.Add(u);
+                foreach (int v in adj[u])
+                    if (--indegree[v] == 0) queue.Enqueue(v);
+            }
+  example: |
+    Worked example — maximum depth of a binary tree:
+
+      The depth of null is 0. For any non-null node the depth is 1 plus the maximum
+      of its children's depths. This recurses naturally — the call stack mirrors the
+      tree structure. Time O(n), space O(height).
+
+        int MaxDepth(TreeNode root) {
+            if (root == null) return 0;
+            int left  = MaxDepth(root.left);
+            int right = MaxDepth(root.right);
+            return 1 + Math.Max(left, right);
+        }
+
+    Takeaway: most binary-tree problems are one-line recursive definitions. Identify
+    what you need FROM a subtree, write that as a return value, combine left and right.

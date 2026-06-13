@@ -1,0 +1,171 @@
+lang: rust
+group: Iterators & Closures
+title: "Iterators & Closures — zero-cost functional abstractions"
+tag: E
+summary: |
+  Iterators and closures are Rust's zero-cost functional abstractions — the compiler
+  optimises iterator chains to code equivalent to hand-written loops with no overhead.
+
+  Closures are anonymous functions that capture their environment. Three capture modes:
+  immutable borrow (reads environment), mutable borrow (mutates environment — closure
+  variable must be declared mut), and ownership (move || — required when the closure
+  outlives the scope, such as threads or returning closures from functions).
+
+  Three Fn traits describe what a closure does to its captured values:
+  FnOnce — called at most once; may move values out of the closure.
+  FnMut — called multiple times; may mutate captured values but not move them out.
+  Fn — called multiple times; only immutable access to captured values.
+
+  Iterators implement Iterator::next() -> Option<Self::Item>. Adapters are lazy and
+  return new iterators: map, filter, flat_map, take, skip, zip, enumerate, chain,
+  peekable. Consuming adaptors force evaluation: collect, sum, count, any, all, find,
+  fold. An iterator adapter that is built but never consumed produces an unused_must_use
+  compiler warning.
+
+  Three iteration methods on collections: iter() borrows and yields &T; iter_mut()
+  borrows mutably and yields &mut T; into_iter() consumes the collection and yields
+  owned T values.
+
+  (Reference-only for now: Rust is not graded yet. When the toolchain is wired these
+  exercises auto-grade against the exact compiler errors they carry.)
+exercises:
+  - prompt: |
+      The iterator chain produces no output because nothing consumes it. Add .collect()
+      to materialise the result, then extend the chain with a .filter step that keeps
+      only values greater than 4.
+    kind: spot-the-bug
+    broken_code: |
+      fn main() {
+          let v = vec![1, 2, 3, 4, 5];
+          v.iter().map(|x| x * 2);   // nothing happens — iterator is unused
+      }
+    fixed_code: |
+      fn main() {
+          let v = vec![1, 2, 3, 4, 5];
+          let doubled_and_big: Vec<i32> = v
+              .iter()
+              .map(|x| x * 2)
+              .filter(|x| *x > 4)
+              .collect();
+          println!("{doubled_and_big:?}");   // [6, 8, 10]
+      }
+    bug: |
+      Iterator adapters are lazy — calling .map() constructs an adapter object but
+      performs no computation. Without a consuming adaptor such as .collect() or .sum()
+      the adapter is built and immediately discarded. The compiler emits an
+      unused_must_use warning (not an error code) to flag this. Adding .collect()
+      forces evaluation and materialises the result into a Vec.
+    check: stdout
+    signal: "[6, 8, 10]"
+  - prompt: |
+      The closure passed to sort_by_key tries to move seen out of itself. But
+      sort_by_key requires FnMut — a closure that can be called multiple times. A
+      closure that moves a value out of itself is FnOnce and cannot be called again.
+      Fix the closure so it only requires FnMut.
+    kind: fix-it
+    broken_code: |
+      fn main() {
+          let mut list = vec!["banana", "apple", "cherry"];
+          let mut ops: Vec<String> = vec![];
+          let seen = String::from("tracking");
+
+          list.sort_by_key(|r| {
+              ops.push(seen);   // moves seen out of the closure — FnOnce, but FnMut needed
+              r.len()
+          });
+
+          println!("{list:?}");
+      }
+    fixed_code: |
+      fn main() {
+          let mut list = vec!["banana", "apple", "cherry"];
+          let mut ops: Vec<String> = vec![];
+          let seen = String::from("tracking");
+
+          list.sort_by_key(|r| {
+              ops.push(seen.clone());   // clone creates a new String each call — FnMut ok
+              r.len()
+          });
+
+          println!("{list:?}");
+      }
+    bug: |
+      sort_by_key calls the closure once per comparison so it requires a FnMut closure.
+      A closure that moves a captured value out (ops.push(seen) where seen: String)
+      can only be called once — it is FnOnce. After the first call, seen no longer
+      exists inside the closure. The compiler rejects this with E0507. Using
+      seen.clone() instead creates a new owned String each call without consuming seen,
+      so the closure satisfies FnMut.
+    check: compile-error
+    signal: "E0507"
+  - prompt: |
+      Implement Iterator for Counter so it yields values 1..=max and then stops. Then
+      use iterator adapter chains (.zip, .map, .sum) to compute a result from two
+      Counter instances.
+    kind: spot-the-bug
+    broken_code: |
+      struct Counter {
+          count: u32,
+          max: u32,
+      }
+
+      impl Counter {
+          fn new(max: u32) -> Self {
+              Counter { count: 0, max }
+          }
+      }
+
+      // TODO: implement Iterator for Counter
+      // type Item = u32
+      // next: increment count, return Some(count) while count <= max, then None
+
+      fn main() {
+          // Pair each value of Counter(5) with Counter(5) skipping the first,
+          // multiply pairs, and sum the results.
+          let sum: u32 = Counter::new(5)
+              .zip(Counter::new(5).skip(1))
+              .map(|(a, b)| a * b)
+              .sum();
+          println!("sum = {sum}");   // expected: 1*2 + 2*3 + 3*4 + 4*5 = 40
+      }
+    fixed_code: |
+      struct Counter {
+          count: u32,
+          max: u32,
+      }
+
+      impl Counter {
+          fn new(max: u32) -> Self {
+              Counter { count: 0, max }
+          }
+      }
+
+      impl Iterator for Counter {
+          type Item = u32;
+
+          fn next(&mut self) -> Option<Self::Item> {
+              if self.count < self.max {
+                  self.count += 1;
+                  Some(self.count)
+              } else {
+                  None
+              }
+          }
+      }
+
+      fn main() {
+          let sum: u32 = Counter::new(5)
+              .zip(Counter::new(5).skip(1))
+              .map(|(a, b)| a * b)
+              .sum();
+          println!("sum = {sum}");   // sum = 40
+      }
+    bug: |
+      The Iterator impl is missing entirely, so calling .zip/.skip/.sum on Counter fails
+      with E0599 ("Counter is not an iterator"). Providing type Item = u32 and
+      implementing next is all that is required — all other iterator adapter methods
+      (zip, skip, map, sum, etc.) are provided for free by the Iterator trait's default
+      implementations. The exercise demonstrates that a single next method unlocks the
+      entire iterator ecosystem.
+    check: compile-error
+    signal: "E0599"

@@ -1,0 +1,127 @@
+- category: 'Backtracking'
+  lang: go
+  title: 'Backtracking — Go refresher'
+  summary: |
+    Backtracking explores a decision tree by making a choice, recursing, then
+    undoing the choice (backtracking) to try the next option. It is a disciplined
+    brute-force: prune branches early when the current path cannot lead to a valid
+    answer (constraint propagation).
+
+    Common problems: permutations, subsets, combinations, Sudoku, N-queens, word search.
+
+    Go notes:
+      - Pass a pointer to the result slice or use a package-level/closure variable.
+      - Undo the choice after the recursive call — this is the "backtrack" step.
+      - Prune with early returns: if constraints are violated, return immediately.
+      - sort.Ints before backtracking with duplicate inputs to skip duplicates cleanly.
+      - Copy the current path when appending to results: append([]int{}, path...).
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'result collector and current path'
+          code: |
+            res := [][]int{}
+            path := []int{}
+        - label: 'visited set for path uniqueness'
+          code: 'visited := make([]bool, n)'
+        - label: 'sort input to handle duplicates'
+          code: 'sort.Ints(nums)'
+    - title: Basic operations
+      ops:
+        - label: 'add a snapshot of current path to results'
+          code: 'res = append(res, append([]int{}, path...))'
+        - label: 'choose (add to path)'
+          code: 'path = append(path, nums[i])'
+        - label: 'backtrack (remove from path)'
+          code: 'path = path[:len(path)-1]'
+        - label: 'skip duplicate siblings'
+          code: 'if i > start && nums[i] == nums[i-1] { continue }'
+    - title: Iteration & loops
+      ops:
+        - label: 'standard backtrack loop'
+          code: |
+            for i := start; i < len(nums); i++ {
+                path = append(path, nums[i])
+                bt(i + 1)
+                path = path[:len(path)-1]
+            }
+        - label: 'permutation loop (with visited)'
+          code: |
+            for i := 0; i < len(nums); i++ {
+                if visited[i] {
+                    continue
+                }
+                visited[i] = true
+                path = append(path, nums[i])
+                bt()
+                path = path[:len(path)-1]
+                visited[i] = false
+            }
+        - label: 'prune by constraint'
+          code: 'if current > target { return }  // prune branch'
+    - title: Special operations (backtracking)
+      ops:
+        - label: 'subsets (power set) — include or exclude each element'
+          code: |
+            var bt func(start int)
+            bt = func(start int) {
+                res = append(res, append([]int{}, path...))
+                for i := start; i < len(nums); i++ {
+                    path = append(path, nums[i])
+                    bt(i + 1)
+                    path = path[:len(path)-1]
+                }
+            }
+        - label: 'combinations summing to target'
+          code: |
+            var bt func(start, remaining int)
+            bt = func(start, remaining int) {
+                if remaining == 0 {
+                    res = append(res, append([]int{}, path...))
+                    return
+                }
+                for i := start; i < len(candidates); i++ {
+                    if candidates[i] > remaining {
+                        break
+                    }
+                    path = append(path, candidates[i])
+                    bt(i, remaining-candidates[i])
+                    path = path[:len(path)-1]
+                }
+            }
+        - label: 'board constraint check pattern (Sudoku / N-Queens)'
+          code: |
+            if !isValid(board, row, col, num) {
+                continue
+            }
+            board[row][col] = num
+            bt(row, col+1)
+            board[row][col] = 0
+        - label: 'word search on grid'
+          code: 'if r < 0 || r >= rows || c < 0 || c >= cols || board[r][c] != word[idx] { return false }'
+  example: |
+    Worked example — all subsets of a distinct-integer slice.
+
+      At each call, snapshot the current path into results (this includes the
+      empty set at the start). Then try adding each remaining element, recurse,
+      and remove it. No visited array needed because we advance the start index.
+
+        func subsets(nums []int) [][]int {
+            res := [][]int{}
+            path := []int{}
+            var bt func(start int)
+            bt = func(start int) {
+                res = append(res, append([]int{}, path...))
+                for i := start; i < len(nums); i++ {
+                    path = append(path, nums[i])
+                    bt(i + 1)
+                    path = path[:len(path)-1] // backtrack
+                }
+            }
+            bt(0)
+            return res
+        }
+
+    Takeaway: the three-line pattern — choose, recurse, undo — is the skeleton
+    of every backtracking solution. Copy path before appending to results;
+    slices share the underlying array and the caller will mutate it later.

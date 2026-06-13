@@ -1,0 +1,79 @@
+id: dicts
+lang: csharp
+order: 7
+title: Labeled Storage
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A Dictionary stores values under named keys. Declare one with
+      new System.Collections.Generic.Dictionary<string, long>().
+      Look up a value by key with  dict["key"].  To tally safely, use
+      ContainsKey to check first, or initialise the entry before incrementing.
+      A HashSet works as a SET — store seen items, then count the distinct ones.
+
+          var counts = new System.Collections.Generic.Dictionary<string, long>();
+          counts["a"] = counts.ContainsKey("a") ? counts["a"] + 1 : 1;
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: 'Count the DISTINCT items. Put each into a HashSet (it ignores duplicates), then the answer is how many it holds.'
+    task:
+      prompt: Return how many distinct items are in the array ([] → 0).
+      func_name: unique_count
+      starter: |
+        public class Solution {
+            public long unique_count(string[] items) {
+                // hint: var seen = new System.Collections.Generic.HashSet<string>();
+                //       foreach (var it in items) { seen.Add(it); }
+                //       return (long)seen.Count;
+            }
+        }
+      solution: |
+        public class Solution {
+            public long unique_count(string[] items) {
+                var seen = new System.Collections.Generic.HashSet<string>();
+                foreach (var it in items) {
+                    seen.Add(it);
+                }
+                return (long)seen.Count;
+            }
+        }
+      tests:
+        - {name: 'unique_count([a,b,a])', input: [["a", "b", "a"]], expected: 2}
+        - {name: 'unique_count([x])', input: [["x"]], expected: 1}
+        - {name: 'unique_count([])', input: [[]], expected: 0}
+  - kind: you_do
+    title: You do — solo
+    body: 'Tally each character with a Dictionary, and return the highest count (the most frequent character''s count). "" → 0.'
+    task:
+      prompt: Return the count of the most frequent character in word ("" → 0).
+      func_name: top_count
+      starter: |
+        public class Solution {
+            public long top_count(string word) {
+                // <- var counts = new System.Collections.Generic.Dictionary<string, long>();
+                //    foreach (var c in word) { var k = c.ToString(); ... } track the max
+            }
+        }
+      solution: |
+        public class Solution {
+            public long top_count(string word) {
+                var counts = new System.Collections.Generic.Dictionary<string, long>();
+                long best = 0;
+                foreach (var c in word) {
+                    var k = c.ToString();
+                    if (!counts.ContainsKey(k)) {
+                        counts[k] = 0;
+                    }
+                    counts[k]++;
+                    if (counts[k] > best) {
+                        best = counts[k];
+                    }
+                }
+                return best;
+            }
+        }
+      tests:
+        - {name: 'top_count(aab)', input: ["aab"], expected: 2}
+        - {name: 'top_count(abc)', input: ["abc"], expected: 1}
+        - {name: 'top_count(empty)', input: [""], expected: 0}

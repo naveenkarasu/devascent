@@ -1,0 +1,226 @@
+lang: cpp
+group: Error Handling — Exceptions, RAII Cleanup, noexcept
+title: "Error Handling — Exceptions, RAII Cleanup, noexcept"
+tag: E
+summary: |
+  C++ exceptions (throw/try/catch) are the standard mechanism for recoverable errors
+  in idiomatic C++. A critical property: when an exception is thrown, the stack
+  unwinds and destructors of all local objects are called — this is what makes RAII
+  error-safe. Code does not need finally blocks; resources are released through
+  destructors automatically.
+
+  noexcept (C++11) annotates functions that must not throw. This is both a promise to
+  callers and a performance hint (the compiler can omit unwind metadata). Violating
+  noexcept (i.e., an exception escapes a noexcept function) calls std::terminate() —
+  not a handled error.
+
+  In systems/embedded contexts where exceptions are disabled (common in game engines,
+  safety-critical code), alternatives are: error codes returned by value,
+  std::expected<T,E> (C++23), or output parameters.
+
+  Gotchas:
+    - Throwing in a destructor during stack unwinding calls std::terminate() —
+      destructors should never throw.
+    - Catching exceptions by value (catch (MyException e)) slices derived types; always
+      catch by const reference.
+    - Forgetting noexcept on move constructors causes silent fallback to copy in STL
+      containers (see Move Semantics).
+    - Stack unwinding does not occur for fatal errors (abort(), std::terminate(),
+      hardware faults).
+exercises:
+  - prompt: |
+      A function opens a file, allocates a buffer with new, processes data, and may
+      throw. Without RAII the buffer leaks on the exception path. Wrap the buffer in
+      std::unique_ptr so the destructor runs automatically, even when an exception is
+      thrown. Confirm the fix eliminates the leak visible under ASan/valgrind.
+    kind: fix-it
+    broken_code: |
+      void process_file(const char* path) {
+          char* buf = new char[4096];   // raw allocation
+
+          std::FILE* f = std::fopen(path, "r");
+          if (!f) {
+              delete[] buf;             // manually cleaned up on one path…
+              throw std::runtime_error("cannot open file");
+          }
+
+          do_work(f, buf);              // may throw — buf leaks if it does
+
+          std::fclose(f);
+          delete[] buf;                 // …but NOT on the exception path from do_work
+      }
+    fixed_code: |
+      void process_file(const char* path) {
+          auto buf = std::make_unique<char[]>(4096);  // freed automatically on any exit
+
+          std::FILE* f = std::fopen(path, "r");
+          if (!f) throw std::runtime_error("cannot open file");
+
+          do_work(f, buf.get());    // exception here → unique_ptr destructor runs
+          std::fclose(f);           // still manual for FILE*; see note below
+      }
+      // Note: for fully RAII file handling, use a wrapper (see memory.yaml FileHandle).
+    bug: |
+      When do_work throws, execution jumps to the nearest enclosing catch handler,
+      bypassing the manual delete[] buf at the bottom of the function. The raw pointer
+      is leaked. std::unique_ptr's destructor runs during stack unwinding regardless of
+      how the scope is exited — exception, early return, or normal fall-through —
+      eliminating the leak without any manual cleanup code.
+    check: none
+    signal: ""
+
+  - prompt: |
+      A move constructor is marked noexcept but internally calls a helper that can
+      throw. Write a test that triggers the throw inside the noexcept move constructor
+      and observe that std::terminate() is called rather than a catchable exception.
+    kind: spot-the-bug
+    broken_code: |
+      void risky_helper() {
+          throw std::runtime_error("oops");
+      }
+
+      struct Widget {
+          Widget() = default;
+          Widget(Widget&&) noexcept {
+              risky_helper();   // throws inside a noexcept function
+          }
+      };
+
+      void demo() {
+          try {
+              Widget a;
+              Widget b = std::move(a);   // calls noexcept move ctor → terminate()
+          } catch (const std::exception& e) {
+              // This catch block is NEVER reached
+              std::puts(e.what());
+          }
+      }
+    fixed_code: |
+      void risky_helper() {
+          throw std::runtime_error("oops");
+      }
+
+      struct Widget {
+          Widget() = default;
+          // Option A: remove noexcept if the move can genuinely throw
+          Widget(Widget&&) {
+              risky_helper();
+          }
+          // Option B: guard the helper so it cannot throw (make it truly noexcept)
+      };
+    bug: |
+      noexcept is a promise, not a compiler-enforced constraint at the call boundary.
+      If an exception propagates out of a noexcept function, the C++ runtime calls
+      std::terminate() immediately — there is no stack-unwinding, no catch block is
+      reached. The two correct fixes: (A) remove noexcept if the function can genuinely
+      throw, or (B) ensure the function body cannot throw by wrapping helpers in
+      try/catch internally. Move constructors should be noexcept only when they truly
+      cannot throw.
+    check: none
+    signal: ""
+
+  - prompt: |
+      An exception hierarchy has AppError as base, NetworkError and ParseError as
+      derived. The catch clause catches by value — slicing drops the derived type. Fix
+      by catching by const reference, then dispatch on dynamic_cast.
+    kind: fix-it
+    broken_code: |
+      struct AppError {
+          virtual const char* what() const noexcept { return "AppError"; }
+          virtual ~AppError() = default;
+      };
+
+      struct NetworkError : AppError {
+          const char* what() const noexcept override { return "NetworkError"; }
+      };
+
+      struct ParseError : AppError {
+          const char* what() const noexcept override { return "ParseError"; }
+      };
+
+      void handle() {
+          try {
+              throw NetworkError{};
+          } catch (AppError e) {         // catches by VALUE — slices to AppError
+              std::puts(e.what());       // always prints "AppError", never "NetworkError"
+          }
+      }
+    fixed_code: |
+      struct AppError {
+          virtual const char* what() const noexcept { return "AppError"; }
+          virtual ~AppError() = default;
+      };
+
+      struct NetworkError : AppError {
+          const char* what() const noexcept override { return "NetworkError"; }
+      };
+
+      struct ParseError : AppError {
+          const char* what() const noexcept override { return "ParseError"; }
+      };
+
+      void handle() {
+          try {
+              throw NetworkError{};
+          } catch (const AppError& e) {   // catch by const reference — no slicing
+              std::puts(e.what());        // virtual dispatch: prints "NetworkError"
+
+              if (auto* ne = dynamic_cast<const NetworkError*>(&e)) {
+                  std::puts("specifically a network error");
+              }
+          }
+      }
+    bug: |
+      Catching a polymorphic exception by value copies only the base subobject (object
+      slicing), so e.what() resolves through the base vtable and the derived type is
+      lost. Catching by const reference preserves the full object and its vtable; virtual
+      dispatch works correctly. The canonical rule: always catch by const reference.
+    check: none
+    signal: ""
+
+  - prompt: |
+      Rewrite a small parser that currently throws on invalid input to return
+      std::expected<int, std::string> (C++23). The caller must handle both the success
+      and error cases explicitly.
+    kind: fix-it
+    broken_code: |
+      // Throws on invalid input — caller may forget to catch
+      int parse_positive(const std::string& s) {
+          int v = std::stoi(s);   // throws std::invalid_argument or std::out_of_range
+          if (v <= 0) throw std::invalid_argument("must be positive");
+          return v;
+      }
+
+      void caller() {
+          int v = parse_positive("abc");   // uncaught exception — terminates
+          std::printf("%d\n", v);
+      }
+    fixed_code: |
+      // C++23: caller is forced to handle the error case
+      std::expected<int, std::string> parse_positive(const std::string& s) {
+          try {
+              int v = std::stoi(s);
+              if (v <= 0) return std::unexpected("must be positive");
+              return v;
+          } catch (const std::exception& e) {
+              return std::unexpected(e.what());
+          }
+      }
+
+      void caller() {
+          auto result = parse_positive("abc");
+          if (result) {
+              std::printf("%d\n", result.value());
+          } else {
+              std::fprintf(stderr, "error: %s\n", result.error().c_str());
+          }
+      }
+    bug: |
+      Exception-based error handling requires callers to remember to catch — omitting
+      the catch lets the exception propagate and may terminate the program. std::expected
+      (C++23, similar to Rust's Result) encodes the error in the return type, forcing
+      callers to explicitly check before accessing the value. This is preferred in
+      contexts where exceptions are disabled or where the caller must always handle the
+      error inline. Note: std::expected requires -std=c++23.
+    check: none
+    signal: ""

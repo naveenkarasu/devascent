@@ -1,0 +1,31 @@
+lang: typescript
+group: Interop
+title: "TypeScript Interop — JS Interop, Declaration Files, Gradual Typing"
+tag: C
+summary: |
+  TypeScript is designed for incremental adoption of existing JS codebases.
+
+  Gradual typing: rename .js to .ts file by file; add allowJs: true in tsconfig to
+  include JS files alongside TS. Add JSDoc annotations for type info in JS files
+  without converting them.
+
+  Declaration files (.d.ts) describe the shape of a JS module to TS consumers without
+  including implementation. Used by: library authors shipping types with their package;
+  DefinitelyTyped for third-party libraries; tsc --declaration for auto-generation.
+
+  @types packages are declaration-only packages on npm, community-maintained. When no
+  @types/foo exists, you can write a minimal ambient declaration
+  (`declare module "foo"`) or use `// @ts-ignore`.
+
+  The declare keyword provides ambient declarations for globals, modules, and
+  namespaces that exist at runtime but not in TS files.
+
+  allowSyntheticDefaultImports / esModuleInterop smooth over CJS/ESM interop so
+  `import React from "react"` works with CJS modules.
+
+  Common mistakes: missing @types/foo — TS falls back to any silently for untyped
+  modules unless noImplicitAny is on; conflicting @types versions in a monorepo cause
+  pervasive errors; declaration files that don't match the runtime API; using
+  `declare module "foo"` with a wildcard body (any) silences errors but gives no
+  benefit.
+exercises: []

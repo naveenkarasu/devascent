@@ -1,0 +1,67 @@
+id: collections
+lang: rust
+order: 6
+title: Collections
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A Vec holds many values in order:  vec![10, 20, 30].  Read by position
+      with numbers[0] (positions start at 0). Loop over every item with
+      for x in &numbers (the & borrows so you don't consume the Vec). Vecs power
+      the accumulator pattern over real data. Declare the accumulator with
+      let mut so you can modify it.
+
+          fn count_items(items: &Vec<i64>) -> i64 {
+              let mut c = 0;
+              for _x in items {
+                  c += 1;
+              }
+              c
+          }
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: Add up all numbers in a Vec. An empty Vec totals 0.
+    task:
+      prompt: Return the sum of the Vec (empty Vec → 0).
+      func_name: sum_list
+      starter: |
+        fn sum_list(numbers: Vec<i64>) -> i64 {
+            // hint: let mut total = 0; for n in &numbers { total += n; } total
+        }
+      solution: |
+        fn sum_list(numbers: Vec<i64>) -> i64 {
+            let mut total = 0;
+            for n in &numbers {
+                total += n;
+            }
+            total
+        }
+      tests:
+        - {name: 'sum_list([1,2,3])', input: [[1, 2, 3]], expected: 6}
+        - {name: 'sum_list([])', input: [[]], expected: 0}
+        - {name: 'sum_list([10,-4,4])', input: [[10, -4, 4]], expected: 10}
+  - kind: you_do
+    title: You do — solo
+    body: Find the biggest value (Vec is non-empty).
+    task:
+      prompt: Return the largest number in a non-empty Vec.
+      func_name: largest
+      starter: |
+        fn largest(numbers: Vec<i64>) -> i64 {
+            // <- start with the first item, then loop and keep the bigger one
+        }
+      solution: |
+        fn largest(numbers: Vec<i64>) -> i64 {
+            let mut biggest = numbers[0];
+            for n in &numbers {
+                if *n > biggest {
+                    biggest = *n;
+                }
+            }
+            biggest
+        }
+      tests:
+        - {name: 'largest([3,9,2])', input: [[3, 9, 2]], expected: 9}
+        - {name: 'largest([-5,-1,-10])', input: [[-5, -1, -10]], expected: -1}
+        - {name: 'largest([42])', input: [[42]], expected: 42}

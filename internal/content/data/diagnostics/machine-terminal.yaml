@@ -1,0 +1,97 @@
+# Slot: machine-terminal — a quick "do you know the terminal?" multiple choice.
+- id: term_ls
+  slot: machine-terminal
+  order: 4
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    You're at a terminal, sitting in a project folder. You want to see which
+    files are in the current folder. Which command does that?
+  choices:
+    - text: "ls   (or dir on Windows)"
+      correct: true
+      feedback: "Yes — ls lists the files in the current directory (dir on Windows)."
+    - text: "cd"
+      correct: false
+      feedback: "Not quite — cd changes which folder you're in; it doesn't list files."
+    - text: "run"
+      correct: false
+      feedback: "Not a standard command — ls (or dir) is what lists files."
+
+- id: term_cd
+  slot: machine-terminal
+  order: 4
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    You want to move INTO a sub-folder called  src . Which command does that?
+  choices:
+    - text: "cd src"
+      correct: true
+      feedback: "Yes — cd ('change directory') moves you into a folder."
+    - text: "ls src"
+      correct: false
+      feedback: "Not quite — ls src lists what's inside src but doesn't move you there."
+    - text: "open src"
+      correct: false
+      feedback: "Not the standard way — cd src changes your current directory."
+
+- id: term_pwd
+  slot: machine-terminal
+  order: 4
+  difficulty: 1
+  measures: machine
+  kind: choice
+  prompt: |
+    You're lost and want to know which folder you're currently in. Which
+    command prints your current directory?
+  choices:
+    - text: "pwd   (print working directory)"
+      correct: true
+      feedback: "Yes — pwd shows the full path of where you are."
+    - text: "cd"
+      correct: false
+      feedback: "Not quite — cd with no argument doesn't reliably print your location; pwd does."
+    - text: "where"
+      correct: false
+      feedback: "Not the standard one — pwd is the portable way to print your current directory."
+
+- id: term_run_py
+  slot: machine-terminal
+  order: 4
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    There's a script  main.py . How do you run it from the terminal?
+  choices:
+    - text: "python main.py"
+      correct: true
+      feedback: "Yes — python <file> runs a Python script (sometimes python3)."
+    - text: "run main.py"
+      correct: false
+      feedback: "Not a real command — you invoke the interpreter: python main.py."
+    - text: "main.py start"
+      correct: false
+      feedback: "Not it — you pass the file to python: python main.py."
+
+- id: term_mkdir
+  slot: machine-terminal
+  order: 4
+  difficulty: 2
+  measures: machine
+  kind: choice
+  prompt: |
+    You want to create a new folder called  build . Which command does that?
+  choices:
+    - text: "mkdir build"
+      correct: true
+      feedback: "Yes — mkdir ('make directory') creates a new folder."
+    - text: "touch build"
+      correct: false
+      feedback: "Not quite — touch creates an empty FILE, not a folder. mkdir makes a folder."
+    - text: "new build"
+      correct: false
+      feedback: "Not a standard command — mkdir build creates the folder."

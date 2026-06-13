@@ -1,0 +1,119 @@
+- category: Two Pointers & Sliding Window
+  lang: java
+  title: Two Pointers & Sliding Window — Java refresher
+  summary: |
+    Both patterns avoid nested loops by moving index variables cleverly over an
+    array or string.
+
+    Two Pointers: keep two indices (often one at each end, or one slow + one fast)
+    and move them toward each other based on a condition. Great on SORTED data:
+    if the sum is too big, move the right pointer left; too small, move left right.
+
+    Sliding Window: keep a window [left..right]. Grow it by advancing right; when it
+    breaks a rule (too long, too many distinct chars), shrink it by advancing left.
+    Each element enters and leaves the window at most once, so it is O(n) overall —
+    even though it looks like a loop inside a loop.
+
+    Java notes:
+      - For strings, charAt(i) reads a char; s.length() is the length.
+      - A char IS a number — 'a' + 1 works, and c - 'a' gives 0..25 for lowercase.
+      - Track window counts in an int[128] (ASCII) or a HashMap<Character,Integer>.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'two-pointer indices'
+          code: 'int lo = 0, hi = a.length - 1;'
+        - label: 'sliding window boundaries'
+          code: 'int left = 0, right = 0;'
+        - label: 'char frequency array (ASCII or a..z)'
+          code: 'int[] freq = new int[128];'
+        - label: 'window count in a map'
+          code: 'Map<Character, Integer> window = new HashMap<>();'
+    - title: Basic operations
+      ops:
+        - label: 'read a char from a string'
+          code: 'char c = s.charAt(i);'
+        - label: 'lowercase char as 0..25 index'
+          code: 'freq[c - ''a'']++;'
+        - label: 'window size'
+          code: 'int size = right - left + 1;'
+        - label: 'update window map count'
+          code: 'window.merge(c, 1, Integer::sum);'
+    - title: Iteration & loops
+      ops:
+        - label: 'two ends, move inward'
+          code: |
+            while (lo < hi) {
+                ...;
+                lo++;
+                hi--;
+            }
+        - label: 'slow / fast pointer (in-place compaction)'
+          code: |
+            int slow = 0;
+            for (int fast = 0; fast < n; fast++) {
+                if (keep(a[fast])) a[slow++] = a[fast];
+            }
+        - label: 'grow the window (outer loop)'
+          code: 'for (int right = 0; right < n; right++) { /* add a[right] to window */ }'
+        - label: 'shrink the window (inner while)'
+          code: |
+            while (windowBroken) {
+                /* remove a[left] from window */;
+                left++;
+            }
+        - label: 'update answer at each right'
+          code: 'best = Math.max(best, right - left + 1);'
+    - title: Special operations (two pointers & sliding window)
+      ops:
+        - label: 'two-sum on sorted array'
+          code: |
+            while (lo < hi) {
+                int s = a[lo] + a[hi];
+                if (s == target) return;
+                else if (s < target) lo++;
+                else hi--;
+            }
+        - label: 'fixed-size window sum'
+          code: |
+            int sum = 0;
+            for (int i = 0; i < k; i++) sum += a[i];
+            int max = sum;
+            for (int i = k; i < n; i++) {
+                sum += a[i] - a[i-k];
+                max = Math.max(max, sum);
+            }
+        - label: 'count distinct in window (map approach)'
+          code: |
+            window.merge(c, 1, Integer::sum);
+            if (window.get(c) == 0) window.remove(c);
+        - label: 'minimum window size satisfying condition'
+          code: |
+            int minLen = Integer.MAX_VALUE;
+            /* after inner shrink */
+            minLen = Math.min(minLen, right - left + 1);
+  example: |
+    Worked example — longest substring without repeating characters:
+
+      Slide a window [left..right] across the string. Keep a Set of the chars in the
+      window. Add s.charAt(right); if that char was already inside, shrink from the
+      left until the duplicate is gone. The best window length seen is the answer.
+
+        int lengthOfLongestSubstring(String s) {
+            Set<Character> window = new HashSet<>();
+            int left = 0, best = 0;
+            for (int right = 0; right < s.length(); right++) {
+                char c = s.charAt(right);
+                while (window.contains(c)) {     // shrink until c fits
+                    window.remove(s.charAt(left));
+                    left++;
+                }
+                window.add(c);
+                best = Math.max(best, right - left + 1);
+            }
+            return best;
+        }
+
+    Takeaway: each index is visited by right once and by left once, so the whole
+    thing is O(n) despite the inner while. The window IS the answer — you just keep
+    it valid as it slides.

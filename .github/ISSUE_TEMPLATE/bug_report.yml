@@ -1,0 +1,59 @@
+name: Bug report
+description: Something went wrong while playing or building DevAscent.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! The fields below make a bug fixable on the first pass.
+        For anything security-sensitive, see SECURITY.md instead of filing here.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: I picked Rust, pressed [r] to grade, and…
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `./devascent`
+        2. …
+        3. See …
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other (note below)
+    validations:
+      required: true
+  - type: input
+    id: language
+    attributes:
+      label: Session language (if relevant)
+      placeholder: e.g. Rust, Go, Python…
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `devascent -doctor`
+      description: This tells us which toolchains are detected. Paste the whole table.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: A release tag, or `git rev-parse --short HEAD` if you built from source.
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Logs, screenshots, terminal/emulator, etc.

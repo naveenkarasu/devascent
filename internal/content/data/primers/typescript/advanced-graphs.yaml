@@ -1,0 +1,134 @@
+- category: 'Advanced Graphs'
+  lang: typescript
+  title: 'Advanced Graphs — TypeScript refresher'
+  summary: |
+    Advanced graph algorithms handle weighted shortest paths, minimum spanning trees,
+    strongly connected components, and Union-Find (disjoint set union).
+
+    Key algorithms:
+      - Dijkstra: single-source shortest path in non-negative-weight graphs. O((V+E) log V)
+        with a min-heap. TypeScript needs a custom heap or heap-js.
+      - Bellman-Ford: handles negative weights. O(V*E). Relax all edges V-1 times.
+      - Union-Find (DSU): O(alpha) amortized for find/union with path compression +
+        union by rank. Ideal for cycle detection and Kruskal's MST.
+      - Topological sort: Kahn's BFS (iterative) or DFS post-order.
+      - Floyd-Warshall: all-pairs shortest paths. O(V^3), small graphs only.
+
+    TypeScript specifics:
+      - Weighted adjacency list: `Map<number, [number, number][]>` (neighbour, weight).
+      - Distances array: `const dist: number[] = new Array(n).fill(Infinity);`
+      - Union-Find with typed arrays: `parent: number[]`, `rank: number[]`.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'weighted adjacency list'
+          code: 'const graph = new Map<number, [number, number][]>();'
+        - label: 'distance array initialised to Infinity'
+          code: 'const dist: number[] = new Array(n).fill(Infinity);'
+        - label: 'Union-Find arrays'
+          code: |
+            const parent: number[] = Array.from({length: n}, (_, i) => i);
+            const rank: number[] = new Array(n).fill(0);
+    - title: Basic operations
+      ops:
+        - label: 'add directed weighted edge'
+          code: |
+            if (!graph.has(u)) graph.set(u, []);
+            graph.get(u)!.push([v, w]);
+        - label: 'relax an edge (Dijkstra / Bellman-Ford)'
+          code: 'if (dist[u] + w < dist[v]) dist[v] = dist[u] + w;'
+        - label: 'Union-Find — find with path compression'
+          code: |
+            function find(x: number): number {
+              if (parent[x] !== x) parent[x] = find(parent[x]);
+              return parent[x];
+            }
+        - label: 'Union-Find — union by rank'
+          code: |
+            function union(x: number, y: number): boolean {
+              const px = find(x), py = find(y);
+              if (px === py) return false;   // already connected
+              if (rank[px] < rank[py]) parent[px] = py;
+              else if (rank[px] > rank[py]) parent[py] = px;
+              else {
+                parent[py] = px;
+                rank[px]++;
+              }
+              return true;
+            }
+    - title: Iteration & loops
+      ops:
+        - label: 'Dijkstra main loop (requires MinHeap)'
+          code: |
+            dist[src] = 0;
+            const heap = new MinHeap(); // [dist, node] — min by dist
+            heap.push([0, src]);
+            while (heap.size > 0) {
+              const [d, u] = heap.pop()!;
+              if (d > dist[u]) continue;   // stale entry
+              for (const [v, w] of (graph.get(u) ?? [])) {
+                if (dist[u] + w < dist[v]) {
+                  dist[v] = dist[u] + w;
+                  heap.push([dist[v], v]);
+                }
+              }
+            }
+        - label: 'Bellman-Ford (relax V-1 times)'
+          code: |
+            dist[src] = 0;
+            for (let i = 0; i < n - 1; i++) {
+              for (const [u, v, w] of edges) {
+                if (dist[u] !== Infinity && dist[u] + w < dist[v]) dist[v] = dist[u] + w;
+              }
+            }
+        - label: 'Kruskal MST using Union-Find'
+          code: |
+            edges.sort((a, b) => a[2] - b[2]);  // sort by weight
+            let mstCost = 0;
+            for (const [u, v, w] of edges) {
+              if (union(u, v)) mstCost += w;
+            }
+    - title: Special operations (Advanced Graphs)
+      ops:
+        - label: 'detect cycle in undirected graph (Union-Find)'
+          code: |
+            for (const [u, v] of edges) {
+              if (!union(u, v)) return true;   // already in same component
+            }
+            return false;
+        - label: 'Floyd-Warshall all-pairs shortest paths'
+          code: |
+            const dp: number[][] = Array.from({length: n}, (_, i) =>
+              Array.from({length: n}, (_, j) => i === j ? 0 : Infinity));
+            for (const [u, v, w] of edges) dp[u][v] = w;
+            for (let k = 0; k < n; k++)
+              for (let i = 0; i < n; i++)
+                for (let j = 0; j < n; j++)
+                  if (dp[i][k] + dp[k][j] < dp[i][j]) dp[i][j] = dp[i][k] + dp[k][j];
+        - label: 'number of provinces (connected components via Union-Find)'
+          code: |
+            let provinces = n;
+            for (let i = 0; i < n; i++)
+              for (let j = i + 1; j < n; j++)
+                if (isConnected[i][j] === 1 && union(i, j)) provinces--;
+            return provinces;
+  example: |
+    Worked example — find shortest path distances from a source node (Dijkstra).
+
+      Initialise all distances to Infinity; source distance is 0. Use a min-heap
+      keyed by distance. Each extraction gives the closest unprocessed node. Relax
+      its neighbours; push updated distances. Skip stale heap entries where the
+      stored distance exceeds the recorded shortest.
+
+        function dijkstra(n: number, graph: Map<number, [number,number][]>, src: number): number[] {
+            const dist: number[] = new Array(n).fill(Infinity);
+            dist[src] = 0;
+            const heap = new MinHeap(); // stores [dist, node]
+            heap.push(0 * n + src);    // encode: use a pair heap in real code
+            // ... main relaxation loop (see Iteration & loops section)
+            return dist;
+        }
+
+    Takeaway: Dijkstra requires a min-heap — implement MinHeap or use heap-js.
+    Union-Find with path compression + union by rank is O(alpha) per operation
+    and is the building block for Kruskal's MST and cycle detection.

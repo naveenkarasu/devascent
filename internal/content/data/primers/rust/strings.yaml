@@ -1,0 +1,140 @@
+- category: 'Strings'
+  lang: rust
+  title: 'Strings — Rust refresher'
+  summary: |
+    Rust has two string types: String (owned, heap-allocated, mutable) and &str
+    (borrowed slice, usually a view into a String or a literal). Most functions
+    accept &str; return String when you own the result.
+
+    Strings are UTF-8. Random indexing by byte position compiles but can panic
+    mid-codepoint. Use .chars() for character iteration, or .as_bytes() / &[u8]
+    for pure-ASCII DSA problems where byte indexing is safe.
+
+    Key patterns:
+      - Building output: collect chars into a String, or push_str / push onto a
+        String (the equivalent of StringBuilder in Java).
+      - Frequency counts: &[u32; 26] for lowercase ASCII; HashMap<char, usize>
+        for general text.
+      - Char arithmetic: (c as u8 - b'a') as usize maps a-z to 0-25.
+      - Ownership gotcha: a &str borrows from something; if you need to own or
+        mutate the string, call .to_string() or .to_owned() to get a String.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'string literal (borrowed)'
+          code: 'let s: &str = "hello";'
+        - label: 'owned String from a literal'
+          code: 'let s: String = "hello".to_string();'
+        - label: 'empty owned String'
+          code: 'let mut s = String::new();'
+        - label: 'String from a Vec of chars'
+          code: 'let s: String = chars.iter().collect();'
+        - label: 'fixed letter-frequency array'
+          code: 'let mut freq = [0u32; 26];'
+    - title: Basic operations
+      ops:
+        - label: 'length in bytes'
+          code: 'let n = s.len();'
+        - label: 'number of Unicode characters'
+          code: 'let n = s.chars().count();'
+        - label: 'append a &str'
+          code: 's.push_str(" world");'
+        - label: 'append a single char'
+          code: 's.push(c);'
+        - label: 'byte slice for ASCII indexing'
+          code: 'let b = s.as_bytes();'
+        - label: 'check whether a substring exists'
+          code: 'let found = s.contains("lo");'
+    - title: Most-used built-in functions
+      ops:
+        - label: 'to lowercase'
+          code: 'let lower = s.to_lowercase();'
+        - label: 'to uppercase'
+          code: 'let upper = s.to_uppercase();'
+        - label: 'trim whitespace from both ends'
+          code: 'let trimmed = s.trim();'
+        - label: 'split on a delimiter'
+          code: 'let parts: Vec<&str> = s.split_whitespace().collect();'
+        - label: 'starts_with'
+          code: 's.starts_with("he");'
+        - label: 'ends_with'
+          code: 's.ends_with("lo");'
+        - label: 'replace all occurrences'
+          code: 'let r = s.replace("old", "new");'
+        - label: 'find first occurrence of a char'
+          code: 'let idx: Option<usize> = s.find("x");'
+    - title: Conversions to other types
+      ops:
+        - label: '&str to owned String'
+          code: 'let owned: String = s.to_string();'
+        - label: 'String to &str'
+          code: 'let borrow: &str = &owned;'
+        - label: 'parse a string to a number'
+          code: 'let n: i32 = "42".parse().unwrap();'
+        - label: 'number to String'
+          code: 'let s = 42.to_string();'
+        - label: 'String to Vec of chars'
+          code: 'let chars: Vec<char> = s.chars().collect();'
+        - label: 'char to lowercase letter index'
+          code: |
+            let idx = (c as u8 - b'a') as usize;
+    - title: Iteration & loops
+      ops:
+        - label: 'iterate over characters'
+          code: 'for c in s.chars() { /* c: char */ }'
+        - label: 'enumerate characters with position'
+          code: 'for (i, c) in s.chars().enumerate() { /* i: usize, c: char */ }'
+        - label: 'iterate over bytes (ASCII-safe)'
+          code: 'for b in s.bytes() { /* b: u8 */ }'
+        - label: 'two-pointer palindrome check on byte slice'
+          code: |
+            let b = s.as_bytes();
+            let (mut lo, mut hi) = (0usize, b.len() - 1);
+            while lo < hi {
+                if b[lo] != b[hi] { return false; }
+                lo += 1;
+                hi -= 1;
+            }
+    - title: Special operations (string patterns)
+      ops:
+        - label: 'frequency table for lowercase letters'
+          code: |
+            let mut freq = [0u32; 26];
+            for c in s.chars() {
+                freq[(c as u8 - b'a') as usize] += 1;
+            }
+        - label: 'reverse a string'
+          code: 'let rev: String = s.chars().rev().collect();'
+        - label: 'sort the characters of a string'
+          code: |
+            let mut chars: Vec<char> = s.chars().collect();
+            chars.sort_unstable();
+            let sorted: String = chars.into_iter().collect();
+        - label: 'build result efficiently from parts'
+          code: |
+            let mut out = String::with_capacity(s.len());
+            for c in s.chars() {
+                if c != ' ' { out.push(c); }
+            }
+        - label: 'check if string is empty'
+          code: 's.is_empty();'
+        - label: 'check if string is all whitespace'
+          code: 's.trim().is_empty();'
+  example: |
+    Worked example — are two strings anagrams of each other?
+
+      Both strings must have identical character frequencies. Increment a counter
+      for each char in the first string and decrement for the second. If every
+      counter returns to zero they are anagrams. O(n) time, O(1) extra space.
+
+        fn is_anagram(a: &str, b: &str) -> bool {
+            if a.len() != b.len() { return false; }
+            let mut freq = [0i32; 26];
+            for c in a.chars() { freq[(c as u8 - b'a') as usize] += 1; }
+            for c in b.chars() { freq[(c as u8 - b'a') as usize] -= 1; }
+            freq.iter().all(|&x| x == 0)
+        }
+
+    Takeaway: &str borrows, String owns — use &str in function parameters and
+    return String when you build or own the result. For ASCII DSA, as_bytes()
+    lets you use integer arithmetic on characters safely.

@@ -1,0 +1,105 @@
+- category: "Binary Search"
+  lang: python
+  title: "Binary Search — Python refresher"
+  summary: |
+    Binary search halves the search space each iteration, giving O(log n) on any
+    sorted (or "monotone") structure. Reach for it whenever you ask "find the
+    smallest/largest x satisfying condition C" — even if the array isn't explicitly
+    sorted, if the answer space is monotone, binary search works.
+  sections:
+    - title: Declarations
+      ops:
+        - label: 'classic lo/hi pointers'
+          code: 'lo, hi = 0, len(a) - 1'
+        - label: 'search on answer-space bounds'
+          code: 'lo, hi = 1, max(a)'
+        - label: 'bisect module'
+          code: 'from bisect import bisect_left, bisect_right'
+    - title: Basic operations
+      ops:
+        - label: 'compute mid (no integer overflow in Python, but idiomatic)'
+          code: 'mid = lo + (hi - lo) // 2'
+        - label: 'shrink right half (target in left)'
+          code: 'if a[mid] >= target: hi = mid'
+        - label: 'shrink left half (target in right)'
+          code: 'else: lo = mid + 1'
+        - label: 'exact match check'
+          code: 'if a[mid] == target: return mid'
+        - label: 'loop termination (lo == hi is the answer)'
+          code: 'while lo < hi: ...'
+    - title: Most-used built-in methods
+      ops:
+        - label: 'bisect_left (first position >= x)'
+          code: 'i = bisect_left(a, x)'
+        - label: 'bisect_right (first position > x)'
+          code: 'i = bisect_right(a, x)'
+        - label: 'insort (insert maintaining sorted order)'
+          code: |
+            from bisect import insort
+            insort(a, x)
+        - label: 'check if x is in sorted list via bisect'
+          code: |
+            i = bisect_left(a, x)
+            found = i < len(a) and a[i] == x
+    - title: Iteration & loops
+      ops:
+        - label: 'standard binary search template'
+          code: |
+            lo, hi = 0, len(a) - 1
+            while lo <= hi:
+                mid = lo + (hi - lo) // 2
+                if a[mid] == target: return mid
+                elif a[mid] < target: lo = mid + 1
+                else: hi = mid - 1
+            return -1
+        - label: 'leftmost-true binary search (find first satisfying)'
+          code: |
+            lo, hi = 0, len(a)
+            while lo < hi:
+                mid = lo + (hi - lo) // 2
+                if cond(mid): hi = mid
+                else: lo = mid + 1
+            return lo
+        - label: 'search on answer space'
+          code: |
+            lo, hi = min_val, max_val
+            while lo < hi:
+                mid = lo + (hi - lo) // 2
+                if feasible(mid): hi = mid
+                else: lo = mid + 1
+    - title: Special operations (binary search)
+      ops:
+        - label: 'find peak element'
+          code: |
+            lo, hi = 0, len(a) - 1
+            while lo < hi:
+                mid = lo + (hi - lo) // 2
+                if a[mid] > a[mid+1]: hi = mid
+                else: lo = mid + 1
+        - label: 'rotated array: determine which half is sorted'
+          code: 'if a[lo] <= a[mid]: ...  # left half is sorted'
+        - label: 'binary search on real numbers (float tolerance)'
+          code: |
+            lo, hi = 0.0, 1e9
+            for _ in range(100):
+                mid = (lo + hi) / 2
+                if cond(mid): hi = mid
+                else: lo = mid
+  example: |
+    Worked example — Find Minimum in Rotated Sorted Array:
+      A rotated sorted array has exactly one inflection point. Use binary search:
+      if a[mid] > a[hi], the minimum is in the right half; otherwise it's in the
+      left half (including mid). Converge until lo == hi.
+
+        def find_min(nums):
+            lo, hi = 0, len(nums) - 1
+            while lo < hi:
+                mid = lo + (hi - lo) // 2
+                if nums[mid] > nums[hi]:
+                    lo = mid + 1
+                else:
+                    hi = mid
+            return nums[lo]
+
+    Takeaway: define what "left" vs "right" means for your invariant, keep it
+    consistent, and the loop terminates at the answer.

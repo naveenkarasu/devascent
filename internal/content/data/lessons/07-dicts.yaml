@@ -1,0 +1,40 @@
+id: dicts
+order: 7
+title: Labeled Storage
+stages:
+  - kind: i_do
+    title: I do — watch
+    body: |
+      A dictionary stores values under named keys:  {"coffee": 3, "tea": 2}.
+      Look up a value by key with  menu["tea"].  To tally, use d.get(key, 0) + 1
+      or check  if key in d. Dicts map one thing to another — names→prices,
+      letters→counts.
+
+          d = {"a": 1}
+          d["b"] = 5      # now {"a": 1, "b": 5}
+  - kind: we_do
+    title: We do — together (with a hint)
+    body: Given a menu (item→price) and an item that's in it, return its price.
+    task:
+      prompt: Return the price of item from the menu dict.
+      func_name: get_price
+      starter: |
+        def get_price(menu, item):
+            pass  # hint: look up with square brackets —  return menu[item]
+      tests:
+        - {name: 'get_price(menu, tea)', input: [{"coffee": 3, "tea": 2}, "tea"], expected: 2}
+        - {name: 'get_price(menu, coffee)', input: [{"coffee": 3, "tea": 2}, "coffee"], expected: 3}
+        - {name: 'get_price(water, water)', input: [{"water": 0}, "water"], expected: 0}
+  - kind: you_do
+    title: You do — solo
+    body: Count how many times each character appears.
+    task:
+      prompt: Return a dict mapping each character of word to its count ("" → {}).
+      func_name: count_letters
+      starter: |
+        def count_letters(word):
+            pass  # <- build a dict; for c in word: d[c] = d.get(c, 0) + 1
+      tests:
+        - {name: 'count_letters(aab)', input: ["aab"], expected: {"a": 2, "b": 1}}
+        - {name: 'count_letters(empty)', input: [""], expected: {}}
+        - {name: 'count_letters(xyz)', input: ["xyz"], expected: {"x": 1, "y": 1, "z": 1}}

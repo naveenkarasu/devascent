@@ -1,0 +1,143 @@
+lang: typescript
+group: Type System
+title: "Type System — Primitives, Unions, Narrowing & Type Guards"
+tag: E
+summary: |
+  The TS type system is layered on JS primitives (string, number, boolean, null,
+  undefined, symbol, bigint):
+
+  - Union types (A | B) — a value is one of several types. Requires narrowing before
+    using type-specific operations.
+  - Intersection types (A & B) — a value satisfies all constituent types
+    simultaneously. Common for mixins/composition.
+  - Literal types — exact value as a type: "click", 42, true. Foundation for
+    discriminated unions and string-literal APIs.
+  - Type inference — TS infers types from assignments, return statements, and array
+    literals without explicit annotation.
+  - Narrowing — TS tracks control flow and refines a union type to a more specific
+    member based on checks. Guards: typeof, instanceof, in, truthiness, equality, and
+    custom type predicates (x is Fish).
+  - Discriminated unions — a union of object types each with a shared literal-typed
+    field (the discriminant), making narrowing via switch/if reliable.
+  - Exhaustiveness with never — assigning a switched value to never catches missing
+    cases at compile time.
+
+  Common mistakes: typeof null === "object" — TS narrows to T | null not T on an
+  object check; truthiness narrows out "", 0, NaN — not safe for validating
+  strings/numbers; non-null assertion ! bypasses narrowing — prefer an if check.
+exercises:
+  - prompt: |
+      `process` accepts a `string | number | null`. Add narrowing branches so each
+      arm is type-safe, then add a `never` guard in the final `else` that fires a
+      compile error if `null` is removed from the union signature but the branch is
+      left in place.
+    kind: fix-it
+    broken_code: |
+      function process(val: string | number | null): string {
+        return val.toString();
+      }
+    fixed_code: |
+      function assertNever(x: never): never {
+        throw new Error(`Unhandled case: ${x}`);
+      }
+
+      function process(val: string | number | null): string {
+        if (typeof val === "string") {
+          return val.toUpperCase();
+        } else if (typeof val === "number") {
+          return val.toFixed(2);
+        } else if (val === null) {
+          return "(null)";
+        } else {
+          return assertNever(val);
+        }
+      }
+    bug: |
+      Calling .toString() on a union of string | number | null fails because null has
+      no methods. Each branch must be narrowed with typeof / equality checks before
+      performing type-specific operations. The never guard in the final else becomes a
+      compile error if a union member is removed without updating the switch logic.
+    check: compiles
+    signal: ""
+  - prompt: |
+      Implement `isNonEmptyString(val: unknown): val is string` correctly — it must
+      return true only for non-empty strings. Then use it to filter
+      `(string | null)[]` to `string[]` without any `as` cast.
+    kind: fix-it
+    broken_code: |
+      function isNonEmptyString(val: unknown): boolean {
+        return typeof val === "string" && val.length > 0;
+      }
+
+      const mixed: (string | null)[] = ["hello", null, "", "world"];
+      const strings: string[] = mixed.filter(isNonEmptyString);
+    fixed_code: |
+      function isNonEmptyString(val: unknown): val is string {
+        return typeof val === "string" && val.length > 0;
+      }
+
+      const mixed: (string | null)[] = ["hello", null, "", "world"];
+      const strings: string[] = mixed.filter(isNonEmptyString);
+    bug: |
+      Returning `boolean` from a predicate-style function does not narrow the array
+      element type — `filter` only narrows when the callback has a type predicate
+      signature (`val is string`). Without it, the result of `filter` is still
+      `(string | null)[]`, causing the `string[]` assignment to fail.
+    check: compiles
+    signal: ""
+  - prompt: |
+      Model a `Result<T>` discriminated union and implement `getOrThrow<T>`.
+      No `as` casts allowed — use full narrowing on the discriminant field.
+    kind: fix-it
+    broken_code: |
+      type Result<T> =
+        | { ok: true; value: T }
+        | { ok: false; error: string };
+
+      function getOrThrow<T>(r: Result<T>): T {
+        return r.value; // error: 'value' does not exist on the { ok: false } arm
+      }
+    fixed_code: |
+      type Result<T> =
+        | { ok: true; value: T }
+        | { ok: false; error: string };
+
+      function getOrThrow<T>(r: Result<T>): T {
+        if (r.ok) {
+          return r.value;
+        }
+        throw new Error(r.error);
+      }
+    bug: |
+      With a proper discriminated union, `value` only exists on the `{ ok: true }` arm,
+      so accessing `r.value` without first narrowing on the `r.ok` discriminant is a
+      compile error — the property is absent on the `{ ok: false }` arm. Narrowing with
+      `if (r.ok)` makes TS treat `r` as the success arm, where `value` is definitely
+      present, eliminating the need for any `as` cast. (The original loose shape
+      `{ ok: boolean; value?: T; error?: string }` with an `as` cast hid this by letting
+      invalid states — ok: true with no value, ok: false with a value — slip through.)
+    check: compiles
+    signal: ""
+  - prompt: |
+      Fix the `typeof null` trap: `data` is `string[] | null` but the object check
+      passes `null` through.
+    kind: fix-it
+    broken_code: |
+      function printFirst(data: string[] | null): void {
+        if (typeof data === "object") {
+          data.forEach((item) => console.log(item));
+        }
+      }
+    fixed_code: |
+      function printFirst(data: string[] | null): void {
+        if (data !== null) {
+          data.forEach((item) => console.log(item));
+        }
+      }
+    bug: |
+      `typeof null === "object"` is a JavaScript quirk: the typeof check narrows to
+      `string[] | null`, not just `string[]`. TS knows this and still allows a null
+      dereference inside the branch. Use a `!== null` equality check instead, which
+      properly narrows away null.
+    check: compiles
+    signal: ""
