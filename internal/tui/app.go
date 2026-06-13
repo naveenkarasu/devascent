@@ -2336,6 +2336,13 @@ func (m Model) renderTask() string {
 			}
 			b.WriteString(line + "\n")
 		}
+		// the player's own print output, so they can debug
+		if out := strings.TrimSpace(t.verdict.Stdout); out != "" {
+			b.WriteString("\n" + dimStyle.Render("your output:") + "\n")
+			for _, ln := range strings.Split(out, "\n") {
+				b.WriteString(dimStyle.Render("  │ "+ln) + "\n")
+			}
+		}
 		b.WriteString("\n")
 	}
 	if m.status != "" {

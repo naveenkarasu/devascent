@@ -56,6 +56,7 @@ type Verdict struct {
 	Passed  bool
 	Results []CaseResult
 	Err     string // harness/runtime/timeout error (empty on normal completion)
+	Stdout  string // the player's own print/log output (marker line stripped), for debugging
 }
 
 // Shape describes how to marshal structured (non-JSON-native) arguments and

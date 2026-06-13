@@ -55,6 +55,13 @@ export function makeEditor(
     tabSize: 4,
     renderWhitespace: 'none',
     padding: { top: 10 },
+    // The editor sits inside a scrolling panel (tutorial / orientation / bench).
+    // By default Monaco swallows EVERY wheel event over it (alwaysConsumeMouseWheel
+    // defaults true), so the page can't scroll while the cursor is on the code —
+    // you'd have to move off the editor to reach the Next button. false lets the
+    // wheel scroll the editor when it has more code, and chain to the page when it
+    // doesn't. NB: this can only be set at create time, not via updateOptions.
+    scrollbar: { alwaysConsumeMouseWheel: false },
   });
 }
 

@@ -276,6 +276,7 @@ export namespace guiapi {
 	    casesTotal: number;
 	    casesFailed: number;
 	    err: string;
+	    stdout: string;
 	    results: CaseResult[];
 	    banked: boolean;
 	    newlyBanked: boolean;
@@ -293,6 +294,7 @@ export namespace guiapi {
 	        this.casesTotal = source["casesTotal"];
 	        this.casesFailed = source["casesFailed"];
 	        this.err = source["err"];
+	        this.stdout = source["stdout"];
 	        this.results = this.convertValues(source["results"], CaseResult);
 	        this.banked = source["banked"];
 	        this.newlyBanked = source["newlyBanked"];

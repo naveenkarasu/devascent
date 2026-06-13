@@ -50,8 +50,8 @@ export function mountBench(root: HTMLElement, lang: string, graded = true): () =
           <span id="bDiff" class="tag"></span>
           <span id="bCat" class="tag cat"></span>
           <span class="spacer"></span>
-          <button id="bHintBtn" class="btn small">✦ Hint</button>
-          <button id="bLearn" class="btn small">&#9656; Learn</button>
+          <button id="bHintBtn" class="btn small hint">✦ Hint</button>
+          <button id="bLearn" class="btn small learn">&#9656; Learn</button>
         </div>
         <div id="bDrawer" class="drawer hidden"></div>
         <div id="bHintPanel" class="drawer hintpanel hidden"></div>
@@ -127,7 +127,7 @@ export function mountBench(root: HTMLElement, lang: string, graded = true): () =
     closeHintPanel(); // the hint panel shares the right edge
     const d = el('bDrawer');
     d.innerHTML = `
-      <div class="drawhead"><span>Install ${esc(g.label || lang)}</span><button class="btn small" id="bDrawX">✕</button></div>
+      <div class="drawhead"><span>Install ${esc(g.label || lang)}</span><button class="btn small x" id="bDrawX">✕</button></div>
       <div class="drawbody">${renderInstallGuide(g, toolchainReason)}
         <div class="workbar"><button id="bDrawRecheck" class="btn primary">&#8634; Re-check</button></div>
       </div>`;
@@ -282,8 +282,16 @@ export function mountBench(root: HTMLElement, lang: string, graded = true): () =
     if (disposed) return;
     closeHintPanel(); // the hint panel shares the right edge
     const d = el('bDrawer');
+    // Collect each code block so it can be syntax-highlighted after mount
+    // (Monaco's colorize is async); the escaped text is the fallback meanwhile.
+    const rawCodes: string[] = [];
+    const codeBlock = (code: string): string => {
+      const i = rawCodes.length;
+      rawCodes.push(code);
+      return `<pre class="popcode" data-ci="${i}">${esc(code)}</pre>`;
+    };
     if (!pv.found) {
-      d.innerHTML = `<div class="drawhead"><span>Learn</span><button class="btn small" id="bDrawX">✕</button></div>
+      d.innerHTML = `<div class="drawhead"><span>Learn</span><button class="btn small x" id="bDrawX">✕</button></div>
         <div class="vmuted" style="padding:12px">No primer for ${esc(currentCategory)} yet.</div>`;
     } else {
       const sections = (pv.sections || [])
@@ -291,21 +299,31 @@ export function mountBench(root: HTMLElement, lang: string, graded = true): () =
           (s) => `<div class="psec"><div class="psectitle">${esc(s.title)}</div>
           ${(s.ops || [])
             .map(
-              (op) => `<div class="pop"><div class="poplabel">${esc(op.label)}</div><pre class="popcode">${esc(op.code.replace(/\s+$/, ''))}</pre></div>`,
+              (op) => `<div class="pop"><div class="poplabel">${esc(op.label)}</div>${codeBlock(op.code.replace(/\s+$/, ''))}</div>`,
             )
             .join('')}</div>`,
         )
         .join('');
       d.innerHTML = `
-        <div class="drawhead"><span>${esc(pv.title)}</span><button class="btn small" id="bDrawX">✕</button></div>
+        <div class="drawhead"><span>${esc(pv.title)}</span><button class="btn small x" id="bDrawX">✕</button></div>
         <div class="drawbody">
           <div class="psummary">${esc(pv.summary)}</div>
           ${sections}
-          ${pv.example ? `<div class="psectitle">Worked example</div><pre class="popcode">${esc(pv.example.replace(/\s+$/, ''))}</pre>` : ''}
+          ${pv.example ? `<div class="psectitle">Worked example</div>${codeBlock(pv.example.replace(/\s+$/, ''))}` : ''}
         </div>`;
     }
     d.classList.remove('hidden');
     (root.querySelector('#bDrawX') as HTMLButtonElement).addEventListener('click', closeDrawer);
+    // syntax-highlight the primer code in the active theme (real grammar, same
+    // palette as the editor); leaves the escaped fallback if colorize fails.
+    const lid = monacoLang(lang);
+    rawCodes.forEach((code, i) => {
+      void monaco.editor.colorize(code, lid, { tabSize: 4 }).then((html) => {
+        if (disposed) return;
+        const pre = d.querySelector(`pre[data-ci="${i}"]`) as HTMLElement | null;
+        if (pre) pre.innerHTML = html;
+      });
+    });
   }
 
   // ── Centered modal (write-up gate, mentor preview) ──────────
@@ -332,6 +350,16 @@ export function mountBench(root: HTMLElement, lang: string, graded = true): () =
   let walletFetching = false;
   let hintTimer: number | undefined;
   let hintBusy = false;
+  let hintInfo: guiapi.HintInfo | null = null; // per-problem owned/pity flags
+
+  // Per-problem hint HISTORY: every revealed hint is kept so the player can flip
+  // back to ANY earlier one — a nudge is multi (Nudge 1, Nudge 2, …), Strategy
+  // and Walkthrough are one each — and still ask for the next. hintSel is the
+  // currently-viewed entry index for each problem.
+  type HintEntry = { tier: number; label: string; html: string };
+  const hintHist = new Map<string, HintEntry[]>();
+  const hintSel = new Map<string, number>();
+  const TIER_NAME: Record<number, string> = { 1: 'Nudge', 2: 'Strategy', 3: 'Walkthrough' };
 
   function fmtClock(sec: number): string {
     return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
@@ -353,15 +381,16 @@ export function mountBench(root: HTMLElement, lang: string, graded = true): () =
     if (walletFetching) return;
     walletFetching = true;
     try {
-      // Per-problem when the panel has a problem, so we can surface the earned
-      // free-Strategy offer; falls back to the global wallet otherwise.
+      // Per-problem when the panel has a problem (gives the owned/pity flags the
+      // rows need); falls back to the global wallet otherwise.
       if (currentId) {
         const info = await GetHintInfo(lang, currentId);
         if (disposed) return;
+        hintInfo = info;
         wallet = info.wallet;
         walletAt = Date.now();
         renderWalletLine();
-        applyStrategyOffer(info);
+        renderHints();
       } else {
         const w = await GetWallet(lang);
         if (disposed) return;
@@ -371,25 +400,6 @@ export function mountBench(root: HTMLElement, lang: string, graded = true): () =
       }
     } finally {
       walletFetching = false;
-    }
-  }
-
-  // applyStrategyOffer relabels the Strategy row: FREE when the player has been
-  // stuck long enough to earn it (they still choose to take it), "owned" once
-  // paid on this problem, otherwise the normal 1-token cost.
-  function applyStrategyOffer(info: guiapi.HintInfo): void {
-    const cost = root.querySelector('#hStratCost') as HTMLElement | null;
-    const row = root.querySelector('#hStratRow') as HTMLElement | null;
-    if (!cost || !row) return;
-    if (info.pityStrategyFree) {
-      cost.textContent = "FREE ✦ you've earned it — stuck a while";
-      row.classList.add('hfree');
-    } else if (info.strategyOwned) {
-      cost.textContent = 'owned · re-show is free';
-      row.classList.remove('hfree');
-    } else {
-      cost.textContent = '1 ⬡ · the approach, not the code';
-      row.classList.remove('hfree');
     }
   }
 
@@ -407,51 +417,183 @@ export function mountBench(root: HTMLElement, lang: string, graded = true): () =
 
   function setHintButtons(disabled: boolean): void {
     el('bHintPanel')
-      .querySelectorAll<HTMLButtonElement>('[data-tier]')
-      .forEach((b) => (b.disabled = disabled));
+      .querySelectorAll<HTMLButtonElement>('.hbtn')
+      .forEach((b) => {
+        if (!b.classList.contains('owned')) b.disabled = disabled;
+      });
   }
 
-  // setHintOut writes into the panel's output slot, re-queried fresh — the
-  // panel may have been re-rendered while a mentor call was in flight.
-  function setHintOut(cls: string, html: string): void {
+  // lastIdxOfTier finds the most recent revealed hint of a tier (-1 if none).
+  function lastIdxOfTier(tier: number): number {
+    const hist = hintHist.get(currentId) || [];
+    for (let i = hist.length - 1; i >= 0; i--) if (hist[i].tier === tier) return i;
+    return -1;
+  }
+
+  // renderHintOut paints the selected history entry into the output slot — the
+  // text is deliberately large (see .htext) so it fills the panel.
+  function renderHintOut(): void {
     const out = root.querySelector('#hOut') as HTMLElement | null;
     if (!out) return;
-    out.className = cls;
-    out.innerHTML = html;
+    if (hintBusy) {
+      out.className = 'hout vmuted';
+      out.textContent = 'mentor is thinking… (can take up to 45s)';
+      return;
+    }
+    const hist = hintHist.get(currentId) || [];
+    if (!hist.length) {
+      out.className = 'hout vmuted';
+      out.textContent = 'Stuck? A nudge costs nothing but a charge.';
+      return;
+    }
+    let sel = hintSel.get(currentId) ?? hist.length - 1;
+    if (sel < 0 || sel >= hist.length) sel = hist.length - 1;
+    out.className = 'hout';
+    out.innerHTML = `<div class="hviewing">viewing · ${esc(hist[sel].label)}</div>${hist[sel].html}`;
   }
 
-  const hintCache = new Map<string, string>(); // problem ID → last paid-for hint HTML
+  // renderHints redraws the tier rows + history chips + output from state. Each
+  // tier gets a View (re-show, free) once revealed plus an Ask (the NEXT hint of
+  // that tier); paid tiers show "✓ owned" once bought, and the chip strip flips
+  // the output back to ANY earlier hint.
+  function renderHints(): void {
+    const host = root.querySelector('#hRows') as HTMLElement | null;
+    if (!host) return;
+    const hist = hintHist.get(currentId) || [];
+    const nudges = hist.filter((e) => e.tier === 1).length;
+    const stratOwned = !!hintInfo?.strategyOwned || lastIdxOfTier(2) >= 0;
+    const walkOwned = !!hintInfo?.walkthroughOwned || lastIdxOfTier(3) >= 0;
+    const pityFree = !!hintInfo?.pityStrategyFree && !stratOwned;
+    const noCharges = !!wallet && wallet.nudgeCharges <= 0;
+
+    const view = (tier: number) =>
+      lastIdxOfTier(tier) >= 0 ? `<button class="hbtn view" data-view="${tier}">View</button>` : '';
+    const ask = (tier: number, label: string) => `<button class="hbtn ask" data-tier="${tier}">${label}</button>`;
+    const owned = '<button class="hbtn owned" disabled>✓ owned</button>';
+    const stratCost = pityFree
+      ? "FREE ✦ you've earned it — stuck a while"
+      : stratOwned
+        ? 'owned · re-show is free'
+        : '1 ⬡ · the approach, not the code';
+
+    host.innerHTML = `
+      <div class="hrow ${nudges ? 'seen' : ''}"><div><div class="hname">Nudge</div>
+        <div class="hcost">${nudges ? `${nudges} shown · next uses a ◉ charge` : 'free · uses a ◉ charge'}</div></div>
+        <div class="hact">${view(1)}${ask(1, nudges ? 'Ask next' : 'Ask')}</div></div>
+      <div class="hrow ${stratOwned ? 'seen' : ''} ${pityFree ? 'hfree' : ''}"><div><div class="hname">Strategy</div>
+        <div class="hcost">${stratCost}</div></div>
+        <div class="hact">${view(2)}${stratOwned ? owned : ask(2, 'Ask')}</div></div>
+      <div class="hrow ${walkOwned ? 'seen' : ''}"><div><div class="hname">Walkthrough</div>
+        <div class="hcost">${walkOwned ? 'owned · re-show is free' : '3 ⬡ · step-by-step plan'}</div></div>
+        <div class="hact">${view(3)}${walkOwned ? owned : ask(3, 'Ask')}</div></div>`;
+
+    // out of charges → can't ask a NEW nudge (re-View still works)
+    if (noCharges) {
+      const nb = host.querySelector('[data-tier="1"]') as HTMLButtonElement | null;
+      if (nb) {
+        nb.disabled = true;
+        nb.title = 'no nudges left — wait for a recharge';
+      }
+    }
+    if (hintBusy) setHintButtons(true);
+
+    host.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const i = lastIdxOfTier(Number(b.dataset.view));
+        if (i >= 0) {
+          hintSel.set(currentId, i);
+          renderHints();
+        }
+      }),
+    );
+    host.querySelectorAll<HTMLButtonElement>('[data-tier]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const tier = Number(b.dataset.tier);
+        const free = tier === 1 || (tier === 2 && pityFree); // nudge + earned-free Strategy
+        if (free) {
+          void askHint(tier);
+          return;
+        }
+        // paid tiers: two-click armed confirm (Ask → "sure?" → ask)
+        if (!b.dataset.armed) {
+          b.dataset.armed = '1';
+          b.textContent = 'sure?';
+          b.classList.add('armed');
+          setTimeout(() => {
+            if (disposed || !b.dataset.armed) return;
+            delete b.dataset.armed;
+            b.textContent = 'Ask';
+            b.classList.remove('armed');
+          }, 3000);
+          return;
+        }
+        void askHint(tier);
+      }),
+    );
+
+    const chips = root.querySelector('#hHist') as HTMLElement | null;
+    if (chips) {
+      const sel = hintSel.get(currentId) ?? hist.length - 1;
+      chips.innerHTML = hist.length
+        ? `<span class="hhlabel">history</span>` +
+          hist
+            .map((e, i) => `<span class="hchip ${i === sel ? 'on' : ''}" data-i="${i}">${esc(e.label)}</span>`)
+            .join('')
+        : '';
+      chips.querySelectorAll<HTMLElement>('.hchip').forEach((c) =>
+        c.addEventListener('click', () => {
+          hintSel.set(currentId, Number(c.dataset.i));
+          renderHints();
+        }),
+      );
+    }
+    renderHintOut();
+  }
 
   async function askHint(tier: number): Promise<void> {
     if (hintBusy || !currentId) return;
     const reqId = currentId; // pin the problem this hint belongs to
     hintBusy = true;
     setHintButtons(true);
-    setHintOut('hout vmuted', tier === 1 ? 'thinking…' : 'mentor is thinking… (can take up to 45s)');
+    const out0 = root.querySelector('#hOut') as HTMLElement | null;
+    if (out0) {
+      out0.className = 'hout vmuted';
+      out0.textContent = tier === 1 ? 'thinking…' : 'mentor is thinking… (can take up to 45s)';
+    }
     try {
       const res = await RequestHint(lang, reqId, tier, editor.getValue());
       if (disposed) return;
       if (res.err) {
         void refreshWallet(); // refused requests come back with a zero-valued wallet
-        if (currentId === reqId) setHintOut('hout herr', esc(res.err));
+        if (currentId === reqId) {
+          const o = root.querySelector('#hOut') as HTMLElement | null;
+          if (o) {
+            o.className = 'hout herr';
+            o.textContent = res.err;
+          }
+        }
         return;
       }
       wallet = res.wallet;
       walletAt = Date.now();
       renderWalletLine();
-      if (tier >= 2) void refreshWallet(); // relabel the Strategy row (pity consumed / now owned)
       const notice =
         (res.pity ? '<div class="hnotice">free hint — you\'ve earned it for persistence</div>' : '') +
         (res.refunded
           ? '<div class="hnotice">AI unavailable — answered from templates, token refunded</div>'
           : '');
       const html = `${notice}<div class="htext">${esc(res.text)}</div><div class="hsrc">${esc(res.source)} · tier ${res.tier}</div>`;
-      hintCache.set(reqId, html); // survives a panel toggle / problem round-trip
-      if (currentId === reqId) setHintOut('hout', html);
+      const hist = hintHist.get(reqId) || [];
+      const label =
+        tier === 1 ? `Nudge ${hist.filter((e) => e.tier === 1).length + 1}` : (TIER_NAME[tier] ?? `Tier ${tier}`);
+      hist.push({ tier, label, html });
+      hintHist.set(reqId, hist);
+      hintSel.set(reqId, hist.length - 1);
     } finally {
       if (!disposed) {
         hintBusy = false;
-        setHintButtons(false);
+        renderHints(); // show the new hint + re-enable buttons
+        if (tier >= 2) void refreshWallet(); // owned/pity flags may have changed
       }
     }
   }
@@ -471,53 +613,19 @@ export function mountBench(root: HTMLElement, lang: string, graded = true): () =
     closeDrawer(); // the Learn drawer shares the right edge
     const d = el('bHintPanel');
     d.innerHTML = `
-      <div class="drawhead"><span>✦ Hints</span><button class="btn small" id="bHintX">✕</button></div>
+      <div class="drawhead"><span>✦ Hints</span><button class="btn small x" id="bHintX">✕</button></div>
       <div class="drawbody">
         <div id="hWallet" class="hwallet">…</div>
-        <div class="hrow"><div><div class="hname">Nudge</div><div class="hcost">free · uses a ◉ charge</div></div><button class="btn small" data-tier="1">Ask</button></div>
-        <div class="hrow" id="hStratRow"><div><div class="hname">Strategy</div><div class="hcost" id="hStratCost">1 ⬡ · the approach, not the code</div></div><button class="btn small" data-tier="2">Ask</button></div>
-        <div class="hrow"><div><div class="hname">Walkthrough</div><div class="hcost">3 ⬡ · step-by-step plan</div></div><button class="btn small" data-tier="3">Ask</button></div>
+        <div id="hRows"></div>
+        <div id="hHist" class="hhist"></div>
         <div id="hOut" class="hout vmuted">Stuck? A nudge costs nothing but a charge.</div>
         <a id="hPreview" class="hlink">what gets sent</a>
       </div>`;
     d.classList.remove('hidden');
     el('bHintX').addEventListener('click', closeHintPanel);
     el('hPreview').addEventListener('click', () => void openPreview());
-    d.querySelectorAll<HTMLButtonElement>('[data-tier]').forEach((b) =>
-      b.addEventListener('click', () => {
-        const tier = Number(b.dataset.tier);
-        if (tier === 1) {
-          void askHint(1);
-          return;
-        }
-        // paid tiers: two-click armed confirm (✕ → "sure?" pattern)
-        if (!b.dataset.armed) {
-          b.dataset.armed = '1';
-          b.textContent = 'sure?';
-          b.classList.add('armed');
-          setTimeout(() => {
-            if (disposed || !b.dataset.armed) return;
-            delete b.dataset.armed;
-            b.textContent = 'Ask';
-            b.classList.remove('armed');
-          }, 3000);
-          return;
-        }
-        delete b.dataset.armed;
-        b.textContent = 'Ask';
-        b.classList.remove('armed');
-        void askHint(tier);
-      }),
-    );
-    if (hintBusy) {
-      // a mentor call is still in flight from before the panel was toggled
-      setHintButtons(true);
-      setHintOut('hout vmuted', 'mentor is thinking… (can take up to 45s)');
-    } else {
-      const cached = hintCache.get(currentId);
-      if (cached) setHintOut('hout', cached);
-    }
-    void refreshWallet();
+    renderHints(); // draw rows/chips/output from any existing history
+    void refreshWallet(); // fetch wallet + owned flags, then re-render
     stopHintTick();
     hintTimer = window.setInterval(renderWalletLine, 1000);
   }

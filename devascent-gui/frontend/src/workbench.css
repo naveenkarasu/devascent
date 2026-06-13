@@ -126,14 +126,15 @@
 }
 .specinput {
   margin: 4px 16px;
-  min-height: 110px;
-  padding: 10px 12px;
+  min-height: 240px;
+  padding: 12px 14px;
   background: var(--base);
   color: var(--textPrimary);
   border: 1px solid var(--borderSubtle);
   border-radius: 8px;
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: 15px;
+  line-height: 22px;
   resize: vertical;
 }
 .specinput:focus {
@@ -181,9 +182,24 @@
   line-height: 20px;
   white-space: pre-wrap;
 }
+/* The tutorial's Back/Next bar is PINNED to the bottom of the scrolling panel
+   so the next step is always reachable without scrolling past the editor (the
+   wheel-trap is also fixed in monaco-setup). Negative side margins bleed the
+   bar to the panel edges; the opaque background lets content scroll under it. */
 .tnav {
+  position: sticky;
+  bottom: 0;
   justify-content: space-between;
-  margin-top: 16px;
+  margin: 16px -18px 0;
+  padding: 12px 18px;
+  background: var(--canvas);
+  border-top: 1px solid var(--borderSubtle);
+  box-shadow: 0 -10px 18px -8px rgba(0, 0, 0, 0.55);
+}
+/* drop the panel's bottom padding so the sticky bar sits flush at the bottom
+   (orientation keeps its padding — it has no sticky bar) */
+.tutorial {
+  padding-bottom: 0;
 }
 
 /* ── Tutorial stage stepper (Watch → Together → Your turn) ──── */
@@ -331,6 +347,52 @@
   opacity: 0.55;
   cursor: not-allowed;
   pointer-events: none;
+}
+/* Header action pills — compact + color-coded (base .btn is a 52px full-width
+   block; in the problem header we want small rounded pills instead). */
+.probhead .btn.small {
+  height: auto;
+  width: auto;
+  flex: none;
+  padding: 6px 13px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 999px;
+  gap: 6px;
+}
+.btn.hint {
+  color: var(--magenta);
+  border-color: color-mix(in srgb, var(--magenta) 55%, transparent);
+  background: color-mix(in srgb, var(--magenta) 10%, transparent);
+}
+.btn.hint:hover {
+  background: color-mix(in srgb, var(--magenta) 20%, transparent);
+}
+.btn.learn {
+  color: var(--cyan);
+  border-color: color-mix(in srgb, var(--cyan) 55%, transparent);
+  background: color-mix(in srgb, var(--cyan) 10%, transparent);
+}
+.btn.learn:hover {
+  background: color-mix(in srgb, var(--cyan) 20%, transparent);
+}
+/* Drawer/panel close (✕): compact + red, not a 52px block. */
+.btn.x {
+  height: auto;
+  width: auto;
+  flex: none;
+  padding: 2px 8px;
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--red);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+.btn.x:hover {
+  background: color-mix(in srgb, var(--red) 18%, transparent);
+  border-color: color-mix(in srgb, var(--red) 45%, transparent);
 }
 .work {
   position: relative;
@@ -725,25 +787,36 @@
 .probhead {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px 8px;
+  gap: 12px;
+  padding: 14px 16px 12px;
 }
 .probhead .ptitle-h {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--textPrimary);
+  margin-right: 2px;
 }
 .tag {
-  font-size: 10px;
+  font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 2px 7px;
+  padding: 3px 9px;
   border-radius: 999px;
   border: 1px solid var(--borderSubtle);
   color: var(--textMuted);
 }
 .tag.cat {
   color: var(--cyan);
+  border-color: color-mix(in srgb, var(--cyan) 45%, transparent);
+}
+.tag.d-easy {
+  border-color: color-mix(in srgb, var(--green) 45%, transparent);
+}
+.tag.d-medium {
+  border-color: color-mix(in srgb, var(--yellow) 45%, transparent);
+}
+.tag.d-hard {
+  border-color: color-mix(in srgb, var(--red) 45%, transparent);
 }
 .prompt-text {
   margin: 0 16px 10px;
@@ -804,6 +877,27 @@
   font-size: 12px;
   white-space: pre-wrap;
   overflow-x: auto;
+}
+/* the player's own print/log output (debugging), separate from the verdict */
+.voutlabel {
+  margin: 10px 0 3px;
+  font-size: 11px;
+  color: var(--textMuted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.vout {
+  margin: 0;
+  padding: 8px;
+  background: var(--canvas);
+  border: 1px solid var(--borderSubtle);
+  border-radius: 6px;
+  color: var(--textSecondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 22vh;
 }
 .clist {
   display: flex;
@@ -987,27 +1081,101 @@
   color: var(--accent);
   font-weight: 600;
 }
-.hrow .btn.small {
-  height: 26px;
-  width: auto;
+/* hint action buttons: View (re-show, cyan) + Ask (next, violet) + owned */
+.hact {
+  display: flex;
+  gap: 6px;
   flex: none;
-  font-weight: 500;
 }
-.hrow .btn.small.armed {
-  border-color: var(--red);
+.hbtn {
+  height: 28px;
+  flex: none;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 7px;
+  border: 1px solid var(--borderStrong);
+  background: var(--panel);
+  color: var(--textPrimary);
+  cursor: pointer;
+}
+.hbtn:hover {
+  background: var(--panelStrong);
+}
+.hbtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.hbtn.ask {
+  color: var(--magenta);
+  border-color: color-mix(in srgb, var(--magenta) 55%, transparent);
+}
+.hbtn.ask.armed {
   color: var(--red);
+  border-color: var(--red);
+}
+.hbtn.view {
+  color: var(--cyan);
+  border-color: color-mix(in srgb, var(--cyan) 55%, transparent);
+}
+.hbtn.owned {
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 45%, transparent);
+  cursor: default;
+}
+/* history chips — flip the output back to ANY earlier hint */
+.hhist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 10px 0 2px;
+}
+.hhlabel {
+  color: var(--textMuted);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 2px;
+}
+.hchip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--borderSubtle);
+  background: var(--panel);
+  color: var(--textSecondary);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.hchip:hover {
+  border-color: var(--borderStrong);
+}
+.hchip.on {
+  border-color: var(--magenta);
+  color: var(--magenta);
+  background: color-mix(in srgb, var(--magenta) 12%, transparent);
 }
 .hout {
   margin-top: 10px;
-  font-size: 13px;
-  line-height: 19px;
+  min-height: 140px;
 }
+.hviewing {
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: var(--magenta);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+/* the revealed hint text — large, to fill the panel (was 13px) */
 .htext {
   color: var(--textSecondary);
   white-space: pre-wrap;
-  padding: 8px 10px;
+  padding: 12px 14px;
   background: var(--canvas);
-  border-radius: 6px;
+  border: 1px solid var(--borderSubtle);
+  border-radius: 8px;
+  font-size: 15px;
+  line-height: 23px;
 }
 .hsrc {
   margin-top: 4px;

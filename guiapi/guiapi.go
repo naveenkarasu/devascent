@@ -90,7 +90,7 @@ func toGradeResult(v grader.Verdict) GradeResult {
 		}
 		rs[i] = CaseResult{Name: r.Name, Passed: r.Passed, Got: r.Got, Expected: r.Expected, Err: r.Err}
 	}
-	return GradeResult{Passed: v.Passed, CasesTotal: len(v.Results), CasesFailed: failed, Err: v.Err, Results: rs}
+	return GradeResult{Passed: v.Passed, CasesTotal: len(v.Results), CasesFailed: failed, Err: v.Err, Results: rs, Stdout: v.Stdout}
 }
 
 // gradeTask runs the player's code for a plain (non-node) Task — the shape used
@@ -227,6 +227,7 @@ type GradeResult struct {
 	CasesTotal  int          `json:"casesTotal"`
 	CasesFailed int          `json:"casesFailed"`
 	Err         string       `json:"err"` // compile/runtime/harness error (empty on normal completion)
+	Stdout      string       `json:"stdout"` // the player's own print/log output, for debugging
 	Results     []CaseResult `json:"results"`
 
 	// Bench banking (set only by the bench Grade path on a pass).

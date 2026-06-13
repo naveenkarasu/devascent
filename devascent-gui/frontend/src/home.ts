@@ -31,13 +31,20 @@ function continueTarget(pr: guiapi.Progress): { view: string; label: string } {
 
 // mountHome renders the front door: brand + narrative left, the live run card
 // right (the approved start-screen layout, now data-driven from the real save).
-export function mountHome(root: HTMLElement, lang: string): () => void {
+export function mountHome(root: HTMLElement, lang: string, graded = true): () => void {
   let disposed = false;
 
   void (async () => {
     const [pr, profiles] = await Promise.all([GetProgress(lang), GetProfiles()]);
     if (disposed) return;
     const cont = continueTarget(pr);
+    // "Browse the Bench" honors the same gate as the header nav: free once the
+    // entrance test has placed you (matches the TUI). Reference-only languages
+    // (graded=false) keep it open for browsing.
+    const benchLocked = graded && !pr.placement;
+    const benchBtn = benchLocked
+      ? `<button class="btn" disabled title="Finish the Entrance Test first">&#9646;&nbsp; Browse the Bench</button>`
+      : `<button class="btn" data-nav="bench">&#9646;&nbsp; Browse the Bench</button>`;
     // Profile picker: one chip per existing language slot; the active language
     // is highlighted, clicking another switches the whole app to that slot.
     const profileRow = (profiles || []).length
@@ -87,7 +94,7 @@ export function mountHome(root: HTMLElement, lang: string): () => void {
             <div class="actions">
               <button class="btn primary" data-nav="${cont.view}">&#9654;&nbsp; ${esc(cont.label)}</button>
               <button class="btn" data-nav="orientation">&#9670;&nbsp; Entrance Test</button>
-              <button class="btn" data-nav="bench">&#9646;&nbsp; Browse the Bench</button>
+              ${benchBtn}
             </div>
           </div>
           <div class="card mentorcard">

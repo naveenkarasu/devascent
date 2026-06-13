@@ -29,10 +29,17 @@ export function renderInstallGuide(g: guiapi.InstallGuideView, reason: string): 
   return head + why + notes + link + steps + verify;
 }
 
+// renderOutput shows the player's own print/log output (for debugging),
+// separate from the pass/fail verdict. Empty when the program printed nothing.
+function renderOutput(stdout: string): string {
+  if (!stdout) return '';
+  return `<div class="voutlabel">Your output (print / log)</div><pre class="vout">${esc(stdout)}</pre>`;
+}
+
 // renderVerdict turns a GradeResult into HTML (shared by every graded view).
 export function renderVerdict(res: guiapi.GradeResult): string {
   if (res.err) {
-    return `<div class="vhead vfail">✖ Did not run</div><pre class="vpre">${esc(res.err)}</pre>`;
+    return `<div class="vhead vfail">✖ Did not run</div><pre class="vpre">${esc(res.err)}</pre>${renderOutput(res.stdout)}`;
   }
   const passedCount = res.casesTotal - res.casesFailed;
   const head = res.passed
@@ -50,5 +57,5 @@ export function renderVerdict(res: guiapi.GradeResult): string {
         }</div>`,
     )
     .join('');
-  return head + `<div class="clist">${rows}</div>`;
+  return head + `<div class="clist">${rows}</div>` + renderOutput(res.stdout);
 }

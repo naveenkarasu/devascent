@@ -136,7 +136,33 @@ func ParseHarnessOutput(out string, tests []TestCase) Verdict {
 		v.Passed = false
 		v.Err = "no test results"
 	}
+	v.Stdout = extractStdout(out)
 	return v
+}
+
+// extractStdout returns the program's own output — every stdout/stderr line
+// EXCEPT the harness result marker — so the player can see their print/log
+// statements and debug. Capped so a runaway loop can't flood the UI.
+func extractStdout(out string) string {
+	var keep []string
+	for _, ln := range strings.Split(out, "\n") {
+		if strings.Contains(ln, marker) {
+			continue // protocol line, not the player's output
+		}
+		if strings.TrimSpace(ln) == "" {
+			continue
+		}
+		keep = append(keep, ln)
+		if len(keep) >= 40 {
+			keep = append(keep, "… (output truncated)")
+			break
+		}
+	}
+	s := strings.Join(keep, "\n")
+	if len(s) > 4000 {
+		s = s[:4000] + "\n… (output truncated)"
+	}
+	return s
 }
 
 func pyHarness(funcName, testsB64 string, shape Shape) string {

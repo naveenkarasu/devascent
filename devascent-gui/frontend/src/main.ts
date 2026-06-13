@@ -92,16 +92,13 @@ let locks: Partial<Record<ViewId, string>> = {
   advanced: LOCK_INTAKE,
 };
 
-// computeLocks derives the per-entry gate from the save. Placement-aware, not
-// strictly linear:
-//  - no placement   → only Home + Entrance Test
-//  - tutorial-full  → + Tutorial
-//  - dev-literacy   → + Tutorial AND Dev-Literacy
-//  - test-out       → everything (they aced the intake)
-//  - Bench/Advanced → once the run shows bench progress (banked > 0) or a
-//    returning player (step0Met). A brand-new tutorial player reaches the
-//    bench through the tutorial's own hand-off — programmatic nav (custom
-//    devascent-nav events from views) is deliberately not gated.
+// computeLocks derives the per-entry gate from the save. The entrance test is
+// the ONLY hard gate — matching the TUI, whose handoff hub lets you move freely
+// between Tutorial / Dev-Literacy / Bench / Advanced once you've been placed:
+//  - no placement → only Home + Entrance Test are reachable
+//  - placed       → Tutorial / Dev-Literacy / Bench / Advanced all unlock
+//  - reference-only language (C++) → graded tracks lock; Bench/Advanced stay
+//    open for browsing
 function computeLocks(pr: guiapi.Progress): Partial<Record<ViewId, string>> {
   const out: Partial<Record<ViewId, string>> = {};
   // Reference-only language (C++): nothing gradeable can run, so the graded
@@ -113,23 +110,13 @@ function computeLocks(pr: guiapi.Progress): Partial<Record<ViewId, string>> {
     out.devlit = why;
     return out;
   }
+  // Until the entrance test sets a placement, everything downstream is locked;
+  // once placed, navigation is free (no per-track funnel).
   if (!pr.placement) {
     out.tutorial = LOCK_INTAKE;
     out.devlit = LOCK_INTAKE;
     out.bench = LOCK_INTAKE;
     out.advanced = LOCK_INTAKE;
-    return out;
-  }
-  if (pr.placement === 'test-out') return out;
-  if (pr.placement !== 'dev-literacy')
-    out.devlit = 'Unlocks with a Dev-Literacy placement on the Entrance Test';
-  if (!(pr.banked > 0 || pr.step0Met)) {
-    const why =
-      pr.placement === 'dev-literacy'
-        ? 'Finish the Dev-Literacy brush-up first — it hands off to the Bench'
-        : 'Finish Tutorial Island first — it hands off to the Bench';
-    out.bench = why;
-    out.advanced = why;
   }
   return out;
 }
@@ -168,7 +155,7 @@ function render() {
   }
   const root = document.getElementById('view') as HTMLElement;
   root.innerHTML = '';
-  if (view === 'home') dispose = mountHome(root, lang);
+  if (view === 'home') dispose = mountHome(root, lang, isGraded(lang));
   else if (view === 'orientation') dispose = mountOrientation(root, lang);
   else if (view === 'tutorial') dispose = mountTutorial(root, lang);
   else if (view === 'devlit') dispose = mountDevLit(root);

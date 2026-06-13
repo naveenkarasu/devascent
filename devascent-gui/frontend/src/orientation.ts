@@ -110,7 +110,10 @@ export function mountOrientation(root: HTMLElement, lang: string): () => void {
         <div class="probhead"><span class="ptitle-h">${step.kind === 'code' ? 'Write the function' : 'Question'}</span></div>
         <div class="prompt-text">${esc(step.prompt)}</div>
         ${body}
-        <div class="workbar"><button id="oSubmit" class="btn primary">${step.kind === 'code' ? '&#9654; Run' : 'Submit'}</button></div>
+        <div class="workbar">
+          <button id="oSubmit" class="btn primary">${step.kind === 'code' ? '&#9654; Run' : 'Submit'}</button>
+          ${step.kind === 'code' ? '<button id="oAdvance" class="btn hidden"></button>' : ''}
+        </div>
         <div id="oOutcome" class="verdict"><div class="vmuted">${step.kind === 'code' ? 'Write the function, then Run. Fix and re-run as many times as you need.' : 'Answer, then submit.'}</div></div>
       </div>`;
     if (step.kind === 'code') {
@@ -134,9 +137,8 @@ export function mountOrientation(root: HTMLElement, lang: string): () => void {
       btn.textContent = 'Running…';
       const outcome = await SubmitOrientationCode(editor.getValue());
       if (disposed) return;
-      btn.disabled = false;
-      btn.textContent = '▶ Run again';
-      renderCodeOutcome(outcome, out);
+      setCodeActions(outcome.passed);
+      renderCodeVerdict(outcome, out);
       return;
     }
     // CHOICE / SPEC are one-shot: the backend advances, the player moves on.
@@ -157,25 +159,45 @@ export function mountOrientation(root: HTMLElement, lang: string): () => void {
     renderOutcome(outcome, out);
   }
 
-  // renderCodeOutcome handles the retry-able code path: a pass offers Continue,
-  // a fail keeps the editor live (Run again) and offers Skip to give up.
-  function renderCodeOutcome(outcome: guiapi.DiagOutcome, out: HTMLElement): void {
-    const detail =
-      outcome.verdict && outcome.verdict.results && outcome.verdict.results.length
-        ? renderVerdict(outcome.verdict)
-        : '';
-    if (outcome.passed) {
-      out.innerHTML =
-        '<div class="vhead vok">✓ Passed</div>' +
-        detail +
-        `<div class="workbar"><button id="oContinue" class="btn primary">Continue →</button></div>`;
-      (root.querySelector('#oContinue') as HTMLButtonElement).addEventListener('click', () => void advance());
+  // The code item is retry-able, and the next step lives in the ACTION BAR
+  // (next to Run) rather than buried inside the results box: a pass turns Run
+  // into a quiet "✓ Passed" and lights up "Continue →"; a fail keeps Run live as
+  // "▶ Run again" with a quieter "Skip this one →" beside it. Both advance.
+  function setCodeActions(passed: boolean): void {
+    const run = root.querySelector('#oSubmit') as HTMLButtonElement | null;
+    const adv = root.querySelector('#oAdvance') as HTMLButtonElement | null;
+    if (!run || !adv) return;
+    adv.classList.remove('hidden');
+    adv.onclick = () => void advance();
+    if (passed) {
+      run.disabled = true;
+      run.textContent = '✓ Passed';
+      run.classList.remove('primary');
+      adv.textContent = 'Continue →';
+      adv.classList.add('primary');
     } else {
-      out.innerHTML =
-        '<div class="vhead vfail">✖ Tests failed — edit your code and Run again</div>' +
-        detail +
-        `<div class="workbar"><button id="oSkip" class="btn">Skip this one →</button></div>`;
-      (root.querySelector('#oSkip') as HTMLButtonElement).addEventListener('click', () => void advance());
+      run.disabled = false;
+      run.textContent = '▶ Run again';
+      run.classList.add('primary');
+      adv.textContent = 'Skip this one →';
+      adv.classList.remove('primary');
+    }
+  }
+
+  // renderCodeVerdict fills the results box with the status + hidden-test detail
+  // ONLY — the next-step buttons live in the action bar (see setCodeActions).
+  function renderCodeVerdict(outcome: guiapi.DiagOutcome, out: HTMLElement): void {
+    if (outcome.verdict && outcome.verdict.results && outcome.verdict.results.length) {
+      out.innerHTML = renderVerdict(outcome.verdict);
+    } else if (outcome.feedback) {
+      const head = outcome.passed
+        ? '<div class="vhead vok">✓ Passed</div>'
+        : '<div class="vhead vfail">✖ Not quite</div>';
+      out.innerHTML = head + `<div class="cdetail">${esc(outcome.feedback)}</div>`;
+    } else {
+      out.innerHTML = outcome.passed
+        ? '<div class="vhead vok">✓ Passed</div>'
+        : '<div class="vhead vfail">✖ Tests failed — edit your code and Run again</div>';
     }
   }
 

@@ -168,7 +168,12 @@ export function mountTutorial(root: HTMLElement, lang: string): () => void {
       v.innerHTML = renderVerdict(res);
       if (res.passed) {
         passed.add(`${li}:${si}`);
-        void show(li, si); // re-render: chip turns ✓, Next unlocks
+        // Mark this stage done + unlock Next IN PLACE. Re-rendering the stage
+        // here (the old behavior) re-seeded the editor with the STARTER —
+        // discarding the player's correct code — and wiped the pass verdict.
+        const chip = root.querySelector<HTMLElement>(`.stepchip[data-si="${si}"]`);
+        if (chip && !chip.textContent?.includes('✓')) chip.textContent = '✓ ' + (chip.textContent ?? '').trim();
+        updateNext();
         return;
       }
     } finally {
