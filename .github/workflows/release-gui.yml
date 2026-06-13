@@ -84,7 +84,13 @@ jobs:
       - name: Build (wails)
         shell: bash
         working-directory: devascent-gui
-        run: wails build -platform "${{ matrix.platform }}" -ldflags "-X main.version=v${{ steps.ver.outputs.version }}"
+        # Windows also produces the NSIS installer (makensis ships on the
+        # windows-latest image) — users get both the portable exe and a real
+        # installer with Start-menu entry + uninstaller.
+        run: |
+          EXTRA=""
+          if [[ "${{ runner.os }}" == "Windows" ]]; then EXTRA="-nsis"; fi
+          wails build -platform "${{ matrix.platform }}" $EXTRA -ldflags "-X main.version=v${{ steps.ver.outputs.version }}"
 
       - name: Package
         id: pkg
@@ -96,6 +102,7 @@ jobs:
             Windows)
               cp LICENSE devascent-gui/build/bin/
               (cd devascent-gui/build/bin && 7z a "../../../dist/${NAME}.zip" devascent-gui.exe LICENSE > /dev/null)
+              cp devascent-gui/build/bin/devascent-gui-amd64-installer.exe "dist/${NAME}_installer.exe"
               echo "file=dist/${NAME}.zip" >> "$GITHUB_OUTPUT"
               ;;
             macOS)

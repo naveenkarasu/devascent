@@ -69,13 +69,47 @@ body, .titlebar, .prompt, .status, .seg, .card, .term, .btn, .chip, .info, .bran
 .caret{display:inline-block;width:2px;height:16px;background:var(--blue);vertical-align:middle;animation:blink 1.06s step-end infinite;}
 @keyframes blink{50%{opacity:0;}}
 
+/* language icons (inline SVG brand marks — see langicons.ts). Sized ~1.4em so
+   the padded glyphs read at least as large as the surrounding letters. */
+.langico{width:1.4em;height:1.4em;display:inline-block;vertical-align:-0.34em;}
+.langico-fb{color:var(--textMuted);}
+/* the header language segment is the most prominent — give it a touch more */
+.seg.cap .langico{width:1.6em;height:1.6em;vertical-align:-0.42em;}
+
+/* hard-locked nav entries (progression gating — dimming + tooltip only) */
+.nav button:disabled{opacity:.4;cursor:not-allowed;}
+.nav button:disabled:hover{background:transparent;}
+
+/* boot splash — full-window overlay, dismissed by main.ts after first render */
+.splash{position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;
+  background:radial-gradient(60% 50% at 50% 42%, rgba(97,175,239,.10), transparent 70%), var(--canvas);
+  transition:opacity .3s ease;}
+.splash.out{opacity:0;pointer-events:none;}
+/* pop the logo in so the loading moment reads, and glow it off the dark bg */
+.splash-logo{max-width:300px;width:48vw;height:auto;user-select:none;-webkit-user-drag:none;
+  filter:drop-shadow(0 6px 34px rgba(97,175,239,.40));animation:splash-pop .55s ease both;}
+.splash-name{font-size:40px;line-height:52px;font-weight:600;color:var(--textPrimary);
+  letter-spacing:.5px;animation:splash-pop .55s ease .08s both;}
+@keyframes splash-pop{from{opacity:0;transform:scale(.92) translateY(6px);}to{opacity:1;transform:none;}}
+.splash-bar{width:220px;height:3px;border-radius:999px;background:var(--panel);overflow:hidden;}
+.splash-shimmer{width:40%;height:100%;border-radius:999px;
+  background:linear-gradient(90deg,var(--blue),var(--magenta));
+  animation:splash-sweep 1.15s ease-in-out infinite alternate;}
+@keyframes splash-sweep{from{transform:translateX(-100%);}to{transform:translateX(250%);}}
+
 /* start screen */
 .main{flex:1;min-height:0;}
 .startbody{display:flex;gap:48px;padding:48px 64px;height:100%;}
 .info{flex:0 0 44%;display:flex;flex-direction:column;text-align:left;}
-.brandrow{display:flex;align-items:center;gap:16px;}
-.brandmark{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--blue),var(--magenta));}
+.brandrow{display:flex;align-items:center;gap:18px;}
+/* the channel/game logo — glow lifts the glossy-dark monogram off the dark bg */
+.brandlogo{height:64px;width:auto;user-select:none;-webkit-user-drag:none;
+  filter:drop-shadow(0 3px 16px rgba(97,175,239,.35));}
 .appname{font-size:40px;line-height:52px;font-weight:600;}
+/* small brand mark in the titlebar */
+.brandlogo-sm{height:18px;width:auto;vertical-align:-4px;margin-right:2px;
+  user-select:none;-webkit-user-drag:none;filter:drop-shadow(0 0 5px rgba(97,175,239,.5));}
 .subtitle{font-size:18px;line-height:26px;color:var(--textSecondary);margin-top:18px;max-width:46ch;}
 .narrative{margin-top:22px;color:var(--textSecondary);max-width:52ch;}
 .narrative b{color:var(--textPrimary);}

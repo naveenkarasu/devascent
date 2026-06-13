@@ -99,6 +99,7 @@ func TestOrientationPersistsPlacement(t *testing.T) {
 		switch o.Step().Kind {
 		case "code":
 			o.SubmitCode("def stub():\n    return None\n")
+			o.AdvanceOrientation() // code grades without advancing; commit it
 		case "spec":
 			o.SubmitSpec("")
 		default:

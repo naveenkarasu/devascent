@@ -22,6 +22,8 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+
+	"devascent/internal/spawn"
 	"sync"
 	"time"
 )
@@ -531,6 +533,7 @@ func setEnv(env []string, key, val string) []string {
 // realExec runs a command with output capture, honoring the context deadline.
 func realExec(ctx context.Context, dir string, env []string, name string, args ...string) execResult {
 	cmd := exec.CommandContext(ctx, name, args...)
+	spawn.Hide(cmd) // probes run from the GUI; no console flashes
 	cmd.Dir = dir
 	cmd.Env = env
 	var so, se bytes.Buffer

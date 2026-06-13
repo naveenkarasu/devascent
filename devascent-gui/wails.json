@@ -9,5 +9,12 @@
   "author": {
     "name": "naveenkarasu",
     "email": "48487906+naveenkarasu@users.noreply.github.com"
+  },
+  "info": {
+    "companyName": "DevAscent",
+    "productName": "DevAscent",
+    "productVersion": "0.3.0",
+    "copyright": "DevAscent — AGPL-3.0",
+    "comments": "Grow from junior to senior by doing the real work — graded by your own compiler."
   }
 }

@@ -323,6 +323,7 @@ export namespace guiapi {
 	    passed: boolean;
 	    feedback: string;
 	    verdict?: GradeResult;
+	    advanced: boolean;
 	    next: OrientationStep;
 	
 	    static createFrom(source: any = {}) {
@@ -334,6 +335,7 @@ export namespace guiapi {
 	        this.passed = source["passed"];
 	        this.feedback = source["feedback"];
 	        this.verdict = this.convertValues(source["verdict"], GradeResult);
+	        this.advanced = source["advanced"];
 	        this.next = this.convertValues(source["next"], OrientationStep);
 	    }
 	
@@ -520,6 +522,22 @@ export namespace guiapi {
 	        this.link = source["link"];
 	        this.steps = source["steps"];
 	        this.verify = source["verify"];
+	    }
+	}
+	export class LangInfo {
+	    id: string;
+	    label: string;
+	    graded: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new LangInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.label = source["label"];
+	        this.graded = source["graded"];
 	    }
 	}
 	export class LangStatus {

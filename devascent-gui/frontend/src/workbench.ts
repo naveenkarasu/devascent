@@ -21,7 +21,9 @@ import { esc, renderVerdict, renderInstallGuide } from './util';
 
 // mountBench renders the bench workbench into root for lang and returns a
 // disposer (call before unmounting to release the Monaco editor).
-export function mountBench(root: HTMLElement, lang: string): () => void {
+// graded=false marks a reference-only language (e.g. C++): browse/read works
+// as-is, but Grade is disabled and the hint economy is hidden.
+export function mountBench(root: HTMLElement, lang: string, graded = true): () => void {
   root.innerHTML = `
     <div class="bench">
       <aside class="sidebar">
@@ -73,6 +75,16 @@ export function mountBench(root: HTMLElement, lang: string): () => void {
   const diffOn: Record<string, boolean> = { easy: true, medium: true, hard: true };
   let toolchainOK = true; // optimistic until the capability canary reports
   let toolchainReason = '';
+
+  // ── Reference-only language (no grader wired) ────────────────
+  const refLabel = lang === 'cpp' ? 'C++' : lang;
+  const refNote = `<div class="vmuted">Reference mode — browse the prompt and starter; grading for ${esc(refLabel)} isn't wired yet.</div>`;
+  if (!graded) {
+    const g = el('bGrade') as HTMLButtonElement;
+    g.disabled = true;
+    g.title = `${refLabel} is reference-only — its grader isn't wired yet`;
+    el('bHintBtn').classList.add('hidden'); // no hint economy without a grader
+  }
 
   // ── Capability gate ──────────────────────────────────────────
   function showGateBanner(): void {
@@ -248,7 +260,9 @@ export function mountBench(root: HTMLElement, lang: string): () => void {
     editor.setValue(d.starter);
     const model = editor.getModel();
     if (model) monaco.editor.setModelLanguage(model, monacoLang(lang));
-    if (toolchainOK) {
+    if (!graded) {
+      el('bVerdict').innerHTML = refNote;
+    } else if (toolchainOK) {
       el('bVerdict').innerHTML = '<div class="vmuted">Write your solution and press Grade.</div>';
     } else {
       showGateBanner();
@@ -421,7 +435,7 @@ export function mountBench(root: HTMLElement, lang: string): () => void {
   }
 
   function openHintPanel(): void {
-    if (!currentId) return;
+    if (!graded || !currentId) return;
     closeDrawer(); // the Learn drawer shares the right edge
     const d = el('bHintPanel');
     d.innerHTML = `
@@ -571,7 +585,7 @@ export function mountBench(root: HTMLElement, lang: string): () => void {
   }
 
   async function grade(): Promise<void> {
-    if (!currentId || !toolchainOK) return;
+    if (!graded || !currentId || !toolchainOK) return;
     const btn = el('bGrade') as HTMLButtonElement;
     btn.disabled = true;
     btn.textContent = 'Grading…';
@@ -667,11 +681,14 @@ export function mountBench(root: HTMLElement, lang: string): () => void {
     );
 
   void refreshScore();
-  // authoritative toolchain check (cached after the first run per session)
-  void (async () => {
-    const st = await CheckLang(lang);
-    if (!disposed) applyGate(st);
-  })();
+  // authoritative toolchain check (cached after the first run per session) —
+  // pointless for a reference-only language, whose Grade stays disabled anyway
+  if (graded) {
+    void (async () => {
+      const st = await CheckLang(lang);
+      if (!disposed) applyGate(st);
+    })();
+  }
   void (async () => {
     problems = await ListProblems(lang);
     if (disposed) return;

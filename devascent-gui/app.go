@@ -36,6 +36,11 @@ func (a *App) startup(ctx context.Context) {
 // GradedLanguages returns the languages the GUI can grade in.
 func (a *App) GradedLanguages() []string { return guiapi.GradedLanguages() }
 
+// GetLanguages lists every offered language for the picker, including the
+// reference-only ones (Graded=false ⇒ browse/read works, Run is disabled).
+// Catalog-only — no engine state, so no nil-guard is needed.
+func (a *App) GetLanguages() []guiapi.LangInfo { return guiapi.Languages() }
+
 // GetVersion returns the build version (ldflags-injected at release time).
 func (a *App) GetVersion() string { return version }
 
@@ -285,6 +290,15 @@ func (a *App) SubmitOrientationCode(code string) guiapi.DiagOutcome {
 		return guiapi.DiagOutcome{}
 	}
 	return a.orient.SubmitCode(code)
+}
+
+// AdvanceOrientation commits the current code item's latest grade and moves to
+// the next step (Continue after a pass, or Skip on a failing item).
+func (a *App) AdvanceOrientation() guiapi.DiagOutcome {
+	if a.orient == nil {
+		return guiapi.DiagOutcome{}
+	}
+	return a.orient.AdvanceOrientation()
 }
 
 // SubmitOrientationChoice grades a multiple-choice item by option index.

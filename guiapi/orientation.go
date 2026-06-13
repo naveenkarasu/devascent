@@ -40,6 +40,7 @@ type DiagOutcome struct {
 	Passed   bool            `json:"passed"`
 	Feedback string          `json:"feedback"`          // choice/spec feedback or model answer
 	Verdict  *GradeResult    `json:"verdict,omitempty"` // kind=code per-case detail
+	Advanced bool            `json:"advanced"`          // false = stay on this item (code can be re-run)
 	Next     OrientationStep `json:"next"`
 }
 
@@ -53,6 +54,11 @@ type Orientation struct {
 	codingOK, machineOK, specOK int
 	done                        bool
 	place                       string
+
+	// code items can be graded repeatedly without advancing (matching the TUI):
+	// SubmitCode records the latest result here, AdvanceOrientation commits it.
+	lastPassed bool
+	graded     bool
 }
 
 // StartOrientation builds a per-language intake ladder for the given self-report
@@ -104,7 +110,7 @@ func (o *Orientation) Step() OrientationStep {
 	case "code":
 		if d.Task != nil {
 			s.FuncName = d.Task.FuncName
-			s.Starter = d.Task.Starter
+			s.Starter = nativeStarter(o.lang, d.Task)
 		}
 	case "choice":
 		for _, c := range d.Choices {
@@ -140,10 +146,13 @@ func (o *Orientation) record(passed bool) {
 
 func (o *Orientation) outcome(passed bool, feedback string, v *GradeResult) DiagOutcome {
 	o.record(passed)
-	return DiagOutcome{Passed: passed, Feedback: feedback, Verdict: v, Next: o.Step()}
+	return DiagOutcome{Passed: passed, Feedback: feedback, Verdict: v, Advanced: true, Next: o.Step()}
 }
 
-// SubmitCode grades a kind=code item via the real grader.
+// SubmitCode grades a kind=code item via the real grader but does NOT advance:
+// the player can edit and re-run a failing item until it passes (the TUI's
+// diagnostic behaves the same). The score is committed by AdvanceOrientation —
+// Continue after a pass, or Skip to give up — never by the grade alone.
 func (o *Orientation) SubmitCode(code string) DiagOutcome {
 	if o.done || o.idx >= len(o.diag) {
 		return DiagOutcome{Next: o.Step()}
@@ -153,7 +162,23 @@ func (o *Orientation) SubmitCode(code string) DiagOutcome {
 		return o.outcome(false, "this item is not a coding item", nil)
 	}
 	gr := o.e.gradeTask(o.lang, code, d.Task)
-	return o.outcome(gr.Passed, "", &gr)
+	o.lastPassed = gr.Passed
+	o.graded = true
+	return DiagOutcome{Passed: gr.Passed, Verdict: &gr, Advanced: false, Next: o.Step()}
+}
+
+// AdvanceOrientation commits the current code item's latest grade and moves on.
+// Continue (after a pass) and Skip (give up on a failing item) both call it;
+// the recorded result is whatever the last SubmitCode produced — false if the
+// item was never successfully run. Only meaningful on a code item.
+func (o *Orientation) AdvanceOrientation() DiagOutcome {
+	if o.done || o.idx >= len(o.diag) {
+		return DiagOutcome{Next: o.Step()}
+	}
+	passed := o.graded && o.lastPassed
+	o.lastPassed, o.graded = false, false
+	o.record(passed)
+	return DiagOutcome{Passed: passed, Advanced: true, Next: o.Step()}
 }
 
 // SubmitChoice grades a kind=choice item by the chosen option index.

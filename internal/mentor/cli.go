@@ -15,11 +15,14 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"devascent/internal/spawn"
 )
 
 // runCLI executes one CLI call with the pack on stdin.
 func runCLI(ctx context.Context, bin string, args []string, stdin string) (string, string, error) {
 	cmd := exec.CommandContext(ctx, bin, args...)
+	spawn.Hide(cmd) // mentor CLIs run from the GUI; no console flashes
 	cmd.Dir = os.TempDir()
 	cmd.Stdin = strings.NewReader(stdin)
 	var out, errb bytes.Buffer

@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"devascent/internal/spawn"
 )
 
 // NativePython runs player Python via the local interpreter.
@@ -58,6 +60,7 @@ func (g NativePython) Run(lang, source, funcName string, tests []TestCase, shape
 	ctx, cancel := context.WithTimeout(context.Background(), g.Timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, g.Exe, file)
+	spawn.Hide(cmd)
 	cmd.Dir = dir
 	out, _ := cmd.CombinedOutput()
 

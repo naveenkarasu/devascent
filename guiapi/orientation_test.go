@@ -29,7 +29,9 @@ func TestOrientationSession(t *testing.T) {
 		}
 		switch s.Kind {
 		case "code":
+			// code items grade without advancing now — commit explicitly
 			o.SubmitCode("def stub():\n    return None\n")
+			o.AdvanceOrientation()
 		case "spec":
 			o.SubmitSpec("")
 		default:

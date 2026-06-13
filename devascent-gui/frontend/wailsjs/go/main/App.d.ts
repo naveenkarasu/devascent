@@ -3,6 +3,8 @@
 import {guiapi} from '../models';
 import {main} from '../models';
 
+export function AdvanceOrientation():Promise<guiapi.DiagOutcome>;
+
 export function AdvanceTutorial(arg1:number,arg2:number):Promise<guiapi.TutorialPos>;
 
 export function CheckLang(arg1:string):Promise<guiapi.LangStatus>;
@@ -18,6 +20,8 @@ export function GetGate(arg1:string):Promise<guiapi.GateView>;
 export function GetInstallGuide(arg1:string):Promise<guiapi.InstallGuideView>;
 
 export function GetLangPresence():Promise<Array<guiapi.LangStatus>>;
+
+export function GetLanguages():Promise<Array<guiapi.LangInfo>>;
 
 export function GetLesson(arg1:number):Promise<guiapi.LessonView>;
 

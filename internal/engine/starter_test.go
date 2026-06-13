@@ -28,7 +28,7 @@ func TestGradingAvailable(t *testing.T) {
 
 func TestStarterGeneratedLangs(t *testing.T) {
 	var shape grader.Shape // zero shape = plain problem
-	for _, lang := range []string{"go", "csharp", "javascript", "typescript", "java", "rust"} {
+	for _, lang := range []string{"go", "csharp", "javascript", "typescript", "java", "rust", "cpp"} {
 		code, ok := Starter(lang, "twoSum", "", nil, shape)
 		if !ok {
 			t.Errorf("Starter(%q) ok = false, want true", lang)
@@ -40,9 +40,10 @@ func TestStarterGeneratedLangs(t *testing.T) {
 }
 
 func TestStarterKeepsAuthoredStarter(t *testing.T) {
-	// python and unknown/reference languages must report ok=false so the caller
-	// leaves the authored starter in place (the bug class this guards).
-	for _, lang := range []string{"python", "cpp", "ruby", ""} {
+	// python and unknown languages must report ok=false so the caller leaves
+	// the authored starter in place. C++ moved OUT of this set 2026-06-12:
+	// reference-only still means the player sees C++ syntax, never Python.
+	for _, lang := range []string{"python", "ruby", ""} {
 		code, ok := Starter(lang, "twoSum", "", nil, grader.Shape{})
 		if ok {
 			t.Errorf("Starter(%q) ok = true, want false (authored starter must be kept)", lang)

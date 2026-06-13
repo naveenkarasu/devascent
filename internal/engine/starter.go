@@ -14,9 +14,10 @@ func GradingAvailable(lang string) bool {
 }
 
 // Starter generates the language-native starter stub for a code task when
-// DevAscent generates one (e.g. Go infers a typed stub). ok is false for
-// languages that keep their AUTHORED starter (python and reference-only langs) —
-// callers must then leave the existing starter untouched rather than blank it.
+// DevAscent generates one (e.g. Go infers a typed stub). ok is false only for
+// python (the AUTHORED starter) — callers must then leave the existing starter
+// untouched rather than blank it. C++ generates a stub too even though it's
+// reference-only: every language a player can SELECT must see its own syntax.
 // pySource (may be "") gives generated stubs nicer parameter names.
 func Starter(lang, funcName, pySource string, tests []grader.TestCase, shape grader.Shape) (code string, ok bool) {
 	switch lang {
@@ -32,6 +33,8 @@ func Starter(lang, funcName, pySource string, tests []grader.TestCase, shape gra
 		return grader.JavaStarter(funcName, pySource, tests, shape), true
 	case "rust":
 		return grader.RustStarter(funcName, pySource, tests, shape), true
+	case "cpp":
+		return grader.CppStarter(funcName, pySource, tests, shape), true
 	}
 	return "", false
 }

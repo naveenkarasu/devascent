@@ -8,6 +8,8 @@ import {
 } from '../wailsjs/go/main/App';
 import { guiapi } from '../wailsjs/go/models';
 import { esc } from './util';
+import { langIcon } from './langicons';
+import appIcon from './assets/appicon.png'; // the APP logo (channel logo is splash-only)
 
 function nav(view: string): void {
   window.dispatchEvent(new CustomEvent('devascent-nav', { detail: view }));
@@ -59,13 +61,13 @@ export function mountHome(root: HTMLElement, lang: string): () => void {
     root.innerHTML = `
       <div class="main startbody">
         <div class="info">
-          <div class="brandrow"><div class="brandmark"></div><div class="appname">DevAscent</div></div>
+          <div class="brandrow"><img class="brandlogo" src="${appIcon}" alt="" draggable="false"><div class="appname">DevAscent</div></div>
           <div class="subtitle">Grow from junior to senior by doing the real work — graded by a real compiler.</div>
           <div class="narrative">A run flows through <b>Orientation</b> (an adaptive entrance test → tutorial or test-out) into <b>The Apprenticeship</b> — a curated DSA bench where you write real functions, graded by real hidden tests in your own language toolchain.</div>
           <div class="savechips">
             ${placeChip}
             <span class="chip" style="color:var(--green)">&#10003; banked ${pr.banked}</span>
-            <span class="chip">&#955; ${esc(lang)}</span>
+            <span class="chip">${langIcon(lang)} ${esc(lang)}</span>
           </div>
           ${profileRow}
           <div class="ver muted mono">graded by your local toolchain</div>

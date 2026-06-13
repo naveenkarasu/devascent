@@ -114,6 +114,42 @@ func GradedLanguages() []string {
 	return []string{"python", "go", "csharp", "javascript", "typescript", "java", "rust"}
 }
 
+// LangInfo is one language-picker row; Graded=false means reference/view-only
+// (browse problems and primers, no Run).
+type LangInfo struct {
+	ID     string `json:"id"`
+	Label  string `json:"label"`
+	Graded bool   `json:"graded"`
+}
+
+// Languages lists every offered language including the reference-only ones.
+func Languages() []LangInfo {
+	out := []LangInfo{}
+	labels := map[string]string{
+		"python": "Python", "go": "Go", "csharp": "C#", "javascript": "JavaScript",
+		"typescript": "TypeScript", "java": "Java", "rust": "Rust",
+	}
+	for _, id := range GradedLanguages() {
+		out = append(out, LangInfo{ID: id, Label: labels[id], Graded: true})
+	}
+	return append(out, LangInfo{ID: "cpp", Label: "C++", Graded: false})
+}
+
+// nativeStarter renders a task's starter in lang: an engine-generated typed
+// stub for non-Python languages, the authored starter otherwise. Every GUI
+// surface that seeds an editor must go through this (the entrance test and
+// tutorial shipping Python templates to all languages was a release-blocking
+// bug; the TUI's applyLangStarter is the same rule).
+func nativeStarter(lang string, t *content.Task) string {
+	if t == nil {
+		return ""
+	}
+	if code, ok := engine.Starter(lang, t.FuncName, t.Solution, t.Tests, grader.Shape{}); ok {
+		return code
+	}
+	return t.Starter
+}
+
 // ProblemSummary is one row in the bench browse list.
 type ProblemSummary struct {
 	ID         string   `json:"id"`

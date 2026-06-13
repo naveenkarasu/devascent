@@ -4,6 +4,7 @@ import {
   SubmitOrientationCode,
   SubmitOrientationChoice,
   SubmitOrientationSpec,
+  AdvanceOrientation,
   CheckLang,
   RecheckLang,
   GetInstallGuide,
@@ -109,8 +110,8 @@ export function mountOrientation(root: HTMLElement, lang: string): () => void {
         <div class="probhead"><span class="ptitle-h">${step.kind === 'code' ? 'Write the function' : 'Question'}</span></div>
         <div class="prompt-text">${esc(step.prompt)}</div>
         ${body}
-        <div class="workbar"><button id="oSubmit" class="btn primary">Submit</button></div>
-        <div id="oOutcome" class="verdict"><div class="vmuted">Answer, then submit.</div></div>
+        <div class="workbar"><button id="oSubmit" class="btn primary">${step.kind === 'code' ? '&#9654; Run' : 'Submit'}</button></div>
+        <div id="oOutcome" class="verdict"><div class="vmuted">${step.kind === 'code' ? 'Write the function, then Run. Fix and re-run as many times as you need.' : 'Answer, then submit.'}</div></div>
       </div>`;
     if (step.kind === 'code') {
       editor = makeEditor(root.querySelector('#oEditor') as HTMLElement, lang, step.starter);
@@ -121,17 +122,26 @@ export function mountOrientation(root: HTMLElement, lang: string): () => void {
   async function submit(step: guiapi.OrientationStep): Promise<void> {
     const out = root.querySelector('#oOutcome') as HTMLElement;
     const btn = root.querySelector('#oSubmit') as HTMLButtonElement;
-    // The backend session advances on every submit, so a second click would be
-    // graded against the NEXT item while the old prompt is on screen. Disable
-    // for the whole grade and only re-enable on a failure to submit.
     btn.disabled = true;
-    let outcome: guiapi.DiagOutcome;
+    // CODE items grade WITHOUT advancing — a fail keeps you on the item to edit
+    // and run again; only Continue (pass) or Skip commits the result.
     if (step.kind === 'code') {
-      if (!editor) return;
+      if (!editor) {
+        btn.disabled = false;
+        return;
+      }
       out.innerHTML = '<div class="vmuted">Grading…</div>';
-      btn.textContent = 'Grading…';
-      outcome = await SubmitOrientationCode(editor.getValue());
-    } else if (step.kind === 'choice') {
+      btn.textContent = 'Running…';
+      const outcome = await SubmitOrientationCode(editor.getValue());
+      if (disposed) return;
+      btn.disabled = false;
+      btn.textContent = '▶ Run again';
+      renderCodeOutcome(outcome, out);
+      return;
+    }
+    // CHOICE / SPEC are one-shot: the backend advances, the player moves on.
+    let outcome: guiapi.DiagOutcome;
+    if (step.kind === 'choice') {
       const sel = root.querySelector('input[name="oc"]:checked') as HTMLInputElement | null;
       if (!sel) {
         out.innerHTML = '<div class="vmuted">Pick an option first.</div>';
@@ -145,6 +155,34 @@ export function mountOrientation(root: HTMLElement, lang: string): () => void {
     if (disposed) return;
     btn.textContent = 'Submitted';
     renderOutcome(outcome, out);
+  }
+
+  // renderCodeOutcome handles the retry-able code path: a pass offers Continue,
+  // a fail keeps the editor live (Run again) and offers Skip to give up.
+  function renderCodeOutcome(outcome: guiapi.DiagOutcome, out: HTMLElement): void {
+    const detail =
+      outcome.verdict && outcome.verdict.results && outcome.verdict.results.length
+        ? renderVerdict(outcome.verdict)
+        : '';
+    if (outcome.passed) {
+      out.innerHTML =
+        '<div class="vhead vok">✓ Passed</div>' +
+        detail +
+        `<div class="workbar"><button id="oContinue" class="btn primary">Continue →</button></div>`;
+      (root.querySelector('#oContinue') as HTMLButtonElement).addEventListener('click', () => void advance());
+    } else {
+      out.innerHTML =
+        '<div class="vhead vfail">✖ Tests failed — edit your code and Run again</div>' +
+        detail +
+        `<div class="workbar"><button id="oSkip" class="btn">Skip this one →</button></div>`;
+      (root.querySelector('#oSkip') as HTMLButtonElement).addEventListener('click', () => void advance());
+    }
+  }
+
+  async function advance(): Promise<void> {
+    const outcome = await AdvanceOrientation();
+    if (disposed) return;
+    renderStep(outcome.next);
   }
 
   function renderOutcome(outcome: guiapi.DiagOutcome, out: HTMLElement): void {

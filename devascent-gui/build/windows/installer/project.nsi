@@ -56,6 +56,13 @@ ManifestDPIAware true
 !define MUI_FINISHPAGE_NOAUTOCLOSE # Wait on the INSTFILES page so the user can take a look into the details of the installation steps
 !define MUI_ABORTWARNING # This will warn the user if they exit from the installer.
 
+# Offer to launch the game on finish (checked by default). Launched via
+# ShellExecAsUser so the app runs DE-ELEVATED as the logged-in user, even
+# though the installer itself runs elevated to write Program Files.
+!define MUI_FINISHPAGE_RUN
+!define MUI_FINISHPAGE_RUN_TEXT "Launch ${INFO_PRODUCTNAME} now"
+!define MUI_FINISHPAGE_RUN_FUNCTION "LaunchApp"
+
 !insertmacro MUI_PAGE_WELCOME # Welcome to the installer page.
 # !insertmacro MUI_PAGE_LICENSE "resources\eula.txt" # Adds a EULA page to the installer
 !insertmacro MUI_PAGE_DIRECTORY # In which folder install page.
@@ -77,6 +84,14 @@ ShowInstDetails show # This will always show the installation details.
 
 Function .onInit
    !insertmacro wails.checkArchitecture
+FunctionEnd
+
+# Launch the installed app from the finish page's "Launch now" checkbox.
+# Going through explorer.exe makes the game inherit the shell's NON-elevated
+# token (the installer itself runs elevated to write Program Files), without
+# needing a third-party plugin like ShellExecAsUser.
+Function LaunchApp
+    Exec '"$WINDIR\explorer.exe" "$INSTDIR\${PRODUCT_EXECUTABLE}"'
 FunctionEnd
 
 Section

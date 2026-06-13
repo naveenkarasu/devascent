@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"devascent/internal/spawn"
 	"devascent/internal/toolchain"
 )
 
@@ -125,6 +126,7 @@ func (r runner) run(name string, args ...string) execOut {
 	ctx, cancel := context.WithTimeout(context.Background(), r.timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...)
+	spawn.Hide(cmd) // graders run from the GUI; no console flashes
 	cmd.Dir = r.dir
 	cmd.Env = r.env()
 	var so, se bytes.Buffer

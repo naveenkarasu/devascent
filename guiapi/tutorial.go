@@ -72,7 +72,7 @@ func (t *Tutorial) Lesson(i int) LessonView {
 			sv.HasTask = true
 			sv.Prompt = st.Task.Prompt
 			sv.FuncName = st.Task.FuncName
-			sv.Starter = st.Task.Starter
+			sv.Starter = nativeStarter(t.lang, st.Task)
 		}
 		v.Stages = append(v.Stages, sv)
 	}
