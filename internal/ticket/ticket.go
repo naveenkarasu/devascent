@@ -293,10 +293,14 @@ func (s *Sprint) Find(key string) *Ticket {
 	return nil
 }
 
-// Committed is the total story points pulled into the sprint.
+// Committed is the total story points pulled into the sprint (excludes the
+// backlog, which isn't committed work).
 func (s *Sprint) Committed() int {
 	n := 0
 	for _, t := range s.Tickets {
+		if t.Status == Backlog {
+			continue
+		}
 		n += t.Points
 	}
 	return n

@@ -32,8 +32,14 @@ func TestSeedSprint1_ScheduledReveal(t *testing.T) {
 	if got := len(sp.Incoming(0)); got == 0 { // later tickets are scheduled ahead
 		t.Fatal("day 0 should have incoming (scheduled) tickets")
 	}
-	if got := len(sp.Incoming(6)); got != 0 { // everything is assigned by the last scheduled day
-		t.Errorf("by day 6 nothing should be incoming, got %d", got)
+	maxDay := 0
+	for _, tk := range sp.Tickets {
+		if tk.Status != ticket.Backlog && tk.AssignedDay > maxDay {
+			maxDay = tk.AssignedDay
+		}
+	}
+	if got := len(sp.Incoming(maxDay)); got != 0 { // everything is assigned by the last scheduled day
+		t.Errorf("by the last scheduled day (%d) nothing should be incoming, got %d", maxDay, got)
 	}
 }
 
@@ -123,6 +129,13 @@ func TestSeedSprint1_AllTicketsGrade(t *testing.T) {
 		"PXF-213": "def humansize(n):\n    if n < 1024:\n        return f'{n} B'\n    if n < 1024 ** 2:\n        return f'{n / 1024:.1f} KB'\n    if n < 1024 ** 3:\n        return f'{n / 1024 ** 2:.1f} MB'\n    return f'{n / 1024 ** 3:.1f} GB'\n",
 		"PXF-214": "def asset_key(project, filename):\n    return f'{project}/{filename}'\n",
 		"PXF-215": "def normalize(tags):\n    seen = set()\n    out = []\n    for t in tags:\n        t = t.strip().lower()\n        if t and t not in seen:\n            seen.add(t)\n            out.append(t)\n    return out\n",
+		// Auth & Accounts epic
+		"PXF-220": "def normalize_email(e):\n    return e.strip().lower()\n",
+		"PXF-221": "def is_strong(pw):\n    return len(pw) >= 8 and any(c.isalpha() for c in pw) and any(c.isdigit() for c in pw)\n",
+		"PXF-222": "def is_valid(exp, now):\n    return now < exp\n",
+		"PXF-223": "def locked(failed, limit):\n    return failed >= limit\n",
+		"PXF-224": "def can(role, action):\n    perms = {'owner': {'read', 'write', 'delete'}, 'editor': {'read', 'write'}, 'viewer': {'read'}}\n    return action in perms.get(role, set())\n",
+		"PXF-225": "def mask(email):\n    local, _, domain = email.partition('@')\n    return f'{local[0]}***@{domain}'\n",
 	}
 
 	_, sp := seedSprint1()

@@ -112,6 +112,7 @@ func seedSprint1() (*ticket.Project, *ticket.Sprint) {
 	// Derive each ticket's SLA due day from its priority + assigned day (real-world
 	// SLA mapping; see the Company Sim design doc).
 	sp.Tickets = append(sp.Tickets, assetPipelineTickets()...) // the Asset Pipeline epic content
+	sp.Tickets = append(sp.Tickets, authAccountsTickets()...)  // the Auth & Accounts epic content
 
 	// Map each sprint ticket to its product epic (backlog items carry their own).
 	epics := map[string]string{
@@ -131,6 +132,7 @@ func seedSprint1() (*ticket.Project, *ticket.Sprint) {
 		}
 		t.CreatedDay = t.AssignedDay
 	}
+	sp.Capacity = sp.Committed() // size the sprint to its planned work
 	return proj, sp
 }
 
