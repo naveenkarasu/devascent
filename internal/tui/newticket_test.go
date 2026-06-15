@@ -111,8 +111,9 @@ func TestForm_EditReassignsAndReprioritizes(t *testing.T) {
 
 	out, _ := m.submitForm()
 	got := out.(Model)
-	if got.screen != screenTicket {
-		t.Fatalf("edit submit should return to the detail, got screen %d", got.screen)
+	// Reassigning to a teammate (delegation) opens discuss-&-agree before they start.
+	if got.screen != screenDiscuss {
+		t.Fatalf("reassigning to a teammate should open discuss-&-agree, got screen %d", got.screen)
 	}
 	e := got.boardSprint.Find("PXF-201")
 	if e.Assignee != "Priya" || e.Priority != ticket.PCritical {
@@ -120,5 +121,14 @@ func TestForm_EditReassignsAndReprioritizes(t *testing.T) {
 	}
 	if e.DueDay != ticket.DueDayFor(ticket.PCritical, e.AssignedDay) {
 		t.Errorf("SLA should be recomputed on priority change, got DueDay %d", e.DueDay)
+	}
+	// Agreeing starts the teammate on it and returns to the board.
+	agreed, _ := got.handleDiscussKey(mkKey("enter"))
+	g2 := agreed.(Model)
+	if e.Status != ticket.InProgress {
+		t.Errorf("after agreeing, %s should be In Progress, got %s", e.Key, e.Status)
+	}
+	if g2.screen != screenBoard {
+		t.Errorf("agree should return to the board, got screen %d", g2.screen)
 	}
 }

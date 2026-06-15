@@ -1,12 +1,14 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"devascent/internal/mentor"
 	"devascent/internal/ticket"
 )
 
@@ -149,6 +151,7 @@ func (m Model) submitForm() (tea.Model, tea.Cmd) {
 			m.screen = screenBoard
 			return m, nil
 		}
+		prevAss := t.Assignee
 		t.Title = strings.TrimSpace(m.ntTitle)
 		t.Desc = strings.TrimSpace(m.ntDesc)
 		t.Type = formTypes[m.ntType]
@@ -156,6 +159,11 @@ func (m Model) submitForm() (tea.Model, tea.Cmd) {
 		t.Assignee = assignee
 		t.Points = formPoints[m.ntPoints]
 		t.DueDay = ticket.DueDayFor(t.Priority, t.AssignedDay)
+		// Delegating (assigning down/peer to an unstarted ticket) → discuss & agree
+		// before they commit. Escalate / self apply immediately.
+		if assignKind(assignee, m.playerLvl) == "delegate" && t.NotStarted() {
+			return m.enterDiscuss(t, prevAss)
+		}
 		applyAssignment(t, m.playerLvl, m.boardSprint.Day)
 		m.detailTicket = t
 		m.persist()
@@ -178,8 +186,11 @@ func (m Model) submitForm() (tea.Model, tea.Cmd) {
 		CreatedDay:  day,
 	}
 	tk.DueDay = ticket.DueDayFor(tk.Priority, day)
-	applyAssignment(tk, m.playerLvl, day) // delegate → teammate starts; escalate → guidance
 	m.boardSprint.Tickets = append(m.boardSprint.Tickets, tk)
+	if assignKind(assignee, m.playerLvl) == "delegate" { // discuss & agree before they start
+		return m.enterDiscuss(tk, "you")
+	}
+	applyAssignment(tk, m.playerLvl, day) // escalate → guidance; self → no-op
 	m.screen = screenBoard
 	m.focusTicket(tk)
 	m.persist()
@@ -231,6 +242,130 @@ func (m Model) formView() string {
 	}
 	b.WriteString("\n" + dimStyle.Render("[↑/↓] field · [←/→] change · type to edit · [enter] save · [esc] cancel"))
 	return b.String()
+}
+
+// ── delegate discuss & agree (S10) ────────────────────────────────────────────
+
+// discussMsg carries the async AI-written plan (empty Text → keep the template).
+type discussMsg struct{ resp mentor.Response }
+
+// enterDiscuss opens the discuss-&-agree step: the teammate proposes a plan +
+// estimate and the player agrees before they start. revertTo is the assignee to
+// restore if the player cancels.
+func (m Model) enterDiscuss(t *ticket.Ticket, revertTo string) (tea.Model, tea.Cmd) {
+	m.discussTk = t
+	m.discussAss0 = revertTo
+	m.discussPlan = templateDiscussPlan(t) // instant; AI refines it when connected
+	m.discussBusy = false
+	m.screen = screenDiscuss
+	if tuiMentor().AIEnabled() {
+		m.discussBusy = true
+		return m, discussCmd(t)
+	}
+	return m, nil
+}
+
+// discussCmd asks the teammate for a plan off the UI loop. They see only the
+// ticket's public Definition-of-Ready — never the hidden grading tests.
+func discussCmd(t *ticket.Ticket) tea.Cmd {
+	req := mentor.Request{
+		Kind:       mentor.KindDiscuss,
+		Persona:    discussPersona(t.Assignee),
+		Title:      t.Title,
+		Prompt:     t.Desc,
+		Priority:   t.Priority.Label(),
+		Acceptance: criteriaText(t.Acceptance),
+	}
+	return func() tea.Msg {
+		return discussMsg{resp: tuiMentor().Hint(context.Background(), req)}
+	}
+}
+
+func (m Model) handleDiscussKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.discussBusy {
+		return m, nil // wait for the plan
+	}
+	t := m.discussTk
+	switch msg.String() {
+	case "enter": // agree → they start, with the plan as their first comment
+		if t != nil {
+			if t.NotStarted() {
+				t.Status = ticket.InProgress
+			}
+			t.Comments = append(t.Comments, ticket.Comment{Author: t.Assignee, Body: m.discussPlan})
+			m.focusTicket(t)
+		}
+		m.discussTk = nil
+		m.screen = screenBoard
+		m.persist()
+		return m, nil
+	case "esc": // cancel → you keep the ticket
+		if t != nil {
+			t.Assignee = m.discussAss0
+			m.focusTicket(t)
+		}
+		m.discussTk = nil
+		m.screen = screenBoard
+		m.persist()
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m Model) discussView() string {
+	t := m.discussTk
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("Delegate — discuss & agree") + "\n\n")
+	if t == nil {
+		b.WriteString(dimStyle.Render("[esc] back"))
+		return b.String()
+	}
+	b.WriteString(dimStyle.Render(t.Key+" · "+t.Title) + "\n\n")
+	b.WriteString(okStyle.Render(roleOf(t.Assignee)) + "\n")
+	if m.discussBusy {
+		b.WriteString(dimStyle.Render("…thinking it over") + "\n")
+	} else {
+		b.WriteString(wrap(m.discussPlan, 64) + "\n")
+	}
+	b.WriteString("\n" + dimStyle.Render(fmt.Sprintf("Target delivery: D%d", t.DueDay)) + "\n")
+	b.WriteString("\n" + dimStyle.Render("[enter] agree — they'll start   ·   [esc] cancel (you keep it)"))
+	return b.String()
+}
+
+// templateDiscussPlan is the teammate's offline plan + estimate, by ticket type.
+func templateDiscussPlan(t *ticket.Ticket) string {
+	est := estimateDays(t)
+	switch t.Type {
+	case ticket.Bug, ticket.Incident:
+		return "I'll reproduce it with a failing test, make the smallest fix that turns it green, and watch the edge cases in the acceptance criteria. Roughly " + est + "."
+	case ticket.Story, ticket.Feature:
+		return "I'll build to the acceptance criteria, slice it thin, and add tests as I go. Roughly " + est + "."
+	default:
+		return "I'll keep it small and well-tested and mirror the patterns already in that module. Roughly " + est + "."
+	}
+}
+
+func estimateDays(t *ticket.Ticket) string {
+	if d := t.DueDay - t.AssignedDay; d > 1 {
+		return fmt.Sprintf("%d days", d)
+	}
+	return "a day"
+}
+
+// discussPersona renders the teammate's identity for the AI ("Maya, a Junior Engineer").
+func discussPersona(name string) string {
+	if tm, ok := teammateByName(name); ok {
+		return tm.name + ", a " + tm.role
+	}
+	return name
+}
+
+func criteriaText(cs []ticket.Criterion) []string {
+	out := make([]string, 0, len(cs))
+	for _, c := range cs {
+		out = append(out, c.Text)
+	}
+	return out
 }
 
 func assignTag(kind string) string {

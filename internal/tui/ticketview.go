@@ -43,6 +43,11 @@ func (m Model) handleTicketKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.screen = m.detailReturn
 		return m, nil
 	}
+	// Between days (cooldown / standup-pending) the ticket is read-only.
+	if m.boardSprint != nil && m.boardSprint.Phase != ticket.PhaseWorking {
+		m.workStatus = dimStyle.Render("Read-only until you start the day — [esc] back.")
+		return m, nil
+	}
 	if msg.String() == "E" { // edit this ticket's fields (assignee, priority, …)
 		return m.openEditTicket(t)
 	}

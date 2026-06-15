@@ -264,12 +264,54 @@ type Project struct {
 }
 
 // Sprint is the active set of tickets the board shows.
+// DayPhase is where the board sits in the day cycle. The zero value (working)
+// is normal play; ending a day enters cooldown (the team works, the board is
+// read-only), which gives way to the morning standup at the start of the next day.
+type DayPhase string
+
+const (
+	PhaseWorking  DayPhase = ""         // normal board work (zero value)
+	PhaseCooldown DayPhase = "cooldown" // between days; team works; board read-only
+	PhaseStandup  DayPhase = "standup"  // new day arrived; "join standup" pending
+)
+
+// Cooldown duration bounds (seconds). A stored 0 means "unset" → the default;
+// the configurable value is clamped into [min,max], and skipping the wait is a
+// separate action (so 0 is never a meaningful setting).
+const (
+	CooldownDefaultSecs = 60
+	CooldownMinSecs     = 5
+	CooldownMaxSecs     = 300
+)
+
 type Sprint struct {
 	Number   int       `json:"number"`
 	Goal     string    `json:"goal,omitempty"`
 	Day      int       `json:"day,omitempty"`
 	Capacity int       `json:"capacity,omitempty"`
 	Tickets  []*Ticket `json:"tickets"`
+
+	// Day-cycle state (additive). Ending a day enters cooldown; CooldownEndsAt
+	// is wall-clock (RFC3339) so the beat survives quitting mid-cooldown, the
+	// same discipline as the economy nudge recharge.
+	Phase          DayPhase `json:"phase,omitempty"`
+	CooldownEndsAt string   `json:"cooldown_ends_at,omitempty"`
+	CooldownSecs   int      `json:"cooldown_secs,omitempty"` // player-set; 0 = unset → default
+}
+
+// CooldownDuration returns the configured cooldown length in seconds, clamped
+// to [CooldownMinSecs, CooldownMaxSecs]; an unset (0) value yields the default.
+func (s *Sprint) CooldownDuration() int {
+	switch {
+	case s.CooldownSecs <= 0:
+		return CooldownDefaultSecs
+	case s.CooldownSecs < CooldownMinSecs:
+		return CooldownMinSecs
+	case s.CooldownSecs > CooldownMaxSecs:
+		return CooldownMaxSecs
+	default:
+		return s.CooldownSecs
+	}
 }
 
 // Column returns the sprint's tickets in a given status, in slice order.

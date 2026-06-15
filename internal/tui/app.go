@@ -49,7 +49,9 @@ const (
 	screenBoard     // Step-1 apprenticeship board
 	screenTicket    // Step-1 ticket detail
 	screenNewTicket // Step-1 file-a-ticket form
-	screenStandup   // Step-1 end-of-day standup
+	screenStandup   // Step-1 morning standup
+	screenCooldown  // Step-1 between-days cooldown (evening recap + countdown)
+	screenDiscuss   // Step-1 delegate discuss-&-agree
 )
 
 // Step 0 completion milestone targets — aliased from internal/engine (the
@@ -283,6 +285,14 @@ type Model struct {
 	boardGroup    int  // active swimlane grouping index (boardGroupings)
 	boardBacklog  bool // viewing the backlog instead of the active sprint board
 	boardAnalytic bool // viewing the sprint analytics overlay
+
+	// morning standup + delegate-discuss AI (S9/S10)
+	standupBusy bool
+	standupText string         // AI-rendered standup (empty → templated)
+	discussTk   *ticket.Ticket // ticket pending discuss-&-agree
+	discussPlan string         // the teammate's proposed plan + estimate
+	discussBusy bool
+	discussAss0 string // assignee to revert to on cancel
 }
 
 func New() Model {
@@ -434,6 +444,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.applyTicketGrade(msg.v)
 	case langProbesMsg:
 		return m, nil // detector cache now populated; re-render the picker
+	case cooldownTickMsg:
+		return m.onCooldownTick()
+	case standupMsg:
+		m.standupBusy = false
+		if msg.resp.Text != "" {
+			m.standupText = msg.resp.Text
+		}
+		return m, nil
+	case discussMsg:
+		m.discussBusy = false
+		if msg.resp.Text != "" {
+			m.discussPlan = msg.resp.Text
+		}
+		return m, nil
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	}
@@ -466,6 +490,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	if m.screen == screenStandup {
 		return m.handleStandupKey(msg)
+	}
+	if m.screen == screenCooldown {
+		return m.handleCooldownKey(msg)
+	}
+	if m.screen == screenDiscuss {
+		return m.handleDiscussKey(msg)
 	}
 	switch m.screen {
 	case screenHook:
@@ -1829,7 +1859,7 @@ func (m Model) currentState() save.State {
 		s.DevIdx = m.devIdx
 	case screenStep0Complete:
 		s.Stage = "step0done"
-	case screenBoard, screenTicket:
+	case screenBoard, screenTicket, screenCooldown, screenStandup:
 		s.Stage = "step1"
 	case screenBench, screenWriteup, screenGate, screenMentor:
 		s.Stage = "bench"
@@ -1856,7 +1886,7 @@ func (m Model) persist() {
 	case screenDiagnostic, screenTestOut, screenResults, screenDevLiteracy, screenLesson, screenHandoff,
 		screenBench, screenStep0Complete, screenWriteup, screenGate, screenMentor:
 		_ = save.SaveLang(m.lang, m.currentState())
-	case screenBoard, screenTicket:
+	case screenBoard, screenTicket, screenCooldown, screenStandup:
 		if m.step1Home { // only the real career home persists; the cheat preview never touches the save
 			_ = save.SaveLang(m.lang, m.currentState())
 		}
@@ -1925,7 +1955,20 @@ func (m Model) applyResume() (tea.Model, tea.Cmd) {
 		m.step1Home = true
 		m.boardReturn = screenStep0Complete
 		m.boardCol = defaultFocusCol(m.boardSprint, m.boardSprint.Day)
-		m.screen = screenBoard
+		m.boardRow = 0
+		// Resume the day boundary if we quit mid-cooldown or before the standup.
+		switch m.boardSprint.Phase {
+		case ticket.PhaseCooldown:
+			m.screen = screenCooldown
+			if cooldownRemaining(m.boardSprint, time.Now()) <= 0 {
+				return m.finishCooldown() // the beat elapsed while away → day's ready
+			}
+			return m, cooldownTick()
+		case ticket.PhaseStandup:
+			m.screen = screenCooldown // shows the "join standup" prompt
+		default:
+			m.screen = screenBoard
+		}
 	case "results", "aced":
 		// rebuild the intake (for the score total); fall back to a fresh select
 		if lad, ok := diagsByIDs(m.cat.Diagnostics, s.DiagIDs); ok {
@@ -2057,6 +2100,10 @@ func (m Model) View() string {
 		return m.formView()
 	case screenStandup:
 		return m.standupView()
+	case screenCooldown:
+		return m.cooldownView()
+	case screenDiscuss:
+		return m.discussView()
 	case screenHook:
 		b.WriteString(titleStyle.Render("DevAscent — Day One") + "\n\n")
 		b.WriteString("You step into the Studio: a small dev shop that's agreed to take\n")

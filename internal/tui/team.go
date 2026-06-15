@@ -95,6 +95,52 @@ func applyAssignment(t *ticket.Ticket, playerLvl, day int) {
 	}
 }
 
+// advanceTeamWork progresses delegated tickets for the given day: not-yet-started
+// ones begin, in-progress ones post a daily standup-style progress comment, and
+// any that reach their due day are delivered (never before). Your own tickets —
+// the real graded work — are left untouched.
+func advanceTeamWork(sp *ticket.Sprint, playerLvl, day int) {
+	for _, t := range sp.Tickets {
+		if t.Assignee == "" || t.Assignee == "you" || assignKind(t.Assignee, playerLvl) != "delegate" {
+			continue
+		}
+		if t.Status == ticket.ToDo && day >= t.AssignedDay {
+			t.Status = ticket.InProgress
+		}
+		if t.Status != ticket.InProgress || t.DueDay <= 0 {
+			continue
+		}
+		if day >= t.DueDay {
+			t.Status = ticket.Done
+			t.ResolvedDay = day
+			t.Comments = append(t.Comments, ticket.Comment{Author: t.Assignee, Body: "Delivered " + t.Key + "."})
+		} else {
+			t.Comments = append(t.Comments, ticket.Comment{Author: t.Assignee, Body: teammateProgressNote(t, day)})
+		}
+	}
+}
+
+// teammateProgressNote is the templated end-of-day update a teammate posts on a
+// ticket they're still working (day k of n, on track). An AI-written update
+// replaces this when a mentor backend is wired (S9).
+func teammateProgressNote(t *ticket.Ticket, day int) string {
+	total := t.DueDay - t.AssignedDay
+	if total < 1 {
+		total = 1
+	}
+	dayOf := day - t.AssignedDay
+	if dayOf < 1 {
+		dayOf = 1
+	}
+	if dayOf > total {
+		dayOf = total
+	}
+	if t.DueDay-day <= 1 {
+		return fmt.Sprintf("Day %d of %d on %s — almost there, delivering by D%d.", dayOf, total, t.Key, t.DueDay)
+	}
+	return fmt.Sprintf("Day %d of %d on %s — on track for D%d.", dayOf, total, t.Key, t.DueDay)
+}
+
 // escalationGuidance is the senior's templated advice when you escalate (an AI
 // reply replaces this once a mentor backend is wired — T3).
 func escalationGuidance(t *ticket.Ticket) string {

@@ -79,6 +79,20 @@ func Validate(kind Kind, lang, text string) error {
 		if wordCount(t) > 150 {
 			return fmt.Errorf("review too long (%d words)", wordCount(t))
 		}
+	case KindStandup:
+		if fenceRe.MatchString(t) || codeBlockiness(t) >= 3 {
+			return fmt.Errorf("standup contains code")
+		}
+		if wordCount(t) > 250 {
+			return fmt.Errorf("standup too long (%d words)", wordCount(t))
+		}
+	case KindDiscuss:
+		if fenceRe.MatchString(t) {
+			return fmt.Errorf("plan contains a code block")
+		}
+		if wordCount(t) > 120 {
+			return fmt.Errorf("plan too long (%d words)", wordCount(t))
+		}
 	}
 	return nil
 }

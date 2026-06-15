@@ -70,6 +70,10 @@ func (m Model) handleBoardKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+	// Between days (cooldown / standup-pending) the board is read-only.
+	if m.boardSprint != nil && m.boardSprint.Phase != ticket.PhaseWorking {
+		return m.handleBoardKeyReadOnly(msg)
+	}
 	cols := ticket.BoardColumns
 	switch msg.String() {
 	case "esc": // layered: close an overlay first, else leave the board
@@ -113,13 +117,65 @@ func (m Model) handleBoardKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.boardRow++
 		}
 	case "e":
-		return m.enterStandup()
+		return m.enterCooldown()
 	case "n":
 		return m.openNewTicket()
 	case "enter":
 		if t := m.selectedTicket(); t != nil {
 			return m.openTicket(t)
 		}
+	}
+	return m, nil
+}
+
+// handleBoardKeyReadOnly is board input during the day boundary (cooldown /
+// standup-pending): navigation and read-only ticket viewing only. The day's
+// actions — file, end-day, start/grade — are locked until you start the next day.
+func (m Model) handleBoardKeyReadOnly(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	cols := ticket.BoardColumns
+	switch msg.String() {
+	case "esc": // back to the cooldown / join-standup screen
+		m.screen = screenCooldown
+	case "j": // join the morning standup once the day is ready
+		if m.boardSprint.Phase == ticket.PhaseStandup {
+			return m.enterStandup()
+		}
+	case "enter":
+		if m.boardSprint.Phase == ticket.PhaseStandup {
+			return m.enterStandup()
+		}
+		if t := m.selectedTicket(); t != nil {
+			return m.openTicket(t) // ticket detail is read-only during the boundary
+		}
+	case "left", "a":
+		if m.boardCol > 0 {
+			m.boardCol--
+			m.boardRow = 0
+		}
+	case "right", "d":
+		if m.boardCol < len(cols)-1 {
+			m.boardCol++
+			m.boardRow = 0
+		}
+	case "up", "w":
+		if m.boardRow > 0 {
+			m.boardRow--
+		}
+	case "down", "s":
+		if n := len(m.columnCards(cols[m.boardCol])); m.boardRow < n-1 {
+			m.boardRow++
+		}
+	case "f":
+		m.boardFilter = (m.boardFilter + 1) % len(boardFilters)
+		m.boardRow = 0
+	case "g":
+		m.boardGroup = (m.boardGroup + 1) % len(boardGroupings)
+	case "b":
+		m.boardBacklog = !m.boardBacklog
+	case "v":
+		m.boardAnalytic = !m.boardAnalytic
+	case "?":
+		m.boardHelp = true
 	}
 	return m, nil
 }
@@ -165,8 +221,7 @@ func (m Model) boardWideView() string {
 		cols = append(cols, m.boardColumn(i))
 	}
 	board := lipgloss.JoinHorizontal(lipgloss.Top, cols...)
-	foot := dimStyle.Render("wasd move · enter open · n new · e end-day · f/g/b/v views · ? help · esc back")
-	return m.boardHeader() + "\n\n" + board + "\n\n" + foot
+	return m.boardHeader() + "\n\n" + board + "\n\n" + m.boardFooter()
 }
 
 // boardNarrowView: one focused column + a tab strip (the gh-dash degrade).
@@ -182,8 +237,7 @@ func (m Model) boardNarrowView() string {
 		}
 	}
 	strip := strings.Join(tabs, dimStyle.Render(" · "))
-	foot := dimStyle.Render("[a/d][w/s] move · enter open · n new · e end-day · ? help · esc back")
-	return m.boardHeader() + "\n\n" + strip + "\n\n" + m.boardColumn(m.boardCol) + "\n\n" + foot
+	return m.boardHeader() + "\n\n" + strip + "\n\n" + m.boardColumn(m.boardCol) + "\n\n" + m.boardFooter()
 }
 
 func (m Model) boardHeader() string {
@@ -201,10 +255,28 @@ func (m Model) boardHeader() string {
 	if inc := len(sp.Incoming(sp.Day)); inc > 0 {
 		h += "\n" + dimStyle.Render(fmt.Sprintf("%d more ticket(s) arrive on later days — end the day to pull them in", inc))
 	}
+	switch sp.Phase {
+	case ticket.PhaseCooldown:
+		h += "\n" + okStyle.Render("⏸ cooldown — the day is playing out (read-only)") + dimStyle.Render("   [esc] back to the recap")
+	case ticket.PhaseStandup:
+		h += "\n" + okStyle.Render("☀ a new day") + dimStyle.Render("   press [j] to join the standup")
+	}
 	if m.boardFilter != 0 {
 		h += "\n" + okStyle.Render("filter: "+boardFilters[m.boardFilter].name) + dimStyle.Render("  ([f] cycle)")
 	}
 	return h
+}
+
+// boardFooter is the key hint line; it switches to a read-only hint during the
+// day boundary so the locked actions don't look broken.
+func (m Model) boardFooter() string {
+	if m.boardSprint != nil && m.boardSprint.Phase == ticket.PhaseStandup {
+		return dimStyle.Render("read-only · wasd move · enter view · [j] join standup · f/g/b/v views")
+	}
+	if m.boardSprint != nil && m.boardSprint.Phase == ticket.PhaseCooldown {
+		return dimStyle.Render("read-only · wasd move · enter view · f/g/b/v views · [esc] back to recap")
+	}
+	return dimStyle.Render("wasd move · enter open · n new · e end-day · f/g/b/v views · ? help · esc back")
 }
 
 func (m Model) boardHelpView() string {

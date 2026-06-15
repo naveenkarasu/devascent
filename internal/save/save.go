@@ -16,7 +16,7 @@ import (
 	"devascent/internal/ticket"
 )
 
-const SchemaVersion = 6 // 3 = per-lang slots; 4 = +wallet/solve; 5 = +Step-1 board; 6 = +ticket day/SLA fields (all additive)
+const SchemaVersion = 7 // 3 = per-lang slots; 4 = +wallet/solve; 5 = +Step-1 board; 6 = +ticket day/SLA fields; 7 = +sprint day-cycle (phase/cooldown) (all additive)
 
 type State struct {
 	SchemaVersion int    `json:"schema_version"`

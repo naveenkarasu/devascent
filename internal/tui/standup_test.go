@@ -13,24 +13,39 @@ func step1Model() Model {
 		boardProject: proj, boardSprint: sp, boardCol: defaultFocusCol(sp, sp.Day)}
 }
 
-// [e] → standup → [enter] advances the day and reveals the next day's tickets.
+// [e] → cooldown → [s] skip flips the day (revealing tickets) → [enter] joins the
+// morning standup → [enter] starts the working day.
 func TestStandup_AdvancesDayAndReveals(t *testing.T) {
 	m := step1Model()
 	if got := len(m.boardSprint.ColumnVisible(ticket.ToDo, m.boardSprint.Day)); got != 3 {
 		t.Fatalf("day 0: 3 To Do visible, got %d", got)
 	}
+	// [e] ends the working day → the cooldown beat (not the standup yet)
 	opened, _ := m.handleBoardKey(mkKey("e"))
 	m = opened.(Model)
-	if m.screen != screenStandup {
-		t.Fatalf("e should open the standup, got screen %d", m.screen)
+	if m.screen != screenCooldown || m.boardSprint.Phase != ticket.PhaseCooldown {
+		t.Fatalf("e should open the cooldown, got screen %d phase %q", m.screen, m.boardSprint.Phase)
 	}
-	adv, _ := m.handleStandupKey(mkKey("enter"))
-	m = adv.(Model)
-	if m.boardSprint.Day != 1 || m.screen != screenBoard {
-		t.Fatalf("enter should advance to Day 1 on the board, got day %d screen %d", m.boardSprint.Day, m.screen)
+	// [s] skips the wait → the day flips and the standup is pending
+	skipped, _ := m.handleCooldownKey(mkKey("s"))
+	m = skipped.(Model)
+	if m.boardSprint.Day != 1 || m.boardSprint.Phase != ticket.PhaseStandup {
+		t.Fatalf("skip should flip to Day 1 standup-pending, got day %d phase %q", m.boardSprint.Day, m.boardSprint.Phase)
 	}
 	if got := len(m.boardSprint.ColumnVisible(ticket.ToDo, m.boardSprint.Day)); got != 5 {
 		t.Fatalf("day 1 should reveal 2 more (5 total) To Do, got %d", got)
+	}
+	// [enter] joins the morning standup
+	joined, _ := m.handleCooldownKey(mkKey("enter"))
+	m = joined.(Model)
+	if m.screen != screenStandup {
+		t.Fatalf("enter should join the standup, got screen %d", m.screen)
+	}
+	// [enter] starts the working day
+	started, _ := m.handleStandupKey(mkKey("enter"))
+	m = started.(Model)
+	if m.boardSprint.Day != 1 || m.screen != screenBoard || m.boardSprint.Phase != ticket.PhaseWorking {
+		t.Fatalf("enter should start Day 1 on the board, got day %d screen %d phase %q", m.boardSprint.Day, m.screen, m.boardSprint.Phase)
 	}
 }
 
