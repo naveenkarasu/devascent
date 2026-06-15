@@ -262,12 +262,23 @@ type Model struct {
 	detailReturn screen         // screen to return to from the detail
 
 	// Step-1 ticket work flow (#61)
-	workCode      string
-	workVerdict   *grader.Verdict
-	workStatus    string
-	reviewQ       string
-	step1Home     bool // the board is the real save-backed career home (not a cheat preview)
-	ntType        int  // selected type index in the file-a-ticket form
+	workCode    string
+	workVerdict *grader.Verdict
+	workStatus  string
+	reviewQ     string
+	step1Home   bool // the board is the real save-backed career home (not a cheat preview)
+
+	// create/edit form (T1)
+	ntType     int    // type index
+	ntPri      int    // priority index
+	ntAssignee int    // assignee index
+	ntPoints   int    // points index
+	ntFocus    int    // focused field
+	ntTitle    string // title text
+	ntDesc     string // description text
+	ntEditKey  string // key being edited ("" = create)
+	playerLvl  int    // player level, for delegation gating
+
 	boardFilter   int  // active quick-filter index (boardFilters)
 	boardGroup    int  // active swimlane grouping index (boardGroupings)
 	boardBacklog  bool // viewing the backlog instead of the active sprint board
@@ -277,7 +288,7 @@ type Model struct {
 func New() Model {
 	det := toolchain.New()
 	m := Model{screen: screenHook, det: det, g: grader.New(det), lang: "python",
-		rng: rand.New(rand.NewSource(time.Now().UnixNano()))}
+		rng: rand.New(rand.NewSource(time.Now().UnixNano())), playerLvl: 1}
 	cat, err := content.Load()
 	if err != nil {
 		m.loadErr = err
@@ -435,6 +446,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// trigger them. Esc is the explicit exit hatch.
 	if m.inputActive {
 		return m.handleInputKey(msg)
+	}
+	if m.screen == screenNewTicket { // the create/edit form owns all keys (type freely)
+		return m.handleFormKey(msg)
 	}
 	if msg.String() == "ctrl+c" || msg.String() == "q" {
 		m.persist()
@@ -1039,13 +1053,6 @@ func (m Model) handleInputKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.input = ""
 			return m, nil
 		}
-		// File-a-ticket form: [esc] cancels and returns to the board.
-		if m.screen == screenNewTicket && msg.Type == tea.KeyEsc {
-			m.inputActive = false
-			m.input = ""
-			m.screen = screenBoard
-			return m, nil
-		}
 		m.persist()
 		m.quitting = true
 		return m, tea.Quit
@@ -1054,11 +1061,6 @@ func (m Model) handleInputKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// (modal text entry means letter keys are typed, so skip needs a non-rune key).
 		if m.screen == screenDevLiteracy {
 			return m.skipDevTask()
-		}
-		// File-a-ticket form: [tab] cycles the ticket type.
-		if m.screen == screenNewTicket {
-			m.ntType = (m.ntType + 1) % len(newTicketTypes)
-			return m, nil
 		}
 	case tea.KeyBackspace, tea.KeyDelete:
 		r := []rune(m.input)
@@ -1084,9 +1086,6 @@ func (m Model) submitInput() (tea.Model, tea.Cmd) {
 	}
 	if m.screen == screenTicket { // answering the reviewer's question (#61)
 		return m.answerReview(ans)
-	}
-	if m.screen == screenNewTicket { // filing a ticket (#64)
-		return m.createTicket(ans)
 	}
 	if m.screen == screenDiagnostic { // spec item
 		passed := specMatch(ans, m.curDiag.Spec)
@@ -2055,7 +2054,7 @@ func (m Model) View() string {
 	case screenTicket:
 		return m.ticketDetailView()
 	case screenNewTicket:
-		return m.newTicketView()
+		return m.formView()
 	case screenStandup:
 		return m.standupView()
 	case screenHook:

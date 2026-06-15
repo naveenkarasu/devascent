@@ -43,8 +43,11 @@ func (m Model) handleTicketKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.screen = m.detailReturn
 		return m, nil
 	}
+	if msg.String() == "E" { // edit this ticket's fields (assignee, priority, …)
+		return m.openEditTicket(t)
+	}
 	if t.Assignee != "you" {
-		return m, nil // someone else's ticket — read-only
+		return m, nil // someone else's ticket — read-only (but you can still [E]dit it)
 	}
 	if t.Grading == nil { // ungraded chore (onboarding) — self-attest done
 		if msg.String() == "d" && t.Status != ticket.Done {
@@ -296,26 +299,26 @@ func renderVerdict(v *grader.Verdict) string {
 // ticketFooter is the status-appropriate key hints for a workable ticket.
 func ticketFooter(t *ticket.Ticket, answering bool) string {
 	if t.Assignee != "you" {
-		return "[esc] back to the board"
+		return "[E] edit   ·   [esc] back to the board"
 	}
 	if t.Grading == nil { // ungraded chore / onboarding
 		if t.Status == ticket.Done {
-			return "✓ done   ·   [esc] back"
+			return "✓ done   ·   [E] edit   ·   [esc] back"
 		}
-		return "[d] mark done   ·   [esc] back"
+		return "[d] mark done   ·   [E] edit   ·   [esc] back"
 	}
 	switch t.Status {
 	case ticket.ToDo:
-		return "[s] start work   ·   [esc] back"
+		return "[s] start work   ·   [E] edit   ·   [esc] back"
 	case ticket.InProgress:
-		return "[e] edit   ·   [r] run the hidden tests   ·   [esc] back"
+		return "[e] edit code   ·   [r] run tests   ·   [E] edit fields   ·   [esc] back"
 	case ticket.InReview:
 		if answering {
 			return "[enter] submit answer   ·   [esc] cancel"
 		}
-		return "[a] answer the reviewer   ·   [esc] back"
+		return "[a] answer the reviewer   ·   [E] edit   ·   [esc] back"
 	case ticket.Done:
-		return "✓ done   ·   [esc] back"
+		return "✓ done   ·   [E] edit   ·   [esc] back"
 	}
 	return "[esc] back"
 }
