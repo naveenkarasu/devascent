@@ -1,5 +1,11 @@
 package tui
 
+import (
+	"fmt"
+
+	"devascent/internal/ticket"
+)
+
 // Pixel Forge's team — the colleagues you can delegate work to (those at/below
 // your level, who execute) or escalate to (those above, who give guidance). The
 // player's own level rises with the career ladder; for now it defaults to a
@@ -64,4 +70,40 @@ func roleOf(name string) string {
 		return t.name + " · " + t.role
 	}
 	return name
+}
+
+// applyAssignment reacts to assigning a ticket to a teammate:
+//   - delegate → the teammate picks it up now (In Progress) and will deliver by the
+//     due day (advanceDay completes it at DueDay — never before).
+//   - escalate → an immediate guidance reply from the senior (resolved as advice).
+//
+// Self/unassigned tickets are untouched (your own graded work).
+func applyAssignment(t *ticket.Ticket, playerLvl, day int) {
+	switch assignKind(t.Assignee, playerLvl) {
+	case "delegate":
+		if t.Status == ticket.ToDo || t.Status == ticket.Backlog {
+			t.Status = ticket.InProgress
+			t.Comments = append(t.Comments, ticket.Comment{
+				Author: t.Assignee, Body: fmt.Sprintf("On it — targeting delivery by D%d.", t.DueDay)})
+		}
+	case "escalate":
+		if t.Status != ticket.Done {
+			t.Status = ticket.Done
+			t.ResolvedDay = day
+			t.Comments = append(t.Comments, ticket.Comment{Author: t.Assignee, Body: escalationGuidance(t)})
+		}
+	}
+}
+
+// escalationGuidance is the senior's templated advice when you escalate (an AI
+// reply replaces this once a mentor backend is wired — T3).
+func escalationGuidance(t *ticket.Ticket) string {
+	switch t.Type {
+	case ticket.Bug, ticket.Incident:
+		return "Reproduce it with a failing test first, then make the smallest fix; watch the edge cases in the acceptance criteria. Ping me on the PR."
+	case ticket.Story, ticket.Feature:
+		return "Nail the acceptance criteria before you start, slice it thin, and ship behind a flag if it's risky. Happy to pair if you get stuck."
+	default:
+		return "Keep it small and well-tested, and mirror the patterns already in that module. Ask early if anything's unclear."
+	}
 }

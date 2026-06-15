@@ -156,6 +156,7 @@ func (m Model) submitForm() (tea.Model, tea.Cmd) {
 		t.Assignee = assignee
 		t.Points = formPoints[m.ntPoints]
 		t.DueDay = ticket.DueDayFor(t.Priority, t.AssignedDay)
+		applyAssignment(t, m.playerLvl, m.boardSprint.Day)
 		m.detailTicket = t
 		m.persist()
 		m.screen = screenTicket
@@ -177,12 +178,25 @@ func (m Model) submitForm() (tea.Model, tea.Cmd) {
 		CreatedDay:  day,
 	}
 	tk.DueDay = ticket.DueDayFor(tk.Priority, day)
+	applyAssignment(tk, m.playerLvl, day) // delegate → teammate starts; escalate → guidance
 	m.boardSprint.Tickets = append(m.boardSprint.Tickets, tk)
 	m.screen = screenBoard
-	m.boardCol = 0
-	m.boardRow = len(m.columnCards(ticket.ToDo)) - 1
+	m.focusTicket(tk)
 	m.persist()
 	return m, nil
+}
+
+// focusTicket points the board cursor at t, wherever it currently sits.
+func (m *Model) focusTicket(t *ticket.Ticket) {
+	for i := range ticket.BoardColumns {
+		for r, c := range m.columnCards(ticket.BoardColumns[i]) {
+			if c == t {
+				m.boardCol, m.boardRow = i, r
+				return
+			}
+		}
+	}
+	m.boardCol, m.boardRow = 0, 0
 }
 
 func (m Model) formView() string {

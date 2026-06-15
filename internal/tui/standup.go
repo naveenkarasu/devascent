@@ -33,7 +33,23 @@ func (m Model) handleStandupKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // tickets assigned to the new day. Incomplete tickets carry over.
 func (m Model) advanceDay() (tea.Model, tea.Cmd) {
 	m.boardSprint.Day++
-	m.boardCol = defaultFocusCol(m.boardSprint, m.boardSprint.Day)
+	day := m.boardSprint.Day
+	// The team works in the background: delegated tickets start on their assigned
+	// day and are delivered at their due day (never before).
+	for _, t := range m.boardSprint.Tickets {
+		if t.Assignee == "" || t.Assignee == "you" || assignKind(t.Assignee, m.playerLvl) != "delegate" {
+			continue
+		}
+		if t.Status == ticket.ToDo && day >= t.AssignedDay {
+			t.Status = ticket.InProgress
+		}
+		if t.Status == ticket.InProgress && t.DueDay > 0 && day >= t.DueDay {
+			t.Status = ticket.Done
+			t.ResolvedDay = day
+			t.Comments = append(t.Comments, ticket.Comment{Author: t.Assignee, Body: "Delivered " + t.Key + "."})
+		}
+	}
+	m.boardCol = defaultFocusCol(m.boardSprint, day)
 	m.boardRow = 0
 	m.screen = screenBoard
 	m.persist()
