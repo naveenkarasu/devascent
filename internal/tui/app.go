@@ -1859,7 +1859,7 @@ func (m Model) currentState() save.State {
 		s.DevIdx = m.devIdx
 	case screenStep0Complete:
 		s.Stage = "step0done"
-	case screenBoard, screenTicket, screenCooldown, screenStandup:
+	case screenBoard, screenTicket, screenCooldown, screenStandup, screenDiscuss:
 		s.Stage = "step1"
 	case screenBench, screenWriteup, screenGate, screenMentor:
 		s.Stage = "bench"
@@ -1886,7 +1886,7 @@ func (m Model) persist() {
 	case screenDiagnostic, screenTestOut, screenResults, screenDevLiteracy, screenLesson, screenHandoff,
 		screenBench, screenStep0Complete, screenWriteup, screenGate, screenMentor:
 		_ = save.SaveLang(m.lang, m.currentState())
-	case screenBoard, screenTicket, screenCooldown, screenStandup:
+	case screenBoard, screenTicket, screenCooldown, screenStandup, screenDiscuss:
 		if m.step1Home { // only the real career home persists; the cheat preview never touches the save
 			_ = save.SaveLang(m.lang, m.currentState())
 		}

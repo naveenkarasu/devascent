@@ -4,8 +4,39 @@ import (
 	"testing"
 	"time"
 
+	"devascent/internal/save"
 	"devascent/internal/ticket"
 )
+
+// Resuming a run saved mid-cooldown restores the beat (future deadline → back
+// into the countdown) or, if it elapsed while away, lands on the flipped day.
+func TestResume_MidCooldown(t *testing.T) {
+	t.Setenv("DEVASCENT_SAVE_DIR", t.TempDir())
+
+	// future deadline → resume into the cooldown, ticking again
+	_, sp := seedSprint1()
+	sp.Phase = ticket.PhaseCooldown
+	sp.CooldownEndsAt = time.Now().Add(30 * time.Second).UTC().Format(time.RFC3339)
+	out, cmd := Model{resume: &save.State{Stage: "step1", Language: "python", Sprint: sp}, playerLvl: 1}.applyResume()
+	m := out.(Model)
+	if m.screen != screenCooldown || m.boardSprint.Phase != ticket.PhaseCooldown {
+		t.Fatalf("future deadline should resume into the cooldown, got screen %d phase %q", m.screen, m.boardSprint.Phase)
+	}
+	if cmd == nil {
+		t.Error("resuming mid-cooldown should restart the countdown tick")
+	}
+
+	// past deadline → the beat elapsed while away, so the day is already flipped
+	_, sp2 := seedSprint1()
+	day := sp2.Day
+	sp2.Phase = ticket.PhaseCooldown
+	sp2.CooldownEndsAt = time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)
+	out2, _ := Model{resume: &save.State{Stage: "step1", Language: "python", Sprint: sp2}, playerLvl: 1}.applyResume()
+	m2 := out2.(Model)
+	if m2.boardSprint.Phase != ticket.PhaseStandup || m2.boardSprint.Day != day+1 {
+		t.Fatalf("an elapsed deadline should flip to standup-pending day+1, got phase %q day %d", m2.boardSprint.Phase, m2.boardSprint.Day)
+	}
+}
 
 // cooldownRemaining is pure wall-clock math: future deadline → >0, past/empty → 0.
 func TestCooldownRemaining(t *testing.T) {
