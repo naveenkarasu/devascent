@@ -81,12 +81,23 @@ jobs:
             echo "tag=" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Install NSIS (Windows installer toolchain)
+        # The windows-latest image no longer ships makensis, so `wails build
+        # -nsis` only WARNS ("Cannot create installer: makensis not found") and
+        # skips the installer, which then fails packaging. Install it + put it
+        # on PATH so the installer is produced.
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
       - name: Build (wails)
         shell: bash
         working-directory: devascent-gui
-        # Windows also produces the NSIS installer (makensis ships on the
-        # windows-latest image) — users get both the portable exe and a real
-        # installer with Start-menu entry + uninstaller.
+        # Windows also produces the NSIS installer (makensis installed in the
+        # step above) — users get both the portable exe and a real installer
+        # with Start-menu entry + uninstaller.
         run: |
           EXTRA=""
           if [[ "${{ runner.os }}" == "Windows" ]]; then EXTRA="-nsis"; fi
