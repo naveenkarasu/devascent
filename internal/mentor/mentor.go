@@ -32,6 +32,8 @@ const (
 	KindWalkthrough Kind = "walkthrough" // tier-3: steps + pseudocode, no compilable solution
 	KindFollowup    Kind = "followup"    // A1: one probing question about the write-up
 	KindReview      Kind = "review"      // post-bank: one strength + one improvement
+	KindStandup     Kind = "standup"     // S7: render the team's status as a natural morning standup
+	KindDiscuss     Kind = "discuss"     // S7: a delegated teammate's plan + estimate before committing
 )
 
 // AskTimeout bounds every backend call; on expiry the caller falls back to
@@ -59,6 +61,17 @@ type Request struct {
 	FirstFail  string // name of the first failing test case ("" if none) — never its data
 	Writeup    string // player's write-up text (followup/review)
 	Attempt    int    // nudge escalation counter (template tiering)
+
+	// Team features (S7): the public Definition-of-Ready packet plus persona/day
+	// context for the morning standup (KindStandup) and a delegated teammate's
+	// plan (KindDiscuss). There are deliberately NO fields for hidden tests or
+	// reference solutions — a teammate sees exactly what a real engineer sees
+	// (the ticket and its acceptance criteria), never the answer key.
+	Persona    string   // who is speaking, e.g. "Maya, a Junior Engineer"
+	Acceptance []string // public acceptance criteria (the DoR)
+	Priority   string   // ticket priority label (discuss)
+	Day        int      // current sim day (standup framing)
+	Status     []string // pre-computed public per-person status lines (standup)
 }
 
 // Response is what the player sees.

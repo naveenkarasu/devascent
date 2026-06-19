@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"devascent/internal/ticket"
 )
 
 func TestLoadLang_NoFile(t *testing.T) {
@@ -126,6 +128,70 @@ func TestProfilesAndLatest(t *testing.T) {
 	latest, err := LoadLatest()
 	if err != nil || latest == nil || latest.Language != "go" {
 		t.Fatalf("LoadLatest = %+v, %v; want the go slot", latest, err)
+	}
+}
+
+// The Step-1 board persists in the same per-language slot and reloads with its
+// ticket statuses intact (engine methods work on the reloaded data).
+func TestRoundTrip_Step1Board(t *testing.T) {
+	t.Setenv("DEVASCENT_SAVE_DIR", t.TempDir())
+	st := State{
+		Stage:   "step1",
+		Project: &ticket.Project{Key: "PXF", Name: "Pixel Forge"},
+		Sprint: &ticket.Sprint{
+			Number: 3, Capacity: 13,
+			Tickets: []*ticket.Ticket{
+				{Key: "PXF-101", Type: ticket.Bug, Status: ticket.InProgress, Points: 2, Assignee: "you"},
+				{Key: "PXF-097", Type: ticket.Story, Status: ticket.Done, Points: 3},
+			},
+		},
+	}
+	if err := SaveLang("python", st); err != nil {
+		t.Fatal(err)
+	}
+	got, err := LoadLang("python")
+	if err != nil || got == nil {
+		t.Fatalf("LoadLang = %v, %v", got, err)
+	}
+	if got.Project == nil || got.Project.Name != "Pixel Forge" {
+		t.Fatalf("project did not round-trip: %+v", got.Project)
+	}
+	if got.Sprint == nil || got.Sprint.Number != 3 || len(got.Sprint.Tickets) != 2 {
+		t.Fatalf("sprint did not round-trip: %+v", got.Sprint)
+	}
+	tk := got.Sprint.Find("PXF-101")
+	if tk == nil || tk.Status != ticket.InProgress || tk.Type != ticket.Bug || tk.Points != 2 {
+		t.Fatalf("ticket fields lost: %+v", tk)
+	}
+	if got.Sprint.DonePoints() != 3 {
+		t.Errorf("DonePoints after reload = %d, want 3", got.Sprint.DonePoints())
+	}
+}
+
+// The new day/SLA ticket fields (v6) round-trip through the save slot.
+func TestRoundTrip_TicketDayFields(t *testing.T) {
+	t.Setenv("DEVASCENT_SAVE_DIR", t.TempDir())
+	st := State{
+		Stage:   "step1",
+		Project: &ticket.Project{Key: "PXF", Name: "Pixel Forge"},
+		Sprint: &ticket.Sprint{Number: 1, Day: 2, Tickets: []*ticket.Ticket{{
+			Key: "PXF-201", Type: ticket.Bug, Status: ticket.InProgress, Priority: ticket.PMajor,
+			Reporter: "Priya", Labels: []string{"backend", "api"}, AssignedDay: 0, DueDay: 2,
+			CreatedDay: 0, ResolvedDay: 0, Watchers: []string{"sam"},
+			Subtasks: []ticket.Subtask{{Title: "x", Done: true}},
+		}}},
+	}
+	if err := SaveLang("python", st); err != nil {
+		t.Fatal(err)
+	}
+	got, err := LoadLang("python")
+	if err != nil || got == nil || got.Sprint == nil {
+		t.Fatalf("reload: %v, %v", got, err)
+	}
+	tk := got.Sprint.Find("PXF-201")
+	if tk == nil || tk.Reporter != "Priya" || tk.DueDay != 2 || tk.AssignedDay != 0 ||
+		len(tk.Labels) != 2 || len(tk.Subtasks) != 1 || !tk.Subtasks[0].Done {
+		t.Fatalf("new ticket fields did not round-trip: %+v", tk)
 	}
 }
 

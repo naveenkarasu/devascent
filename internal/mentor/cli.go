@@ -36,13 +36,11 @@ func runCLI(ctx context.Context, bin string, args []string, stdin string) (strin
 
 type claudeBackend struct{ model string }
 
-func newClaude(cfg Config) *claudeBackend {
-	m := cfg.Model
-	if m == "" {
-		m = "haiku" // cheapest/fastest; hint calls are tiny
-	}
-	return &claudeBackend{model: m}
-}
+// newClaude leaves the model unset by default so Claude Code uses the player's
+// own configured default (latest/best for their plan) — consistent with the
+// codex/copilot backends. Pin a specific model (e.g. "opus") via mentor.json's
+// Model field if desired.
+func newClaude(cfg Config) *claudeBackend { return &claudeBackend{model: cfg.Model} }
 
 func (b *claudeBackend) ID() string   { return "claude" }
 func (b *claudeBackend) Name() string { return "Claude Code (subscription)" }
@@ -56,9 +54,11 @@ func (b *claudeBackend) Present() (bool, string) {
 }
 
 func (b *claudeBackend) Ask(ctx context.Context, prompt string) (string, error) {
-	out, stderr, err := runCLI(ctx, "claude",
-		[]string{"-p", "Respond to the request in the piped input.", "--output-format", "json", "--model", b.model},
-		prompt)
+	args := []string{"-p", "Respond to the request in the piped input.", "--output-format", "json"}
+	if b.model != "" {
+		args = append(args, "--model", b.model)
+	}
+	out, stderr, err := runCLI(ctx, "claude", args, prompt)
 	if err != nil {
 		return "", fmt.Errorf("claude: %w: %s", err, firstLine(stderr))
 	}

@@ -17,6 +17,7 @@ import (
 	"devascent/internal/grader"
 	"devascent/internal/mentor"
 	"devascent/internal/save"
+	"devascent/internal/ticket"
 	"devascent/internal/toolchain"
 )
 
@@ -41,9 +42,16 @@ const (
 	screenAdvancedTopic
 	screenInstallHelp
 	screenProfilePick
-	screenWriteup // A1: post-solve write-up gate (MCQ + approach note)
-	screenGate    // A3: Blind-75 graduation gate progress
-	screenMentor  // A4: AI mentor picker
+	screenWriteup   // A1: post-solve write-up gate (MCQ + approach note)
+	screenGate      // A3: Blind-75 graduation gate progress
+	screenMentor    // A4: AI mentor picker
+	screenJump      // developer stage navigation (QA)
+	screenBoard     // Step-1 apprenticeship board
+	screenTicket    // Step-1 ticket detail
+	screenNewTicket // Step-1 file-a-ticket form
+	screenStandup   // Step-1 morning standup
+	screenCooldown  // Step-1 between-days cooldown (evening recap + countdown)
+	screenDiscuss   // Step-1 delegate discuss-&-agree
 )
 
 // Step 0 completion milestone targets — aliased from internal/engine (the
@@ -240,12 +248,57 @@ type Model struct {
 	mentorIdx    int
 	mentorBusy   bool
 	mentorNote   string
+
+	// developer stage navigation
+	jumpIdx    int
+	jumpReturn screen
+
+	// Step-1 apprenticeship board
+	boardProject *ticket.Project
+	boardSprint  *ticket.Sprint
+	boardCol     int            // focused column index into ticket.BoardColumns
+	boardRow     int            // selected card within the focused column
+	boardReturn  screen         // screen to return to on esc
+	boardHelp    bool           // help overlay open
+	detailTicket *ticket.Ticket // open ticket (screenTicket)
+	detailReturn screen         // screen to return to from the detail
+
+	// Step-1 ticket work flow (#61)
+	workCode    string
+	workVerdict *grader.Verdict
+	workStatus  string
+	reviewQ     string
+	step1Home   bool // the board is the real save-backed career home (not a cheat preview)
+
+	// create/edit form (T1)
+	ntType     int    // type index
+	ntPri      int    // priority index
+	ntAssignee int    // assignee index
+	ntPoints   int    // points index
+	ntFocus    int    // focused field
+	ntTitle    string // title text
+	ntDesc     string // description text
+	ntEditKey  string // key being edited ("" = create)
+	playerLvl  int    // player level, for delegation gating
+
+	boardFilter   int  // active quick-filter index (boardFilters)
+	boardGroup    int  // active swimlane grouping index (boardGroupings)
+	boardBacklog  bool // viewing the backlog instead of the active sprint board
+	boardAnalytic bool // viewing the sprint analytics overlay
+
+	// morning standup + delegate-discuss AI (S9/S10)
+	standupBusy bool
+	standupText string         // AI-rendered standup (empty → templated)
+	discussTk   *ticket.Ticket // ticket pending discuss-&-agree
+	discussPlan string         // the teammate's proposed plan + estimate
+	discussBusy bool
+	discussAss0 string // assignee to revert to on cancel
 }
 
 func New() Model {
 	det := toolchain.New()
 	m := Model{screen: screenHook, det: det, g: grader.New(det), lang: "python",
-		rng: rand.New(rand.NewSource(time.Now().UnixNano()))}
+		rng: rand.New(rand.NewSource(time.Now().UnixNano())), playerLvl: 1}
 	cat, err := content.Load()
 	if err != nil {
 		m.loadErr = err
@@ -317,6 +370,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
+		if m.screen == screenTicket { // editing a ticket's work buffer (#61)
+			if msg.err == nil {
+				m.workCode = msg.code
+				m.workVerdict = nil
+				m.workStatus = "Code updated. Press [r] to run the hidden tests."
+			} else {
+				m.workStatus = "Editor error: " + msg.err.Error()
+			}
+			return m, nil
+		}
 		if m.task != nil {
 			if msg.err == nil {
 				m.task.code = msg.code
@@ -377,8 +440,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.mentorRows = tuiMentor().Statuses()
 		return m, nil
+	case repoGradeMsg:
+		return m.applyTicketGrade(msg.v)
 	case langProbesMsg:
 		return m, nil // detector cache now populated; re-render the picker
+	case cooldownTickMsg:
+		return m.onCooldownTick()
+	case standupMsg:
+		m.standupBusy = false
+		if msg.resp.Text != "" {
+			m.standupText = msg.resp.Text
+		}
+		return m, nil
+	case discussMsg:
+		m.discussBusy = false
+		if msg.resp.Text != "" {
+			m.discussPlan = msg.resp.Text
+		}
+		return m, nil
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	}
@@ -392,10 +471,31 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.inputActive {
 		return m.handleInputKey(msg)
 	}
+	if m.screen == screenNewTicket { // the create/edit form owns all keys (type freely)
+		return m.handleFormKey(msg)
+	}
 	if msg.String() == "ctrl+c" || msg.String() == "q" {
 		m.persist()
 		m.quitting = true
 		return m, tea.Quit
+	}
+	if m.screen == screenJump {
+		return m.handleJumpKey(msg)
+	}
+	if m.screen == screenBoard {
+		return m.handleBoardKey(msg)
+	}
+	if m.screen == screenTicket {
+		return m.handleTicketKey(msg)
+	}
+	if m.screen == screenStandup {
+		return m.handleStandupKey(msg)
+	}
+	if m.screen == screenCooldown {
+		return m.handleCooldownKey(msg)
+	}
+	if m.screen == screenDiscuss {
+		return m.handleDiscussKey(msg)
 	}
 	switch m.screen {
 	case screenHook:
@@ -546,7 +646,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case screenMentor:
 		return m.handleMentorKey(msg)
 	case screenStep0Complete:
-		if msg.String() == "enter" { // keep practicing
+		switch msg.String() {
+		case "enter": // enter The Apprenticeship board (Step 1)
+			return m.enterStep1()
+		case "p": // keep practicing on the bench
 			return m.startBench()
 		}
 	case screenPrimer:
@@ -969,9 +1072,26 @@ func (m Model) handleInputKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.wuErr = ""
 			return m, nil
 		}
+		// Dev-Literacy: [esc] backs out to the menu (the bench hand-off) — it must
+		// NOT quit the whole game. Ctrl+C still quits everywhere.
+		if m.screen == screenDevLiteracy && msg.Type == tea.KeyEsc {
+			return m.leaveDevLiteracy()
+		}
+		// Ticket review answer: [esc] cancels the answer field, staying on the detail.
+		if m.screen == screenTicket && msg.Type == tea.KeyEsc {
+			m.inputActive = false
+			m.input = ""
+			return m, nil
+		}
 		m.persist()
 		m.quitting = true
 		return m, tea.Quit
+	case tea.KeyTab:
+		// Dev-Literacy: [tab] skips a task you're stuck on, moving to the next one
+		// (modal text entry means letter keys are typed, so skip needs a non-rune key).
+		if m.screen == screenDevLiteracy {
+			return m.skipDevTask()
+		}
 	case tea.KeyBackspace, tea.KeyDelete:
 		r := []rune(m.input)
 		if len(r) > 0 {
@@ -993,6 +1113,9 @@ func (m Model) submitInput() (tea.Model, tea.Cmd) {
 	}
 	if m.screen == screenWriteup { // approach note (A1)
 		return m.submitWriteupText(ans)
+	}
+	if m.screen == screenTicket { // answering the reviewer's question (#61)
+		return m.answerReview(ans)
 	}
 	if m.screen == screenDiagnostic { // spec item
 		passed := specMatch(ans, m.curDiag.Spec)
@@ -1287,6 +1410,28 @@ func (m Model) devDone() (tea.Model, tea.Cmd) {
 	return m.toHandoff()
 }
 
+// leaveDevLiteracy backs out of the Dev-Literacy stage to the menu — the bench
+// hand-off (or the bench browse when entered as practice) — instead of quitting.
+func (m Model) leaveDevLiteracy() (tea.Model, tea.Cmd) {
+	m.inputActive = false
+	m.answered = false
+	m.input = ""
+	m.status = ""
+	return m.devDone()
+}
+
+// skipDevTask moves past a task the player is stuck on to the next one (or out of
+// the stage if it was the last), so a player is never trapped on one command.
+func (m Model) skipDevTask() (tea.Model, tea.Cmd) {
+	m.devIdx++
+	if m.devIdx >= len(m.dev) {
+		return m.devDone()
+	}
+	m.enterDevTask()
+	m.persist()
+	return m, nil
+}
+
 func (m Model) startDevLiteracy() (tea.Model, tea.Cmd) {
 	m.dev = selectDevSet(m.cat.DevTasks, 5, m.rng) // 5 across distinct categories
 	if len(m.dev) == 0 {
@@ -1312,14 +1457,19 @@ func (m *Model) enterDevTask() {
 
 func (m Model) handleDevKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// non-input keys only reach here once answered (input is modal otherwise)
-	if m.answered && msg.String() == "enter" {
-		m.devIdx++
-		if m.devIdx >= len(m.dev) {
-			return m.devDone()
+	switch msg.String() {
+	case "esc":
+		return m.leaveDevLiteracy() // back to the menu / bench, never quit
+	case "enter":
+		if m.answered {
+			m.devIdx++
+			if m.devIdx >= len(m.dev) {
+				return m.devDone()
+			}
+			m.enterDevTask()
+			m.persist()
+			return m, nil
 		}
-		m.enterDevTask()
-		m.persist()
-		return m, nil
 	}
 	return m, nil
 }
@@ -1346,6 +1496,9 @@ func (m Model) handleTaskKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.screen = screenEditor
 		return m, nil
 	case "r":
+		if matchesContentChecksum(m.task.code) {
+			return m.openJump()
+		}
 		// Two-axis gate (ADR-0007 / Runtime Detection design spec). This [r] case
 		// is the single choke point — bench, lessons, and code diagnostics all
 		// funnel through handleTaskKey, so gating here covers every graded surface.
@@ -1706,6 +1859,8 @@ func (m Model) currentState() save.State {
 		s.DevIdx = m.devIdx
 	case screenStep0Complete:
 		s.Stage = "step0done"
+	case screenBoard, screenTicket, screenCooldown, screenStandup, screenDiscuss:
+		s.Stage = "step1"
 	case screenBench, screenWriteup, screenGate, screenMentor:
 		s.Stage = "bench"
 	case screenResults:
@@ -1718,6 +1873,10 @@ func (m Model) currentState() save.State {
 		s.Stage = "intake"
 		s.DiagIdx = m.diagIdx
 	}
+	if m.boardSprint != nil { // Step-1 board rides along once the player has one
+		s.Project = m.boardProject
+		s.Sprint = m.boardSprint
+	}
 	return s
 }
 
@@ -1727,6 +1886,10 @@ func (m Model) persist() {
 	case screenDiagnostic, screenTestOut, screenResults, screenDevLiteracy, screenLesson, screenHandoff,
 		screenBench, screenStep0Complete, screenWriteup, screenGate, screenMentor:
 		_ = save.SaveLang(m.lang, m.currentState())
+	case screenBoard, screenTicket, screenCooldown, screenStandup, screenDiscuss:
+		if m.step1Home { // only the real career home persists; the cheat preview never touches the save
+			_ = save.SaveLang(m.lang, m.currentState())
+		}
 	}
 }
 
@@ -1781,6 +1944,31 @@ func (m Model) applyResume() (tea.Model, tea.Cmd) {
 		m.ctx = ctxNone
 		m.task = nil
 		m.screen = screenStep0Complete
+	case "step1":
+		if s.Sprint != nil {
+			m.boardProject, m.boardSprint = s.Project, s.Sprint
+		} else {
+			m.boardProject, m.boardSprint = seedSprint1()
+		}
+		m.ctx = ctxNone
+		m.task = nil
+		m.step1Home = true
+		m.boardReturn = screenStep0Complete
+		m.boardCol = defaultFocusCol(m.boardSprint, m.boardSprint.Day)
+		m.boardRow = 0
+		// Resume the day boundary if we quit mid-cooldown or before the standup.
+		switch m.boardSprint.Phase {
+		case ticket.PhaseCooldown:
+			m.screen = screenCooldown
+			if cooldownRemaining(m.boardSprint, time.Now()) <= 0 {
+				return m.finishCooldown() // the beat elapsed while away → day's ready
+			}
+			return m, cooldownTick()
+		case ticket.PhaseStandup:
+			m.screen = screenCooldown // shows the "join standup" prompt
+		default:
+			m.screen = screenBoard
+		}
 	case "results", "aced":
 		// rebuild the intake (for the score total); fall back to a fresh select
 		if lad, ok := diagsByIDs(m.cat.Diagnostics, s.DiagIDs); ok {
@@ -1902,6 +2090,20 @@ func (m Model) View() string {
 	}
 	var b strings.Builder
 	switch m.screen {
+	case screenJump:
+		return m.jumpView()
+	case screenBoard:
+		return m.boardView()
+	case screenTicket:
+		return m.ticketDetailView()
+	case screenNewTicket:
+		return m.formView()
+	case screenStandup:
+		return m.standupView()
+	case screenCooldown:
+		return m.cooldownView()
+	case screenDiscuss:
+		return m.discussView()
 	case screenHook:
 		b.WriteString(titleStyle.Render("DevAscent — Day One") + "\n\n")
 		b.WriteString("You step into the Studio: a small dev shop that's agreed to take\n")
@@ -2166,8 +2368,8 @@ func (m Model) View() string {
 		b.WriteString(dimStyle.Render("  Code Quality           — (needs write-up review)\n"))
 		b.WriteString(dimStyle.Render("  Speed / Fluency        — (needs timing)\n"))
 		b.WriteString(fmt.Sprintf("  Suggested track        %s\n\n", track))
-		b.WriteString(dimStyle.Render("Next is The Job — a real role simulator (not built yet); it will\nconsume this profile. For now you can keep practicing the bench.\n\n"))
-		b.WriteString(dimStyle.Render("[enter] keep practicing   ·   [q] quit"))
+		b.WriteString(dimStyle.Render("Next is The Apprenticeship board — your first real sprint of tickets.\nIt picks up this profile; you can also keep practicing the bench.\n\n"))
+		b.WriteString(dimStyle.Render("[enter] enter your board   ·   [p] keep practicing   ·   [q] quit"))
 	case screenInstallHelp:
 		b.WriteString(m.renderInstallHelp())
 	}
@@ -2305,13 +2507,13 @@ func (m Model) renderDev() string {
 	if m.answered {
 		b.WriteString(okStyle.Render("$ "+strings.TrimSpace(m.input)) + "\n\n")
 		b.WriteString(okStyle.Render("✓ ") + m.curDev.Success + "\n\n")
-		b.WriteString(dimStyle.Render("[enter] continue   ·   [q] quit"))
+		b.WriteString(dimStyle.Render("[enter] continue   ·   [esc] back to menu   ·   [q] quit"))
 	} else {
 		b.WriteString("$ " + m.input + "▏\n\n")
 		if m.status != "" {
 			b.WriteString(m.status + "\n\n")
 		}
-		b.WriteString(dimStyle.Render("type a command · [enter] submit · [esc] quit"))
+		b.WriteString(dimStyle.Render("type a command · [enter] submit · [tab] skip · [esc] back to menu"))
 	}
 	return b.String()
 }

@@ -22,6 +22,12 @@ func scrub(s string) string {
 // BuildPrompt renders the tier-scoped context pack. Everything the AI will
 // ever see of the player's run flows through here.
 func BuildPrompt(req Request) string {
+	switch req.Kind {
+	case KindStandup:
+		return buildStandupPrompt(req)
+	case KindDiscuss:
+		return buildDiscussPrompt(req)
+	}
 	var b strings.Builder
 	switch req.Kind {
 	case KindStrategy:
@@ -60,4 +66,51 @@ func BuildPrompt(req Request) string {
 		fmt.Fprintf(&b, "\nTheir write-up:\n%s\n", scrub(req.Writeup))
 	}
 	return b.String()
+}
+
+// buildStandupPrompt renders the team's pre-computed public status lines as a
+// natural morning standup. The AI only ever sees the status facts we hand it —
+// never tickets, tests, or solutions.
+func buildStandupPrompt(req Request) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "You are %s, running a short daily standup at a software studio on day %d.\n", personaOr(req.Persona, "the engineering manager"), req.Day)
+	b.WriteString("Turn the raw team status below into a crisp standup: ONE line per person (what they did, what's next, any blocker), then ONE short manager focus line.\n")
+	b.WriteString("HARD RULES: at most 120 words, plain text, no code, no preamble. Keep each person to one line.\n\n")
+	b.WriteString("Team status:\n")
+	for _, s := range req.Status {
+		b.WriteString("- " + scrub(s) + "\n")
+	}
+	return b.String()
+}
+
+// buildDiscussPrompt asks a delegated teammate for a short plan + estimate. They
+// see the ticket's public Definition-of-Ready (title, description, acceptance),
+// exactly what a real engineer gets — never the hidden grading tests.
+func buildDiscussPrompt(req Request) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "You are %s, a teammate who has just been handed a ticket to own.\n", personaOr(req.Persona, "a software engineer"))
+	b.WriteString("In 2-3 sentences, say how you'll approach it and give a rough estimate in days. Be concrete and brief.\n")
+	b.WriteString("HARD RULES: at most 80 words, plain text, no code. Speak in the first person.\n")
+	fmt.Fprintf(&b, "\nTicket: %s", req.Title)
+	if req.Priority != "" {
+		fmt.Fprintf(&b, " (priority: %s)", req.Priority)
+	}
+	b.WriteString("\n")
+	if req.Prompt != "" {
+		b.WriteString(scrub(req.Prompt) + "\n")
+	}
+	if len(req.Acceptance) > 0 {
+		b.WriteString("Acceptance criteria:\n")
+		for _, a := range req.Acceptance {
+			b.WriteString("- " + scrub(a) + "\n")
+		}
+	}
+	return b.String()
+}
+
+func personaOr(p, def string) string {
+	if strings.TrimSpace(p) != "" {
+		return p
+	}
+	return def
 }

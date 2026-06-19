@@ -12,9 +12,11 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"devascent/internal/ticket"
 )
 
-const SchemaVersion = 4 // 3 = per-language slot files; 4 = +wallet/solve records (additive)
+const SchemaVersion = 7 // 3 = per-lang slots; 4 = +wallet/solve; 5 = +Step-1 board; 6 = +ticket day/SLA fields; 7 = +sprint day-cycle (phase/cooldown) (all additive)
 
 type State struct {
 	SchemaVersion int    `json:"schema_version"`
@@ -59,6 +61,12 @@ type State struct {
 	NudgeRechargeAt   string                 `json:"nudge_recharge_at"` // RFC3339 accrual anchor
 	SolveRecords      map[string]SolveRecord `json:"solve_records,omitempty"`
 	MilestonesAwarded []string               `json:"milestones_awarded,omitempty"` // gate categories already paid out
+
+	// Step 1 — apprenticeship board (v5, additive). Nil until the player
+	// graduates from the bench into Step 1; persisted in the SAME per-language
+	// slot so resume reopens the sprint exactly where they left off.
+	Project *ticket.Project `json:"project,omitempty"`
+	Sprint  *ticket.Sprint  `json:"sprint,omitempty"`
 
 	UpdatedAt string `json:"updated_at"`
 }

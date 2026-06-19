@@ -14,6 +14,9 @@
 /docs/
 /claudedocs/
 
+# Scratch — screenshots, UI mocks, capture scripts, throwaway save dirs. NOT for the public repo.
+/tmp/
+
 # OS
 .DS_Store
 Thumbs.db

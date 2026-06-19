@@ -1,5 +1,7 @@
 package mentor
 
+import "strings"
+
 // The template backend: deterministic, instant, offline. Serves ALL tier-1
 // nudges (by design — nudges never reach an AI) and stands in for every
 // other kind when no AI backend is configured or one misbehaves.
@@ -210,7 +212,22 @@ func templateAnswer(req Request) string {
 		return followupTemplate
 	case KindReview:
 		return reviewTemplate
+	case KindStandup:
+		return standupTemplate(req)
+	case KindDiscuss:
+		return discussTemplate
 	default:
 		return Nudge(req.Category, req.Attempt)
 	}
 }
+
+// standupTemplate is the offline standup: the pre-computed status lines, as-is.
+func standupTemplate(req Request) string {
+	if len(req.Status) == 0 {
+		return "Nothing in flight — let's pick up the next tickets and keep the board moving."
+	}
+	return strings.Join(req.Status, "\n")
+}
+
+// discussTemplate is a delegated teammate's offline plan + estimate.
+const discussTemplate = "Here's my plan: I'll nail the acceptance criteria first, make the smallest change that satisfies them, and add a test before I call it done. I'll keep you posted at standup."
